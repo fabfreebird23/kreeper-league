@@ -1,0 +1,104 @@
+{
+  "980679503968018432": [
+    {
+      "player_id": "5848",
+      "player_name": "Marquise Brown",
+      "position": "",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_round": null
+    }
+  ],
+  "979360012843663360": [
+    {
+      "player_id": "6819",
+      "player_name": "Michael Pittman",
+      "position": "",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_round": null
+    }
+  ],
+  "980483220603015168": [
+    {
+      "player_id": "7525",
+      "player_name": "DeVonta Smith",
+      "position": "",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_round": null
+    },
+    {
+      "player_id": "7528",
+      "player_name": "Najee Harris",
+      "position": "",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_round": null
+    }
+  ],
+  "980678769612488704": [
+    {
+      "player_id": "7523",
+      "player_name": "Trevor Lawrence",
+      "position": "",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_round": null
+    },
+    {
+      "player_id": "7571",
+      "player_name": "Rashod Bateman",
+      "position": "",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_round": null
+    }
+  ],
+  "980547002628927488": [
+    {
+      "player_id": "7561",
+      "player_name": "Elijah Mitchell",
+      "position": "",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_round": null
+    }
+  ],
+  "980552553920274432": [
+    {
+      "player_id": "7607",
+      "player_name": "Michael Carter",
+      "position": "",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_round": null
+    },
+    {
+      "player_id": "7564",
+      "player_name": "Ja'Marr Chase",
+      "position": "",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_round": null
+    }
+  ],
+  "964703051971887104": [
+    {
+      "player_id": "7526",
+      "player_name": "Jaylen Waddle",
+      "position": "",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_round": null
+    },
+    {
+      "player_id": "7553",
+      "player_name": "Kyle Pitts",
+      "position": "",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_round": null
+    }
+  ]
+}

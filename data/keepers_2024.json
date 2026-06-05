@@ -1,0 +1,282 @@
+{
+  "980679503968018432": [
+    {
+      "player_id": "8136",
+      "player_name": "Rachaad White",
+      "position": "",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_round": null
+    },
+    {
+      "player_id": "9756",
+      "player_name": "Jordan Addison",
+      "position": "",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_round": null
+    },
+    {
+      "player_id": "4034",
+      "player_name": "Christian McCaffrey",
+      "is_rookie_keeper": false,
+      "keep_year": null,
+      "cost_round": null
+    },
+    {
+      "player_id": "5859",
+      "player_name": "A.J. Brown",
+      "is_rookie_keeper": false,
+      "keep_year": null,
+      "cost_round": null
+    },
+    {
+      "player_id": "8112",
+      "player_name": "Drake London",
+      "is_rookie_keeper": false,
+      "keep_year": null,
+      "cost_round": null
+    }
+  ],
+  "979360012843663360": [
+    {
+      "player_id": "6819",
+      "player_name": "Michael Pittman",
+      "position": "",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_round": null
+    },
+    {
+      "player_id": "9221",
+      "player_name": "Jahmyr Gibbs",
+      "position": "",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_round": null
+    },
+    {
+      "player_id": "7547",
+      "player_name": "Amon-Ra St. Brown",
+      "is_rookie_keeper": false,
+      "keep_year": null,
+      "cost_round": null
+    },
+    {
+      "player_id": "8144",
+      "player_name": "Chris Olave",
+      "is_rookie_keeper": false,
+      "keep_year": null,
+      "cost_round": null
+    },
+    {
+      "player_id": "7569",
+      "player_name": "Nico Collins",
+      "is_rookie_keeper": false,
+      "keep_year": null,
+      "cost_round": null
+    }
+  ],
+  "980483220603015168": [
+    {
+      "player_id": "9509",
+      "player_name": "Bijan Robinson",
+      "position": "",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_round": null
+    },
+    {
+      "player_id": "7525",
+      "player_name": "DeVonta Smith",
+      "position": "",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_round": null
+    },
+    {
+      "player_id": "6786",
+      "player_name": "CeeDee Lamb",
+      "is_rookie_keeper": false,
+      "keep_year": null,
+      "cost_round": null
+    },
+    {
+      "player_id": "6813",
+      "player_name": "Jonathan Taylor",
+      "is_rookie_keeper": false,
+      "keep_year": null,
+      "cost_round": null
+    },
+    {
+      "player_id": "8150",
+      "player_name": "Kyren Williams",
+      "is_rookie_keeper": false,
+      "keep_year": null,
+      "cost_round": null
+    }
+  ],
+  "980678769612488704": [
+    {
+      "player_id": "7523",
+      "player_name": "Trevor Lawrence",
+      "position": "",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_round": null
+    },
+    {
+      "player_id": "8205",
+      "player_name": "Isiah Pacheco",
+      "is_rookie_keeper": false,
+      "keep_year": null,
+      "cost_round": null
+    },
+    {
+      "player_id": "2133",
+      "player_name": "Davante Adams",
+      "is_rookie_keeper": false,
+      "keep_year": null,
+      "cost_round": null
+    },
+    {
+      "player_id": "4018",
+      "player_name": "Joe Mixon",
+      "is_rookie_keeper": false,
+      "keep_year": null,
+      "cost_round": null
+    }
+  ],
+  "980547002628927488": [
+    {
+      "player_id": "9229",
+      "player_name": "Anthony Richardson",
+      "position": "",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_round": null
+    },
+    {
+      "player_id": "6803",
+      "player_name": "Brandon Aiyuk",
+      "is_rookie_keeper": false,
+      "keep_year": null,
+      "cost_round": null
+    },
+    {
+      "player_id": "8146",
+      "player_name": "Garrett Wilson",
+      "is_rookie_keeper": false,
+      "keep_year": null,
+      "cost_round": null
+    },
+    {
+      "player_id": "8151",
+      "player_name": "Kenneth Walker",
+      "is_rookie_keeper": false,
+      "keep_year": null,
+      "cost_round": null
+    }
+  ],
+  "980552553920274432": [
+    {
+      "player_id": "7564",
+      "player_name": "Ja'Marr Chase",
+      "position": "",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_round": null
+    },
+    {
+      "player_id": "9226",
+      "player_name": "De'Von Achane",
+      "position": "",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_round": null
+    },
+    {
+      "player_id": "8130",
+      "player_name": "Trey McBride",
+      "is_rookie_keeper": false,
+      "keep_year": null,
+      "cost_round": null
+    },
+    {
+      "player_id": "3321",
+      "player_name": "Tyreek Hill",
+      "is_rookie_keeper": false,
+      "keep_year": null,
+      "cost_round": null
+    },
+    {
+      "player_id": "8138",
+      "player_name": "James Cook",
+      "is_rookie_keeper": false,
+      "keep_year": null,
+      "cost_round": null
+    }
+  ],
+  "964703051971887104": [
+    {
+      "player_id": "8155",
+      "player_name": "Breece Hall",
+      "position": "",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_round": null
+    },
+    {
+      "player_id": "9997",
+      "player_name": "Zay Flowers",
+      "position": "",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_round": null
+    },
+    {
+      "player_id": "9493",
+      "player_name": "Puka Nacua",
+      "is_rookie_keeper": false,
+      "keep_year": null,
+      "cost_round": null
+    },
+    {
+      "player_id": "10859",
+      "player_name": "Sam LaPorta",
+      "is_rookie_keeper": false,
+      "keep_year": null,
+      "cost_round": null
+    },
+    {
+      "player_id": "6794",
+      "player_name": "Justin Jefferson",
+      "is_rookie_keeper": false,
+      "keep_year": null,
+      "cost_round": null
+    }
+  ],
+  "980587844647419904": [
+    {
+      "player_id": "4983",
+      "player_name": "DJ Moore",
+      "is_rookie_keeper": false,
+      "keep_year": null,
+      "cost_round": null
+    },
+    {
+      "player_id": "3198",
+      "player_name": "Derrick Henry",
+      "is_rookie_keeper": false,
+      "keep_year": null,
+      "cost_round": null
+    },
+    {
+      "player_id": "9758",
+      "player_name": "C.J. Stroud",
+      "is_rookie_keeper": false,
+      "keep_year": null,
+      "cost_round": null
+    }
+  ]
+}

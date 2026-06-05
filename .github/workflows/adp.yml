@@ -1,0 +1,37 @@
+name: Refresh ADP daily
+
+on:
+  schedule:
+    - cron: "0 11 * * *"   # 11:00 UTC daily (~6–7am ET)
+  workflow_dispatch: {}      # allow manual runs from the Actions tab
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: pip install -r requirements.txt
+
+      - name: Refresh ADP
+        run: python scripts/refresh_adp.py
+
+      - name: Commit updated ADP
+        run: |
+          git config user.name "kreeper-bot"
+          git config user.email "actions@github.com"
+          git add data/adp_*.csv data/adp_*_meta.json
+          if git diff --cached --quiet; then
+            echo "No ADP changes."
+          else
+            git commit -m "chore: daily ADP refresh [skip ci]"
+            git push
+          fi

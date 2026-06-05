@@ -1,0 +1,56 @@
+# The Kreeper League — dashboard configuration
+# Most of this was pulled directly from the Sleeper API. Edit league rules here.
+
+league:
+  name: "The Kreeper League"
+  sleeper_league_id: "1310907162930733056"   # current (2026) season
+  current_season: 2026
+  num_teams: 8
+  draft_rounds: 14
+  scoring: ppr           # ppr | half | std  (used to pick which ADP feed to pull)
+  max_regular_keepers: 3 # Keeper 1/2/3
+  max_rookie_keepers: 2  # Rookie Keeper slots
+
+# 2026 draft order (slot 1 picks first). Sleeper's draft_order isn't set yet, so
+# this overrides it on the Draft Board. Owner IDs in pick order.
+draft_order:
+  - "964703051971887104"  # 1. Brandon Cliffton
+  - "980552553920274432"  # 2. Mike Clifton
+  - "980679503968018432"  # 3. Tanner Prible
+  - "980547002628927488"  # 4. Ned
+  - "980678769612488704"  # 5. Branigan Norton
+  - "980587844647419904"  # 6. Heath Gentis
+  - "980483220603015168"  # 7. Jared Jacobs
+  - "979360012843663360"  # 8. Chase Harris
+
+# Keeper rules (house rules — Sleeper can't tell us these)
+rules:
+  max_keep_years: 3      # a regular keeper can be kept at most this many years
+  year2_bump_rounds: 3   # 2nd year: cost moves up this many rounds (or ADP, manager's choice)
+  # rookie keepers can be kept for their whole career. Cost basis while in the rookie slot:
+  #   last_rounds     -> they take your last draft rounds (14, then 13, ...) first
+  #   original_round  -> locked at the round they were originally drafted as a rookie
+  #   fixed_round     -> always costs `rookie_fixed_round`
+  #   free            -> no draft pick cost
+  rookie_keeper_cost: last_rounds
+  rookie_fixed_round: 14
+
+# Managers — Sleeper user_id -> display info. `name` is the friendly name shown in the app.
+managers:
+  "980679503968018432": { handle: tprib,        name: "Tanner Prible",    team: "Wee Little Ladds" }
+  "979360012843663360": { handle: charris42,    name: "Chase Harris",     team: "Big Flipper" }
+  "980483220603015168": { handle: JJacobs22,    name: "Jared Jacobs",     team: "Vice Vice Baby" }
+  "980678769612488704": { handle: Bnorton48,    name: "Branigan Norton",  team: "Get Rick or Die Tryin" }
+  "980587844647419904": { handle: Gentis1,      name: "Heath Gentis",     team: "Republican's for Mike" }
+  "980547002628927488": { handle: NedSchneebs3, name: "Ned",              team: "But... business is good" }
+  "980552553920274432": { handle: MikeClifton,  name: "Mike Clifton",     team: "Manager of the Year" }
+  "964703051971887104": { handle: badlife,      name: "Brandon Cliffton", team: "FAABfreebird" }
+
+# ADP sources to pull and average into a consensus. Toggle any off if it gets flaky.
+adp_sources:
+  espn: true
+  fantasypros: true
+  footballguys: true
+  # Yahoo / Sleeper / Underdog are extracted from the FootballGuys & FantasyPros
+  # per-source columns when available (no separate scraper / OAuth needed).
+  include_aggregator_subcolumns: true

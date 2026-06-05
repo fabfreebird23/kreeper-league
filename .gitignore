@@ -1,0 +1,21 @@
+# envs / caches / local
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+.idea/
+.vscode/
+.claude/
+*.log
+
+# Streamlit secrets (not needed — app uses only public APIs)
+.streamlit/secrets.toml
+
+# regenerated at runtime (downloaded from Sleeper / fetched fresh)
+data/players_nfl.json
+data/cache_*.json
+
+# current-season keeper submissions (managed at runtime; see persistence note)
+data/keepers_2026.json

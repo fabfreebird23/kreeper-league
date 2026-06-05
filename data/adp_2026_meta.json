@@ -1,0 +1,21 @@
+{
+  "season": 2026,
+  "scoring": "ppr",
+  "updated_utc": "2026-06-05T15:54:34Z",
+  "sources": [
+    "DraftKings",
+    "Drafters",
+    "ESPN",
+    "FantasyPros",
+    "FootballGuys",
+    "MFL",
+    "NFFC",
+    "Underdog"
+  ],
+  "status": {
+    "espn": "ok (400 rows)",
+    "fantasypros": "ok (404 rows)",
+    "footballguys": "ok (1622 rows)"
+  },
+  "players": 496
+}
