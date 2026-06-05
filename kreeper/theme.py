@@ -151,6 +151,44 @@ table.dboard th{ background:#f1ebfb; color:var(--ink); text-align:center; font-s
 /* classic basketball sneaker icon for section headers */
 .sneak{ display:inline-block; vertical-align:middle; height:52px; margin:0 14px 6px 0;
   filter:drop-shadow(2px 4px 4px rgba(80,40,70,.32)); }
+.lb .pos{ white-space:nowrap; }
+
+/* ---------------- mobile ---------------- */
+@media (max-width: 640px){
+  .neon-logo{ font-size:40px !important; }
+  .neon-tag{ font-size:8px; letter-spacing:3px; }
+  h1{ font-size:1.5rem !important; }
+  h2{ font-size:1.25rem !important; }
+  h3{ font-size:1.15rem !important; }
+  .sneak{ height:30px; margin:0 8px 2px 0; }
+  .block-container{ padding-left:.6rem !important; padding-right:.6rem !important; padding-top:2.5rem !important; }
+  /* flow the tall scroll panels with the page (no nested scrollbox) */
+  .neonwrap{ max-height:none !important; }
+
+  /* compact custom tables */
+  table.lb{ font-size:11px; }
+  table.lb th{ padding:5px 5px; font-size:8px; }
+  table.lb td{ padding:4px 5px; }
+  .hs{ width:22px; height:22px; margin-right:5px; }
+  .lb .rk{ width:20px; }
+  .lb .kept-badge, .lb .rk-badge{ font-size:8px; padding:1px 4px; margin-left:3px; }
+  /* value board: drop Keep Yr (5) + ADP (7) so the essentials fit without scroll */
+  .lb-value th:nth-child(5), .lb-value td:nth-child(5),
+  .lb-value th:nth-child(7), .lb-value td:nth-child(7){ display:none; }
+  /* rookies: drop the redundant Consensus ADP column (6) */
+  .lb-rook th:nth-child(6), .lb-rook td:nth-child(6){ display:none; }
+
+  /* team cards stack two-up */
+  .kcards{ grid-template-columns:1fr 1fr; gap:8px; }
+  .kcard{ min-height:auto; padding:8px 9px; }
+  .kcard h4{ font-size:13px; }
+  .kcard .kp{ font-size:12px; }
+
+  /* draft board: tiny + horizontal scroll */
+  table.dboard{ font-size:9px; }
+  table.dboard th{ padding:3px 2px; font-size:8px; }
+  .dbcell{ height:auto; padding:2px 3px; }
+}
 </style>
 """
 

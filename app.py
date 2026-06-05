@@ -298,7 +298,7 @@ def _leaderboard_html(df) -> str:
     head = ('<tr><th>#</th><th>Player</th><th>Pos</th><th>Team</th>'
             '<th>Keep&nbsp;Yr</th><th>Cost</th><th>ADP</th><th>Value</th></tr>')
     return ('<div class="neonwrap" style="max-height:660px;overflow:auto;">'
-            '<table class="lb"><thead>' + head + '</thead><tbody>'
+            '<table class="lb lb-value"><thead>' + head + '</thead><tbody>'
             + "".join(rows) + '</tbody></table></div>')
 
 
@@ -363,7 +363,7 @@ def render_rookies() -> None:
     head = ('<tr><th>#</th><th>Player</th><th>Pos</th><th>NFL</th>'
             '<th>ADP&nbsp;Rank</th><th>Consensus&nbsp;ADP</th></tr>')
     st.markdown('<div class="neonwrap" style="max-height:660px;overflow:auto;">'
-                '<table class="lb"><thead>' + head + '</thead><tbody>'
+                '<table class="lb lb-rook"><thead>' + head + '</thead><tbody>'
                 + "".join(rows) + '</tbody></table></div>', unsafe_allow_html=True)
 
 
