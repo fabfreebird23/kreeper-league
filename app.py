@@ -71,9 +71,31 @@ def get_name_index():
     return {k: v[0] for k, v in idx.items()}
 
 
+@st.cache_data(ttl=86400, show_spinner=False)
+def get_espn_headshots():
+    """sleeper_pid -> ESPN headshot id, so rookies with no Sleeper photo still
+    get a real headshot. Sleeper's own espn_id wins; otherwise match by name to
+    ESPN's board. Best-effort — returns {} if ESPN is unreachable."""
+    from kreeper import sleeper
+    from kreeper.adp import espn
+    try:
+        by_name = espn.headshot_ids(SEASON)
+    except Exception:  # noqa: BLE001
+        return {}
+    out = {}
+    for pid, p in sleeper.get_players().items():
+        if p.get("position") not in ("QB", "RB", "WR", "TE"):
+            continue
+        eid = p.get("espn_id") or by_name.get(normalize_name(p.get("full_name") or ""))
+        if eid:
+            out[str(pid)] = str(eid)
+    return out
+
+
 H = get_history()
 CANDS = get_candidates()
 ADP_DF, ADP_LK, ADP_META = get_adp()
+theme.set_espn_ids(get_espn_headshots())
 
 
 def adp_rank_for(name: str, position: str = "") -> float | None:

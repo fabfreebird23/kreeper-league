@@ -20,6 +20,28 @@ _POS = {1: "QB", 2: "RB", 3: "WR", 4: "TE", 5: "K", 16: "DST"}
 _SCORE_FILTER = {"ppr": "PPR", "half": "PPR", "std": "STANDARD"}
 
 
+def headshot_ids(season: int) -> dict:
+    """{normalized_name: espn_player_id} for the full ESPN player board.
+
+    The ESPN player id doubles as the headshot id
+    (a.espncdn.com/i/headshots/nfl/players/full/<id>.png). Unlike `fetch`, this
+    keeps players with no ADP yet (incoming rookies) — exactly where Sleeper has
+    no photo.
+    """
+    from ..names import normalize_name
+
+    flt = {"players": {"limit": 1000, "sortDraftRanks": {"sortPriority": 1, "value": "PPR"}}}
+    resp = http_get(_URL.format(season=season), headers={"X-Fantasy-Filter": json.dumps(flt)})
+    out: dict = {}
+    for item in resp.json().get("players", []):
+        p = item.get("player", {})
+        eid = item.get("id") or p.get("id")
+        name = p.get("fullName", "")
+        if eid and name:
+            out.setdefault(normalize_name(name), str(eid))
+    return out
+
+
 def fetch(season: int, scoring: str = "ppr") -> List[AdpRow]:
     rank_type = _SCORE_FILTER.get(scoring, "PPR")
     flt = {

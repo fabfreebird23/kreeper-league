@@ -22,6 +22,17 @@ _SNEAKERS = {
 
 SLEEPER_IMG = "https://sleepercdn.com/content/nfl/players/thumb/{pid}.jpg"
 SLEEPER_DEFAULT = "https://sleepercdn.com/images/v2/icons/player_default.webp"
+ESPN_IMG = "https://a.espncdn.com/i/headshots/nfl/players/full/{eid}.png"
+
+# sleeper_pid -> espn player/headshot id, populated by app at startup
+# (set_espn_ids). Lets newly-added rookies — who have no Sleeper photo — fall
+# back to ESPN's headshot before the generic silhouette.
+_ESPN_BY_PID: dict = {}
+
+
+def set_espn_ids(mapping: dict) -> None:
+    _ESPN_BY_PID.clear()
+    _ESPN_BY_PID.update({str(k): str(v) for k, v in mapping.items() if v})
 
 # Pastel palette
 PINK = "#ff4f9d"
@@ -204,8 +215,16 @@ def headshot(pid: str) -> str:
 
 
 def img_tag(pid: str, cls: str = "hs") -> str:
-    return (f'<img class="{cls}" src="{headshot(pid)}" loading="lazy" '
-            f'onerror="this.onerror=null;this.src=\'{SLEEPER_DEFAULT}\'">')
+    """Headshot <img>. Source is picked server-side because Streamlit's HTML
+    sanitizer strips `onerror`, so an in-browser fallback chain can't run.
+
+    ESPN's headshots cover both veterans and incoming rookies (where Sleeper's
+    CDN often has no photo), so we use ESPN whenever we have an id for the
+    player and fall back to the Sleeper thumb otherwise.
+    """
+    eid = _ESPN_BY_PID.get(str(pid))
+    src = ESPN_IMG.format(eid=eid) if eid else headshot(pid)
+    return f'<img class="{cls}" src="{src}" loading="lazy">'
 
 
 def logo_html(size: int = 52, tag: str | None = "The Keeper Hub") -> str:
