@@ -58,24 +58,23 @@ streamlit run app.py
 3. The included GitHub Action refreshes ADP daily and commits it, so the live
    app always shows current numbers.
 
-### Durable submissions via Google Sheets
+### Durable submissions (lives with the app)
 
 On Streamlit Cloud the container filesystem resets on restart, so live keeper
-submissions are stored in a **Google Sheet** when credentials are present
-(otherwise it falls back to local `data/keepers_<season>.json`). One-time setup:
+submissions are stored in **this app's own GitHub repo** — written to
+`data/keepers_<season>.json` on a dedicated `keeper-data` branch (a separate
+branch so it never triggers an app redeploy). No external service to manage;
+without a token it falls back to local files. One-time setup:
 
-1. **Create a Google Cloud service account** (console.cloud.google.com → a project
-   → APIs & Services → enable **Google Sheets API** → Credentials → Create
-   service account → Keys → Add key → JSON). Download the JSON.
-2. **Create a Google Sheet** and **Share** it (Editor) with the service account's
-   `client_email`. Copy the sheet ID from its URL
-   (`docs.google.com/spreadsheets/d/<ID>/edit`).
-3. **Add secrets** in Streamlit Cloud → your app → Settings → **Secrets**, in the
-   format shown in `.streamlit/secrets.toml.example` (`sheet_id` + the
-   `[gcp_service_account]` JSON fields).
+1. **Create a GitHub fine-grained token** (GitHub → Settings → Developer settings
+   → Fine-grained tokens → Generate): resource owner = your account, repository
+   access = only this repo, permission **Contents: Read and write**.
+2. **Add it as a secret** in Streamlit Cloud → your app → Settings → **Secrets**:
+   `github_token = "github_pat_..."` (see `.streamlit/secrets.toml.example`).
 
-The app creates a `keepers_<season>` worksheet automatically and writes each
-manager's picks there — durable, and you can view/edit it like any sheet.
+The app auto-creates the `keeper-data` branch and writes each manager's picks
+there. The Home tab has a **Download all keepers (CSV)** button so you can grab
+everything after the draft and paste it into your year-to-year spreadsheet.
 Historical keeper years (2023–2025) stay in the committed local ledger.
 
 ## Config

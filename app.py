@@ -341,6 +341,23 @@ def render_home() -> None:
     st.markdown(f'<h2>{theme.crt("board")}Submitted Keepers by Team</h2>', unsafe_allow_html=True)
     render_team_boxes()
 
+    # Export — grab every submitted keeper to paste into the year-to-year sheet.
+    data = storage.load(SEASON)
+    if any(data.values()):
+        export = []
+        for oid, m in MANAGERS.items():
+            for s in sorted(data.get(oid, []), key=lambda x: (x.get("cost_round") or 99)):
+                export.append({
+                    "Team": m["name"], "Player": s.get("player_name"), "Pos": s.get("position"),
+                    "Type": "Rookie" if s.get("is_rookie_keeper") else "Regular",
+                    "Keep Year": s.get("keep_year"), "Round": s.get("cost_round"),
+                })
+        st.download_button(
+            "⬇ Download all keepers (CSV)",
+            pd.DataFrame(export).to_csv(index=False),
+            file_name=f"kreeper_keepers_{SEASON}.csv", mime="text/csv",
+        )
+
 
 def render_rookies() -> None:
     st.markdown(f'<h3>{theme.crt("rookies")}{SEASON} Top Rookies</h3>', unsafe_allow_html=True)
@@ -481,8 +498,11 @@ def render_my_keepers() -> None:
                 "is_rookie_keeper": it["is_rookie"], "keep_year": c.keep_year,
                 "cost_choice": it.get("year2_choice"), "cost_round": c.recommended_round,
             })
-        storage.save_manager_selections(owner_id, payload, SEASON)
-        st.success(f"Saved {len(payload)} keepers for {name}.")
+        try:
+            storage.save_manager_selections(owner_id, payload, SEASON)
+            st.success(f"Saved {len(payload)} keepers for {name}.")
+        except Exception as e:  # noqa: BLE001
+            st.error(f"Couldn't save — try again in a moment. ({type(e).__name__})")
 
 
 def _board_cell_html(c: dict, keepers: list) -> str:

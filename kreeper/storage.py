@@ -1,18 +1,19 @@
 """Persistence for each manager's keeper selections.
 
 Two backends, chosen automatically:
-  * Google Sheets — used for the CURRENT season when Streamlit secrets provide a
-    service account (`gcp_service_account`) + `sheet_id`. This is what makes
-    public submissions on Streamlit Cloud durable (the container filesystem
-    resets on restart). Reads are cached briefly to stay under Sheets API limits.
+  * GitHub repo — used for the CURRENT season when Streamlit secrets provide a
+    `github_token`. Submissions are stored as data/keepers_<season>.json on a
+    dedicated data branch of this app's own repo, so they live WITH the dashboard
+    (durable across Streamlit Cloud restarts) without any external service, and
+    writing to a separate branch never triggers an app redeploy.
   * Local JSON under data/ — used for historical seasons (the committed keeper
-    ledger) and as a fallback when no Sheets credentials are configured (local
-    dev, or before you've set up the sheet).
+    ledger) and as a fallback when no token is configured (local dev).
 
-Both expose the same load / save_manager_selections / get_manager_selections API.
+Same load / save_manager_selections / get_manager_selections API either way.
 """
 from __future__ import annotations
 
+import base64
 import json
 import os
 import threading
@@ -20,12 +21,12 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import requests
+
 from . import config
 
 _LOCK = threading.Lock()
 
-HEADER = ["owner_id", "player_id", "player_name", "position",
-          "is_rookie_keeper", "keep_year", "cost_choice", "cost_round"]
 
 # ---------------------------------------------------------------- local JSON
 def _path(season: int) -> Path:
@@ -52,110 +53,101 @@ def _local_save(owner_id: str, selections: List[Dict[str, Any]], season: int) ->
         tmp.replace(p)
 
 
-# ---------------------------------------------------------------- Google Sheets
-_GS: Dict[str, Any] = {}
+# ------------------------------------------------------------- GitHub backend
+_API = "https://api.github.com"
 _CACHE: Dict[int, Tuple[float, Dict]] = {}
 _CACHE_TTL = 8  # seconds
 
 
-def _gs_config() -> Optional[Tuple[dict, str]]:
+def _gh_config() -> Optional[Tuple[str, str, str]]:
     try:
         import streamlit as st
-        if "gcp_service_account" in st.secrets and "sheet_id" in st.secrets:
-            return dict(st.secrets["gcp_service_account"]), str(st.secrets["sheet_id"])
+        tok = st.secrets.get("github_token")
+        if tok:
+            repo = st.secrets.get("github_repo", "fabfreebird23/kreeper-league")
+            branch = st.secrets.get("github_branch", "keeper-data")
+            return str(tok), str(repo), str(branch)
     except Exception:
         pass
     return None
 
 
-def _worksheet(season: int):
-    cfg = _gs_config()
-    if not cfg:
-        return None
-    info, sheet_id = cfg
-    import gspread
-    from google.oauth2.service_account import Credentials
-    if _GS.get("client") is None:
-        creds = Credentials.from_service_account_info(
-            info, scopes=["https://www.googleapis.com/auth/spreadsheets"])
-        _GS["client"] = gspread.authorize(creds)
-    if _GS.get("sheet") is None or _GS.get("sheet_id") != sheet_id:
-        _GS["sheet"] = _GS["client"].open_by_key(sheet_id)
-        _GS["sheet_id"] = sheet_id
-    title = f"keepers_{season}"
-    try:
-        return _GS["sheet"].worksheet(title)
-    except gspread.WorksheetNotFound:
-        ws = _GS["sheet"].add_worksheet(title=title, rows=300, cols=len(HEADER))
-        ws.append_row(HEADER)
-        return ws
+def _headers(tok: str) -> dict:
+    return {"Authorization": f"Bearer {tok}", "Accept": "application/vnd.github+json"}
 
 
-def _as_bool(v) -> bool:
-    return str(v).strip().lower() in ("true", "1", "yes")
+def _gh_path(season: int) -> str:
+    return f"data/keepers_{season}.json"
 
 
-def _as_int(v):
-    s = str(v).strip()
-    return int(s) if s.lstrip("-").isdigit() else None
+def _ensure_branch(repo: str, branch: str, tok: str) -> None:
+    h = _headers(tok)
+    if requests.get(f"{_API}/repos/{repo}/branches/{branch}", headers=h, timeout=15).status_code == 200:
+        return
+    info = requests.get(f"{_API}/repos/{repo}", headers=h, timeout=15).json()
+    default = info.get("default_branch", "main")
+    ref = requests.get(f"{_API}/repos/{repo}/git/ref/heads/{default}", headers=h, timeout=15).json()
+    requests.post(f"{_API}/repos/{repo}/git/refs", headers=h, timeout=15,
+                  json={"ref": f"refs/heads/{branch}", "sha": ref["object"]["sha"]})
 
 
-def _sheet_load(season: int) -> Dict[str, List[Dict[str, Any]]]:
-    ws = _worksheet(season)
-    out: Dict[str, List[Dict[str, Any]]] = {}
-    for r in ws.get_all_records():
-        oid = str(r.get("owner_id") or "").strip()
-        if not oid:
-            continue
-        out.setdefault(oid, []).append({
-            "player_id": str(r.get("player_id") or ""),
-            "player_name": r.get("player_name"),
-            "position": r.get("position"),
-            "is_rookie_keeper": _as_bool(r.get("is_rookie_keeper")),
-            "keep_year": r.get("keep_year"),
-            "cost_choice": (r.get("cost_choice") or None),
-            "cost_round": _as_int(r.get("cost_round")),
-        })
-    return out
+def _gh_get(season: int) -> Tuple[Dict[str, List[Dict[str, Any]]], Optional[str]]:
+    tok, repo, branch = _gh_config()
+    r = requests.get(f"{_API}/repos/{repo}/contents/{_gh_path(season)}",
+                     headers=_headers(tok), params={"ref": branch}, timeout=15)
+    if r.status_code == 404:
+        return {}, None
+    r.raise_for_status()
+    j = r.json()
+    content = base64.b64decode(j["content"]).decode()
+    return (json.loads(content) if content.strip() else {}), j["sha"]
 
 
-def _sheet_load_cached(season: int) -> Dict[str, List[Dict[str, Any]]]:
+def _gh_load_cached(season: int) -> Dict[str, List[Dict[str, Any]]]:
     now = time.time()
     c = _CACHE.get(season)
     if c and now - c[0] < _CACHE_TTL:
         return c[1]
-    data = _sheet_load(season)
+    data, _ = _gh_get(season)
     _CACHE[season] = (now, data)
     return data
 
 
-def _sheet_save(owner_id: str, selections: List[Dict[str, Any]], season: int) -> None:
-    ws = _worksheet(season)
-    keep = [r for r in ws.get_all_records() if str(r.get("owner_id")) != str(owner_id)]
-    rows = [HEADER]
-    for r in keep:
-        rows.append([r.get(h, "") for h in HEADER])
-    for s in selections:
-        rows.append([str(owner_id), str(s.get("player_id") or ""), s.get("player_name"),
-                     s.get("position"), bool(s.get("is_rookie_keeper")), s.get("keep_year"),
-                     s.get("cost_choice"), s.get("cost_round")])
-    ws.clear()
-    ws.update(rows, value_input_option="USER_ENTERED")
-    _CACHE.pop(season, None)
+def _gh_save(owner_id: str, selections: List[Dict[str, Any]], season: int) -> None:
+    tok, repo, branch = _gh_config()
+    _ensure_branch(repo, branch, tok)
+    for _ in range(3):  # retry on a concurrent-write SHA conflict
+        data, sha = _gh_get(season)
+        data[str(owner_id)] = selections
+        body = {
+            "message": f"keepers: {config.manager_name(owner_id)} ({season})",
+            "content": base64.b64encode(json.dumps(data, indent=2).encode()).decode(),
+            "branch": branch,
+        }
+        if sha:
+            body["sha"] = sha
+        r = requests.put(f"{_API}/repos/{repo}/contents/{_gh_path(season)}",
+                         headers=_headers(tok), json=body, timeout=20)
+        if r.status_code in (200, 201):
+            _CACHE.pop(season, None)
+            return
+        if r.status_code != 409:  # not a SHA conflict -> give up
+            r.raise_for_status()
+    raise RuntimeError("GitHub save failed after retries")
 
 
 # ------------------------------------------------------------------- public API
-def _use_sheets(season: int) -> bool:
-    return season == config.current_season() and _gs_config() is not None
+def _use_remote(season: int) -> bool:
+    return season == config.current_season() and _gh_config() is not None
 
 
 def load(season: int | None = None) -> Dict[str, List[Dict[str, Any]]]:
     season = season or config.current_season()
-    if _use_sheets(season):
+    if _use_remote(season):
         try:
-            return _sheet_load_cached(season)
+            return _gh_load_cached(season)
         except Exception:
-            pass  # fall back to local on any Sheets error
+            pass  # fall back to local on any error
     return _local_load(season)
 
 
@@ -168,12 +160,9 @@ def save_manager_selections(
     {player_id, player_name, is_rookie_keeper, cost_choice, cost_round}.
     """
     season = season or config.current_season()
-    if _use_sheets(season):
-        try:
-            _sheet_save(owner_id, selections, season)
-            return
-        except Exception:
-            pass  # fall back to local on any Sheets error
+    if _use_remote(season):
+        _gh_save(owner_id, selections, season)
+        return
     _local_save(owner_id, selections, season)
 
 
