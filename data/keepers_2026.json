@@ -45,5 +45,52 @@
       "cost_choice": "Round 9",
       "cost_round": 9
     }
+  ],
+  "980552553920274432": [
+    {
+      "player_id": "7564",
+      "player_name": "Ja'Marr Chase",
+      "position": "WR",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_choice": null,
+      "cost_round": 14
+    },
+    {
+      "player_id": "9226",
+      "player_name": "De'Von Achane",
+      "position": "RB",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_choice": null,
+      "cost_round": 13
+    },
+    {
+      "player_id": "8155",
+      "player_name": "Breece Hall",
+      "position": "RB",
+      "is_rookie_keeper": false,
+      "keep_year": 2,
+      "cost_choice": "Round 10",
+      "cost_round": 10
+    },
+    {
+      "player_id": "12506",
+      "player_name": "Harold Fannin",
+      "position": "TE",
+      "is_rookie_keeper": false,
+      "keep_year": 1,
+      "cost_choice": null,
+      "cost_round": 12
+    },
+    {
+      "player_id": "10232",
+      "player_name": "Michael Wilson",
+      "position": "WR",
+      "is_rookie_keeper": false,
+      "keep_year": 1,
+      "cost_choice": null,
+      "cost_round": 11
+    }
   ]
 }
