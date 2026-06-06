@@ -33,16 +33,27 @@ def collect_rows(season: int, scoring: str) -> (List[AdpRow], Dict[str, str]):
     rows: List[AdpRow] = []
     status: Dict[str, str] = {}
     enabled = config.adp_sources()
-    for key, fn in PROVIDERS.items():
-        if not enabled.get(key, False):
+    active = {k: fn for k, fn in PROVIDERS.items() if enabled.get(k, False)}
+    for key in PROVIDERS:
+        if key not in active:
             status[key] = "disabled"
-            continue
+
+    # Sources are independent network calls — fetch them concurrently. A flaky
+    # site only fails its own future; the others still land.
+    from concurrent.futures import ThreadPoolExecutor
+
+    def _one(key: str):
         try:
-            got = fn(season, scoring)
-            rows.extend(got)
-            status[key] = f"ok ({len(got)} rows)"
-        except Exception as e:  # noqa: BLE001 - a flaky site must not kill the run
-            status[key] = f"FAILED: {type(e).__name__}: {e}"
+            got = active[key](season, scoring)
+            return key, got, f"ok ({len(got)} rows)"
+        except Exception as e:  # noqa: BLE001
+            return key, [], f"FAILED: {type(e).__name__}: {e}"
+
+    if active:
+        with ThreadPoolExecutor(max_workers=len(active)) as ex:
+            for key, got, st in ex.map(_one, active):
+                rows.extend(got)
+                status[key] = st
     return rows, status
 
 

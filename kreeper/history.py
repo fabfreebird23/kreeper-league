@@ -149,12 +149,21 @@ def build_history(league_id: Optional[str] = None) -> DraftHistory:
     player_seasons: Dict[str, Dict[int, Dict[str, Any]]] = {}
     seasons: List[int] = []
 
-    for node in chain:
-        draft_id = node.get("draft_id")
-        season = node["season"]
-        if not draft_id:
-            continue
-        picks = sleeper.get_draft_picks(draft_id)
+    # Fetch every season's draft picks concurrently (each is an independent,
+    # disk-cached Sleeper call) — the chain walk above is the only sequential part.
+    from concurrent.futures import ThreadPoolExecutor
+
+    drafts = [(n["season"], n["draft_id"]) for n in chain if n.get("draft_id")]
+    picks_by_season: Dict[int, List[Dict[str, Any]]] = {}
+    if drafts:
+        with ThreadPoolExecutor(max_workers=min(8, len(drafts))) as ex:
+            for (season, _), picks in zip(
+                drafts, ex.map(lambda d: sleeper.get_draft_picks(d[1]), drafts)
+            ):
+                picks_by_season[season] = picks or []
+
+    for season, _draft_id in drafts:
+        picks = picks_by_season.get(season) or []
         if not picks:
             continue
         seasons.append(season)

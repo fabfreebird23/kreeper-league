@@ -10,6 +10,10 @@ league:
   scoring: ppr           # ppr | half | std  (used to pick which ADP feed to pull)
   max_regular_keepers: 3 # Keeper 1/2/3
   max_rookie_keepers: 2  # Rookie Keeper slots
+  # After this moment, "Set My Keepers" goes read-only (the board stays visible).
+  # ISO 8601 with a timezone offset. Leave blank/remove for no deadline.
+  # Eastern is -04:00 during summer DST.
+  keeper_deadline: "2026-08-29T12:00:00-04:00"
 
 # 2026 draft order (slot 1 picks first). Sleeper's draft_order isn't set yet, so
 # this overrides it on the Draft Board. Owner IDs in pick order.

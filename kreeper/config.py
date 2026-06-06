@@ -49,3 +49,20 @@ def num_teams() -> int:
 
 def current_season() -> int:
     return int(league()["current_season"])
+
+
+def keeper_deadline():
+    """The keeper-submission deadline as a datetime, or None if unset.
+
+    Naive values are treated as the host's local time. Returns None on a missing
+    or unparseable value so a bad config never blocks submissions.
+    """
+    import datetime as _dt
+
+    raw = league().get("keeper_deadline")
+    if not raw:
+        return None
+    try:
+        return _dt.datetime.fromisoformat(str(raw))
+    except (ValueError, TypeError):
+        return None

@@ -7,6 +7,8 @@ Pages (sidebar nav):
 """
 from __future__ import annotations
 
+import datetime as dt
+
 import pandas as pd
 import streamlit as st
 
@@ -25,6 +27,23 @@ NT = int(LEAGUE["num_teams"])
 DRAFT_ROUNDS = int(LEAGUE["draft_rounds"])
 MAX_REG = int(LEAGUE.get("max_regular_keepers", 3))
 MAX_ROOKIE = int(LEAGUE.get("max_rookie_keepers", 2))
+
+
+def keeper_lock() -> tuple:
+    """(deadline_or_None, locked_bool). Locked once now >= the deadline."""
+    deadline = config.keeper_deadline()
+    if deadline is None:
+        return None, False
+    now = dt.datetime.now(deadline.tzinfo) if deadline.tzinfo else dt.datetime.now()
+    return deadline, now >= deadline
+
+
+def _fmt_ts(iso: str) -> str:
+    try:
+        d = dt.datetime.fromisoformat(iso)
+        return d.strftime("%b %d, %-I:%M %p")
+    except (ValueError, TypeError):
+        return iso or ""
 
 
 # ---------------------------------------------------------------- data loaders
@@ -380,6 +399,24 @@ def render_home() -> None:
             file_name=f"kreeper_keepers_{SEASON}.csv", mime="text/csv",
         )
 
+    # Recent updates — who changed their keepers and when (shared-URL audit trail).
+    st.markdown(f'<h3>{theme.crt("keepers")}Recent Updates</h3>', unsafe_allow_html=True)
+    deadline, locked = keeper_lock()
+    if deadline:
+        st.caption((f"🔒 Submissions closed {deadline:%b %d, %Y · %-I:%M %p}."
+                    if locked else
+                    f"⏳ Submissions close {deadline:%b %d, %Y · %-I:%M %p}."))
+    log = storage.load_log(SEASON)
+    if not log:
+        st.caption("No keeper updates yet.")
+    else:
+        lines = []
+        for e in reversed(log[-12:]):
+            n = int(e.get("count", 0) or 0)
+            who = e.get("name") or config.manager_name(e.get("owner", ""))
+            lines.append(f"- **{who}** → {n} keeper{'' if n == 1 else 's'} · {_fmt_ts(e.get('ts', ''))}")
+        st.markdown("\n".join(lines))
+
 
 def render_rookies() -> None:
     st.markdown(f'<h3>{theme.crt("rookies")}{SEASON} Top Rookies</h3>', unsafe_allow_html=True)
@@ -406,8 +443,29 @@ def render_rookies() -> None:
                 + "".join(rows) + '</tbody></table></div>', unsafe_allow_html=True)
 
 
+def _saved_slip(owner_id: str):
+    """Read-only table of a manager's already-submitted keepers (or None)."""
+    saved = storage.get_manager_selections(owner_id, SEASON)
+    if not saved:
+        return None
+    rows = [{
+        "Player": s.get("player_name"), "Pos": s.get("position"),
+        "Type": "Rookie" if s.get("is_rookie_keeper") else "Regular",
+        "Keep Year": s.get("keep_year"),
+        "Cost": f"Round {s['cost_round']}" if s.get("cost_round") else "—",
+    } for s in sorted(saved, key=lambda x: (x.get("cost_round") or 99))]
+    return pd.DataFrame(rows)
+
+
 def render_my_keepers() -> None:
     st.markdown(f'<h3>{theme.crt("keepers")}Set Your Keepers</h3>', unsafe_allow_html=True)
+    deadline, locked = keeper_lock()
+    if locked:
+        st.warning(f"🔒 Keeper submissions closed on **{deadline:%b %d, %Y · %-I:%M %p}**. "
+                   "The board is final — selections are read-only.")
+    elif deadline:
+        st.caption(f"⏳ Submissions close **{deadline:%b %d, %Y · %-I:%M %p}**.")
+
     name = st.selectbox("Who are you?", list(NAME_TO_ID.keys()), index=None,
                         placeholder="Pick your name…")
     if not name:
@@ -415,6 +473,16 @@ def render_my_keepers() -> None:
         return
 
     owner_id = NAME_TO_ID[name]
+
+    if locked:
+        slip = _saved_slip(owner_id)
+        if slip is None:
+            st.info(f"{name} didn't submit any keepers before the deadline.")
+        else:
+            st.markdown("##### Your final keepers")
+            st.dataframe(slip, hide_index=True, use_container_width=True)
+        return
+
     df = build_candidate_rows(owner_id)
     if df.empty:
         st.warning("No skill-position players found on your roster.")
@@ -503,6 +571,13 @@ def render_my_keepers() -> None:
         problems.append(f"Too many **regular** keepers: {len(reg_items)} (max {MAX_REG}).")
     if len(rook_items) > MAX_ROOKIE:
         problems.append(f"Too many **rookie** keepers: {len(rook_items)} (max {MAX_ROOKIE}).")
+    # Pick-fit: every keeper must land on a pick this team actually owns.
+    unplaced = [it["name"] for it in items if costs[it["player_id"]].recommended_round is None]
+    if unplaced:
+        problems.append(
+            f"No draft pick available for: **{', '.join(unplaced)}** — you don't own "
+            "enough picks to keep this many. Trade for a pick or drop a keeper."
+        )
 
     if summary:
         st.dataframe(pd.DataFrame(summary), hide_index=True, use_container_width=True)
@@ -512,19 +587,29 @@ def render_my_keepers() -> None:
 
     disabled = bool(problems or ineligible)
     if st.button("💾 Save my keepers", type="primary", disabled=disabled):
-        payload = []
-        for it in items:
-            c = costs[it["player_id"]]
-            payload.append({
-                "player_id": it["player_id"], "player_name": it["name"], "position": it["position"],
-                "is_rookie_keeper": it["is_rookie"], "keep_year": c.keep_year,
-                "cost_choice": it.get("year2_choice"), "cost_round": c.recommended_round,
-            })
-        try:
-            storage.save_manager_selections(owner_id, payload, SEASON)
-            st.success(f"Saved {len(payload)} keepers for {name}.")
-        except Exception as e:  # noqa: BLE001
-            st.error(f"Couldn't save — try again in a moment. ({type(e).__name__})")
+        # Re-check server-side: the set must still be valid and the deadline open
+        # (it could have passed, or another tab changed things, since page load).
+        _, locked_now = keeper_lock()
+        if locked_now:
+            st.error("Submissions just closed — your changes weren't saved.")
+        elif problems or ineligible:
+            st.error("Fix the issues above before saving.")
+        else:
+            payload = []
+            for it in items:
+                c = costs[it["player_id"]]
+                payload.append({
+                    "player_id": it["player_id"], "player_name": it["name"], "position": it["position"],
+                    "is_rookie_keeper": it["is_rookie"], "keep_year": c.keep_year,
+                    "cost_choice": it.get("year2_choice"), "cost_round": c.recommended_round,
+                })
+            try:
+                storage.save_manager_selections(owner_id, payload, SEASON)
+                storage.append_log(owner_id, name, len(payload),
+                                   dt.datetime.now().isoformat(timespec="seconds"), SEASON)
+                st.success(f"Saved {len(payload)} keepers for {name}.")
+            except Exception as e:  # noqa: BLE001
+                st.error(f"Couldn't save — try again in a moment. ({type(e).__name__})")
 
 
 def _board_cell_html(c: dict, keepers: list) -> str:
