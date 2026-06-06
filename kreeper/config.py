@@ -51,11 +51,17 @@ def current_season() -> int:
     return int(league()["current_season"])
 
 
-def keeper_deadline():
-    """The keeper-submission deadline as a datetime, or None if unset.
+def keeper_timezone_name() -> str:
+    return str(league().get("keeper_timezone") or "America/Indiana/Indianapolis")
 
-    Naive values are treated as the host's local time. Returns None on a missing
-    or unparseable value so a bad config never blocks submissions.
+
+def keeper_deadline():
+    """The keeper-submission deadline as a tz-aware datetime, or None if unset.
+
+    A naive value is interpreted as wall-clock time in `keeper_timezone`
+    (DST handled automatically via the IANA zone); a value with an explicit
+    offset is used as-is. Returns None on a missing/unparseable value so a bad
+    config can never block submissions.
     """
     import datetime as _dt
 
@@ -63,6 +69,13 @@ def keeper_deadline():
     if not raw:
         return None
     try:
-        return _dt.datetime.fromisoformat(str(raw))
+        d = _dt.datetime.fromisoformat(str(raw))
     except (ValueError, TypeError):
         return None
+    if d.tzinfo is None:
+        try:
+            from zoneinfo import ZoneInfo
+            d = d.replace(tzinfo=ZoneInfo(keeper_timezone_name()))
+        except Exception:  # noqa: BLE001 - missing tzdata: leave naive rather than crash
+            pass
+    return d

@@ -74,8 +74,8 @@ _COUNTDOWN_TEMPLATE = """
 <script>
  var target=new Date("__ISO__").getTime();
  var box=document.getElementById('units'), when=document.getElementById('when');
- when.textContent="Announce by "+new Date(target).toLocaleString(undefined,
-   {weekday:'long',month:'long',day:'numeric',hour:'numeric',minute:'2-digit'});
+ when.textContent="Announce by "+new Date(target).toLocaleString('en-US',
+   {timeZone:'__TZ__',weekday:'long',month:'long',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'});
  function pad(n){return String(n).padStart(2,'0');}
  function tick(){
    var d=target-Date.now();
@@ -98,7 +98,10 @@ def render_countdown() -> None:
     deadline = config.keeper_deadline()
     if deadline is None:
         return
-    components.html(_COUNTDOWN_TEMPLATE.replace("__ISO__", deadline.isoformat()), height=150)
+    html = (_COUNTDOWN_TEMPLATE
+            .replace("__ISO__", deadline.isoformat())
+            .replace("__TZ__", config.keeper_timezone_name()))
+    components.html(html, height=150)
 
 
 # ---------------------------------------------------------------- data loaders
