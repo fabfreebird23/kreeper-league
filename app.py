@@ -11,6 +11,7 @@ import datetime as dt
 
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 from kreeper import config, draftboard, engine, history, storage, theme
 from kreeper.adp import consensus as adp_consensus
@@ -44,6 +45,60 @@ def _fmt_ts(iso: str) -> str:
         return d.strftime("%b %d, %-I:%M %p")
     except (ValueError, TypeError):
         return iso or ""
+
+
+_COUNTDOWN_TEMPLATE = """
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
+<style>
+ *{margin:0;box-sizing:border-box;}
+ html,body{background:transparent;overflow:hidden;font-family:'Oswald',sans-serif;}
+ .cd{display:flex;flex-direction:column;align-items:center;gap:6px;
+   background:#fff;border:2px solid #ff4f9d;border-radius:16px;padding:14px 18px;
+   box-shadow:0 6px 22px rgba(123,92,255,.18);}
+ .ttl{font-family:'Anton',sans-serif;text-transform:uppercase;letter-spacing:3px;
+   font-size:15px;color:#7b5cff;}
+ .units{display:flex;gap:16px;}
+ .u{display:flex;flex-direction:column;align-items:center;min-width:60px;}
+ .u .n{font-family:'Anton',sans-serif;font-size:42px;line-height:1;color:#ff4f9d;
+   text-shadow:0 0 12px rgba(255,79,157,.45);}
+ .u .l{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#8b86a0;margin-top:5px;}
+ .sub{font-size:12px;letter-spacing:1px;color:#6a6580;}
+ .locked{font-family:'Anton',sans-serif;font-size:30px;color:#7b5cff;letter-spacing:2px;}
+</style></head><body>
+<div class="cd">
+  <div class="ttl">&#9203; Keepers Due In</div>
+  <div id="units" class="units"></div>
+  <div class="sub" id="when"></div>
+</div>
+<script>
+ var target=new Date("__ISO__").getTime();
+ var box=document.getElementById('units'), when=document.getElementById('when');
+ when.textContent="Announce by "+new Date(target).toLocaleString(undefined,
+   {weekday:'long',month:'long',day:'numeric',hour:'numeric',minute:'2-digit'});
+ function pad(n){return String(n).padStart(2,'0');}
+ function tick(){
+   var d=target-Date.now();
+   if(d<=0){box.innerHTML='<div class="locked">&#128274; KEEPERS LOCKED</div>';
+            when.textContent="The deadline has passed.";return;}
+   var days=Math.floor(d/86400000),h=Math.floor(d/3600000)%24,
+       m=Math.floor(d/60000)%60,s=Math.floor(d/1000)%60;
+   var cells=[[days,'Days'],[h,'Hrs'],[m,'Min'],[s,'Sec']];
+   box.innerHTML=cells.map(function(c){
+     var n=(c[1]==='Days')?c[0]:pad(c[0]);
+     return '<div class="u"><div class="n">'+n+'</div><div class="l">'+c[1]+'</div></div>';
+   }).join('');
+ }
+ tick(); setInterval(tick,1000);
+</script></body></html>
+"""
+
+
+def render_countdown() -> None:
+    deadline = config.keeper_deadline()
+    if deadline is None:
+        return
+    components.html(_COUNTDOWN_TEMPLATE.replace("__ISO__", deadline.isoformat()), height=150)
 
 
 # ---------------------------------------------------------------- data loaders
@@ -368,6 +423,7 @@ def render_team_boxes() -> None:
 
 def render_home() -> None:
     st.markdown(theme.logo_html(60, "The Keeper Hub · 2026"), unsafe_allow_html=True)
+    render_countdown()
     st.markdown(f'<h2>{theme.crt("top")}Top 50 Keeper Values</h2>', unsafe_allow_html=True)
     st.caption("Best keeper bargains across every roster — draft value gained by keeping a "
                "player (cost round vs. consensus ADP round). Green = declared keeper · "
