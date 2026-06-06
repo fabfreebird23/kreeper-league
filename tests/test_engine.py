@@ -34,16 +34,20 @@ def test_year2_uses_bump_adp_never_discounts():
     assert all("ADP" not in o.label for o in c2.options)
 
 
-def test_year3_adp_floored_at_last_year_round():
-    # Year 3 normally = ADP. ADP rank 16 -> R2; last year R5. R2 is more
-    # expensive, so ADP applies.
-    p = prof(3, 5)
-    p["last_season_record"] = {"round": 5}
+def test_year3_adp_or_3round_jump_from_year2():
+    # Year 3 = ADP unless a 3-round jump from last year's round is cheaper.
+    # Last year R10 -> jump = R7.
+    p = prof(3, 12)
+    p["last_season_record"] = {"round": 10}
+    # ADP rank 16 -> R2 (more expensive than the R7 jump) -> ADP applies.
     c = engine.compute(p, adp_rank=16, rules=RULES, num_teams=NT)
     assert c.recommended_round == 2
-    # Faded: ADP rank 80 -> R10, but last year R5 -> floored at R5 (no discount).
+    # ADP rank 80 -> R10 (cheaper than the R7 jump) -> use the 3-round jump R7.
     c2 = engine.compute(p, adp_rank=80, rules=RULES, num_teams=NT)
-    assert c2.recommended_round == 5
+    assert c2.recommended_round == 7
+    # No ADP yet -> fall back to the 3-round jump.
+    c3 = engine.compute(p, adp_rank=None, rules=RULES, num_teams=NT)
+    assert c3.recommended_round == 7
 
 
 def test_year2_bump_floor_round_1():

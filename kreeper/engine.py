@@ -163,21 +163,33 @@ def compute(
             notes=notes,
         )
 
-    # next_year == 3 (== max_years): kept at ADP, but never cheaper than the
-    # round they cost last year (ADP can raise the cost, not discount it).
+    # next_year == 3 (== max_years): kept at ADP UNLESS a continued 3-round jump
+    # from last year's (Year-2) keep round is more advantageous (cheaper) to the
+    # manager — then use the jump. Cost = the LESS advantageous (earlier) of the
+    # two, so ADP only applies when it's at least as expensive as the jump.
     prev_round = (profile.get("last_season_record") or {}).get("round")
-    cost_round = adp_round
-    if adp_round is not None and prev_round and adp_round > prev_round:
-        cost_round = int(prev_round)
-        notes.append(
-            f"ADP would be round {adp_round} — cheaper than last year's round "
-            f"{prev_round}; floored at round {prev_round} (ADP can't lower the cost)."
-        )
-        label = f"Round {cost_round} (ADP floored at last year's round)"
-    else:
-        label = f"Round {adp_round} (ADP — required)" if adp_round else "ADP (required)"
-    if adp_round is None:
+    bump = int(rules.get("year2_bump_rounds", 3))
+    jump = max(1, int(prev_round) - bump) if prev_round else None
+    candidates = [r for r in (adp_round, jump) if r is not None]
+    cost_round = min(candidates) if candidates else None  # earliest = most expensive
+
+    if cost_round is None:
         notes.append("ADP not available yet — cost will be set from ADP closer to the draft.")
+        label = "ADP (required)"
+    elif jump is not None and (adp_round is None or jump < adp_round):
+        if adp_round is not None:
+            notes.append(
+                f"ADP (round {adp_round}) is cheaper than a {bump}-round jump from "
+                f"last year's round {prev_round}; kept at round {jump} instead."
+            )
+        else:
+            notes.append(
+                f"ADP not available yet — showing the {bump}-round jump from last "
+                f"year's round {prev_round}."
+            )
+        label = f"Round {jump} ({bump}-round jump from last year)"
+    else:
+        label = f"Round {cost_round} (ADP)"
     return KeeperCost(
         eligible=True,
         keep_year=3,
