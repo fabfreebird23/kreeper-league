@@ -140,13 +140,21 @@ def compute(
         bump = int(rules.get("year2_bump_rounds", 3))
         bumped = max(1, (original_round or config.league()["draft_rounds"]) - bump)
         options = [CostOption(f"Round {bumped} (bumped up {bump})", bumped)]
-        if adp_round is not None:
+        # ADP can only RAISE a keeper's cost, never lower it: it's offered as an
+        # option only when it's at least as expensive as the bump (an earlier /
+        # lower-or-equal round). A cheaper ADP is disallowed.
+        if adp_round is not None and adp_round <= bumped:
             options.append(CostOption(f"Round {adp_round} (ADP)", adp_round))
-        # Cheaper = later pick = higher round number.
-        valid = [o for o in options if o.round is not None]
-        recommended = max(valid, key=lambda o: o.round).round if valid else None
-        if adp_round is None:
+        elif adp_round is not None:
+            notes.append(
+                f"ADP would be round {adp_round} — cheaper than the bump (round "
+                f"{bumped}), so it's not allowed; ADP can't lower a keeper's cost."
+            )
+        else:
             notes.append("ADP not available yet — only the bump option is shown.")
+        # Recommended = cheapest allowed option (the bump; ADP, when offered, is
+        # never cheaper than it).
+        recommended = bumped
         return KeeperCost(
             eligible=True,
             keep_year=2,
@@ -155,14 +163,26 @@ def compute(
             notes=notes,
         )
 
-    # next_year == 3 (== max_years): ADP only, mandatory.
+    # next_year == 3 (== max_years): kept at ADP, but never cheaper than the
+    # round they cost last year (ADP can raise the cost, not discount it).
+    prev_round = (profile.get("last_season_record") or {}).get("round")
+    cost_round = adp_round
+    if adp_round is not None and prev_round and adp_round > prev_round:
+        cost_round = int(prev_round)
+        notes.append(
+            f"ADP would be round {adp_round} — cheaper than last year's round "
+            f"{prev_round}; floored at round {prev_round} (ADP can't lower the cost)."
+        )
+        label = f"Round {cost_round} (ADP floored at last year's round)"
+    else:
+        label = f"Round {adp_round} (ADP — required)" if adp_round else "ADP (required)"
     if adp_round is None:
         notes.append("ADP not available yet — cost will be set from ADP closer to the draft.")
     return KeeperCost(
         eligible=True,
         keep_year=3,
-        recommended_round=adp_round,
-        options=[CostOption(f"Round {adp_round} (ADP — required)" if adp_round else "ADP (required)", adp_round)],
+        recommended_round=cost_round,
+        options=[CostOption(label, cost_round)],
         notes=notes,
     )
 

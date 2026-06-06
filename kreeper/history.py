@@ -36,6 +36,9 @@ class DraftHistory:
     # league spreadsheet). Sleeper's is_keeper flag is unreliable for older
     # seasons (2024 had only 2 of ~24 keepers flagged), so this is authoritative.
     kept_set: set = field(default_factory=set)
+    # Subset of kept_set where the keep was a ROOKIE keeper. Rookie-keeper years
+    # are career-exempt, so they must NOT advance the 3-year regular-keeper clock.
+    rookie_kept_set: set = field(default_factory=set)
 
     def player_meta(self, player_id: str) -> PlayerMeta:
         if player_id in self.meta:
@@ -83,21 +86,36 @@ class DraftHistory:
             rec = pseasons.get(season)
             return bool(rec and rec.get("is_keeper")) or (pid, season) in self.kept_set
 
-        # Consecutive keeper seasons (under ANY owner) ending last season.
+        def _kept_regular(season: int) -> bool:
+            # A REGULAR (non-rookie) keep. Rookie-keeper years are career-exempt
+            # and don't advance the 3-year clock — the clock starts at conversion.
+            return _kept(season) and (pid, season) not in self.rookie_kept_set
+
+        # Consecutive REGULAR keeper seasons (under ANY owner) ending last season.
         consecutive_keeper = 0
         s = prev
-        while _kept(s):
+        while _kept_regular(s):
             consecutive_keeper += 1
             s -= 1
 
-        # Acquisition season = the draft pick that started the streak.
-        acq_season = prev - consecutive_keeper
+        # Anchor round = the cost basis the regular-keeper streak started from.
         original_round: Optional[int] = None
-        if acq_season in pseasons:
-            original_round = pseasons[acq_season]["round"]
-        elif prev in pseasons:
-            # Streak predates our data window — anchor on the oldest round we have.
-            original_round = pseasons[min(pseasons)]["round"]
+        if consecutive_keeper == 0:
+            # Next year would be Year 1 — anchor on last year's (draft) round.
+            if prev in pseasons:
+                original_round = pseasons[prev]["round"]
+        else:
+            first_regular = prev - consecutive_keeper + 1  # first regular keep season
+            anchor = first_regular - 1                     # season that set the basis
+            if _kept(anchor):
+                # The basis season was itself a keep — a rookie->regular conversion
+                # (kept at a last round) or a streak predating our data. Anchor on
+                # the first regular keep round, not the rookie-era draft round.
+                original_round = (pseasons.get(first_regular) or {}).get("round")
+            elif anchor in pseasons:
+                original_round = pseasons[anchor]["round"]  # the draft that started it
+            if original_round is None and prev in pseasons:
+                original_round = pseasons[min(pseasons)]["round"]
 
         present_last_year = prev in pseasons
         if prev in own_by_season:
@@ -168,6 +186,7 @@ def build_history(league_id: Optional[str] = None) -> DraftHistory:
     # selection in a prior season's file is a keeper that year).
     from . import storage
     kept_set: set = set()
+    rookie_kept_set: set = set()
     cur = config.current_season()
     for yr in range(cur - 6, cur):
         for picks in storage.load(yr).values():
@@ -175,6 +194,8 @@ def build_history(league_id: Optional[str] = None) -> DraftHistory:
                 pidx = sel.get("player_id")
                 if pidx:
                     kept_set.add((str(pidx), yr))
+                    if sel.get("is_rookie_keeper"):
+                        rookie_kept_set.add((str(pidx), yr))
 
     return DraftHistory(
         by_owner_player=by_owner_player,
@@ -183,6 +204,7 @@ def build_history(league_id: Optional[str] = None) -> DraftHistory:
         players=players,
         seasons=sorted(set(seasons), reverse=True),
         kept_set=kept_set,
+        rookie_kept_set=rookie_kept_set,
     )
 
 

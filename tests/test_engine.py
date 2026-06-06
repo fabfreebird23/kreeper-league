@@ -21,13 +21,29 @@ def test_year1_keeps_at_draft_round():
     assert c.eligible and c.keep_year == 1 and c.recommended_round == 8
 
 
-def test_year2_picks_cheaper_of_bump_or_adp():
-    # Drafted R12, ADP rank 24 -> round 3. Bump = R9. Cheaper (later) = R9.
+def test_year2_uses_bump_adp_never_discounts():
+    # Drafted R12, bump = R9. ADP rank 24 -> R3 (more expensive than the bump):
+    # allowed as an option, but the cost stays the cheaper bump (R9).
     c = engine.compute(prof(2, 12), adp_rank=24, rules=RULES, num_teams=NT)
     assert c.keep_year == 2 and c.recommended_round == 9
-    # Breakout: drafted R12, now ADP rank 80 -> round 10. Bump=R9. Cheaper=R10.
+    # Faded player: drafted R12, ADP rank 80 -> R10 (cheaper than the R9 bump).
+    # ADP can't lower the cost, so he's still kept at the bump round R9 (not R10).
     c2 = engine.compute(prof(2, 12), adp_rank=80, rules=RULES, num_teams=NT)
-    assert c2.recommended_round == 10
+    assert c2.recommended_round == 9
+    # The cheaper ADP option is not even offered.
+    assert all("ADP" not in o.label for o in c2.options)
+
+
+def test_year3_adp_floored_at_last_year_round():
+    # Year 3 normally = ADP. ADP rank 16 -> R2; last year R5. R2 is more
+    # expensive, so ADP applies.
+    p = prof(3, 5)
+    p["last_season_record"] = {"round": 5}
+    c = engine.compute(p, adp_rank=16, rules=RULES, num_teams=NT)
+    assert c.recommended_round == 2
+    # Faded: ADP rank 80 -> R10, but last year R5 -> floored at R5 (no discount).
+    c2 = engine.compute(p, adp_rank=80, rules=RULES, num_teams=NT)
+    assert c2.recommended_round == 5
 
 
 def test_year2_bump_floor_round_1():
