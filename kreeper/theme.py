@@ -152,12 +152,14 @@ table.dboard{ width:100%; border-collapse:collapse; table-layout:fixed; font-fam
 table.dboard th{ background:#f1ebfb; color:var(--ink); text-align:center; font-size:11px; padding:5px;
   border:1px solid var(--line); text-transform:uppercase; letter-spacing:.5px; }
 .dbcell{ border:1px solid #efeaf8; padding:3px 4px; vertical-align:top; height:48px; }
-.dbpick{ color:#b6aecd; font-size:9px; }
+/* higher specificity so our padding beats Streamlit's default table td padding */
+table.dboard td.dbcell{ padding:3px 4px; }
+.dbpick{ color:#b6aecd; font-size:9px; white-space:nowrap; }
 .db-base{ background:#faf7ff; color:#9089ab; }
 .db-traded{ background:rgba(255,79,157,.16); color:#b21e6b; }
 .db-keep{ background:rgba(22,184,166,.20); color:#0c7a6e; box-shadow:inset 0 0 0 1px rgba(22,184,166,.45); }
 .db-conflict{ background:rgba(229,72,77,.18); color:#b3232a; box-shadow:inset 0 0 0 1px rgba(229,72,77,.45); }
-.db-rd{ background:#f1ebfb; color:var(--purple); font-family:'Anton'; text-align:center; }
+.db-rd{ background:#f1ebfb; color:var(--purple); font-family:'Anton'; text-align:center; white-space:nowrap; }
 
 /* classic basketball sneaker icon for section headers */
 .sneak{ display:inline-block; vertical-align:middle; height:52px; margin:0 14px 6px 0;
@@ -198,7 +200,9 @@ table.dboard th{ background:#f1ebfb; color:var(--ink); text-align:center; font-s
   /* draft board: tiny + horizontal scroll */
   table.dboard{ font-size:9px; }
   table.dboard th{ padding:3px 2px; font-size:8px; }
-  .dbcell{ height:auto; padding:2px 3px; }
+  .dbcell{ height:auto; }
+  table.dboard td.dbcell{ padding:2px 3px; }   /* win over Streamlit's td padding */
+  .db-rd{ font-size:10px; }                      /* keep two-digit rounds legible */
 }
 </style>
 """
