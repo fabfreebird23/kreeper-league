@@ -240,6 +240,33 @@ def _years_exp(pid: str):
     return (H.players.get(str(pid)) or {}).get("years_exp")
 
 
+def rookie_keeper_eligible(owner_id: str, pid: str) -> bool:
+    """A player may be kept as a ROOKIE keeper only if THIS team drafted them in
+    the player's rookie season and has held them continuously since. A trade (or
+    picking them up as a veteran) breaks rookie-keeper eligibility.
+    """
+    pid = str(pid)
+    # An established rookie keeper for THIS owner stays eligible (seeded ledger
+    # may predate our Sleeper draft window).
+    if storage.prior_rookie_seasons(owner_id, pid, SEASON):
+        return True
+    ye = _years_exp(pid)
+    if ye is None:
+        return False
+    rookie_season = SEASON - int(ye)
+    ps = H.player_seasons.get(pid, {})
+    rec = ps.get(rookie_season)
+    # Must be their rookie-season DRAFT pick (not a keeper slot) by THIS owner.
+    if not rec or str(rec.get("owner")) != str(owner_id) or rec.get("is_keeper"):
+        return False
+    # Held continuously since — any season under a different owner = traded.
+    for s in range(rookie_season, SEASON):
+        r = ps.get(s)
+        if r and str(r.get("owner")) != str(owner_id):
+            return False
+    return True
+
+
 def build_value_leaderboard(top_n: int = 50, hide_rookie_keepers: bool = False) -> pd.DataFrame:
     """Best keeper bargains across every roster.
 
@@ -596,6 +623,16 @@ def render_my_keepers() -> None:
     for _, r in picked.iterrows():
         pid = r["player_id"]
         is_rookie = bool(r["Rookie Keeper"])
+        # A rookie keeper must have been drafted by THIS team in the player's
+        # rookie season; a trade-acquired player can't be a rookie keeper.
+        if is_rookie and not rookie_keeper_eligible(owner_id, pid):
+            ineligible.append(
+                f"**{r['Player']}** can't be a *rookie keeper* — you must have drafted "
+                "them in their rookie season and held them since (this player was "
+                "acquired by trade or not drafted by you as a rookie). Untick Rookie "
+                "Keeper; keep them as a regular keeper if eligible."
+            )
+            continue
         prof = H.keeper_profile(owner_id, pid, SEASON)
         rank = adp_rank_for(r["Player"], r["Pos"])
         # Was a rookie keeper, now kept as a regular keeper -> last-round pick, clock resets.
