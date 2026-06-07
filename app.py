@@ -951,8 +951,8 @@ with st.sidebar:
     st.caption(f"**{LEAGUE['name']}** · season **{SEASON}** · {NT} teams · "
                f"{DRAFT_ROUNDS} rds · {LEAGUE.get('scoring','ppr').upper()}")
     page = st.radio("Navigate",
-                    ["Home", "Title Odds", "Rookies", "Draft Board",
-                     "Set My Keepers", "Consensus ADP"],
+                    ["Home", "Title Odds", "Draft Board", "Set My Keepers",
+                     "Rookies", "Consensus ADP"],
                     label_visibility="collapsed")
     st.divider()
     st.subheader("ADP freshness")
