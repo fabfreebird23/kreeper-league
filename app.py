@@ -841,14 +841,15 @@ def render_odds() -> None:
             f'<td style="font-size:12px;opacity:.85;">{keepers}</td></tr>'
         )
     head = ('<tr><th>#</th><th>Team</th><th>Odds</th><th>Win&nbsp;%</th>'
-            '<th>3-Yr&nbsp;W-L</th><th>Roster</th><th>Keeper&nbsp;Value</th>'
+            '<th>3-Yr&nbsp;W-L</th><th>Roster&nbsp;Rk</th><th>Keeper&nbsp;Value</th>'
             '<th>Top Keepers</th></tr>')
     st.markdown('<div class="neonwrap"><table class="lb lb-odds"><thead>' + head
                 + '</thead><tbody>' + "".join(body) + '</tbody></table></div>',
                 unsafe_allow_html=True)
     st.caption("Odds = how the model prices each team to win it all (American "
-               "format: −150 = favorite, +600 = longshot). Roster = ADP-strength "
-               "rank · Keeper Value = draft rounds gained by your best keepers.")
+               "format: −150 = favorite, +600 = longshot). Roster Rk = current "
+               "roster strength by ADP (1 = strongest) · Keeper Value = draft "
+               "rounds gained by your best keepers.")
 
 
 def render_draft_board() -> None:
