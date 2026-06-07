@@ -184,7 +184,6 @@ def adp_rank_for(name: str, position: str = "") -> float | None:
 
 def build_candidate_rows(owner_id: str) -> pd.DataFrame:
     rows = []
-    owned = get_owned().get(owner_id)
     for pid in CANDS.get(owner_id, []):
         pm = H.player_meta(pid)
         if pm.position not in ("QB", "RB", "WR", "TE"):
@@ -195,8 +194,10 @@ def build_candidate_rows(owner_id: str) -> pd.DataFrame:
         from_rookie = bool(storage.prior_rookie_seasons(owner_id, pid, SEASON))
         inherits = (not from_rookie) and prof.get("acquired_via") in ("draft", "trade") and prof.get("original_round")
         if inherits:
-            adj = engine.adjust_to_owned(cost.recommended_round, owned, DRAFT_ROUNDS)
-            reg_cost = f"Round {adj}" if adj else cost.recommended_label
+            # Natural keeper round (the rules cost). If you don't own that round,
+            # the actual pick used is resolved at allocation time on your keeper
+            # slip and the draft board — not collapsed onto one pick here.
+            reg_cost = f"Round {cost.recommended_round}" if cost.recommended_round else cost.recommended_label
         else:
             reg_cost = "Last rounds"
         if from_rookie:
@@ -259,7 +260,6 @@ def build_value_leaderboard(top_n: int = 50, hide_rookie_keepers: bool = False) 
                 if s.get("is_rookie_keeper") and s.get("player_id"):
                     rookie_hist.add((str(oid), str(s["player_id"])))
 
-    owned_map = get_owned()
     rows = []
     for owner_id, pids in CANDS.items():
         mgr = config.manager_name(owner_id)
@@ -284,10 +284,11 @@ def build_value_leaderboard(top_n: int = 50, hide_rookie_keepers: bool = False) 
                 if not cost.eligible:
                     continue  # already kept 3 years
                 inherits = prof.get("acquired_via") in ("draft", "trade") and prof.get("original_round")
-                if inherits:
-                    cost_round = engine.adjust_to_owned(cost.recommended_round, owned_map.get(owner_id), DRAFT_ROUNDS)
-                else:
-                    cost_round = DRAFT_ROUNDS
+                # Natural keeper round (the rules cost). Owned-pick snapping is an
+                # allocation concern (handled on the slip/board); applying it per
+                # player here would collapse every early keeper of a team that
+                # traded its early picks onto the same round.
+                cost_round = cost.recommended_round if inherits else DRAFT_ROUNDS
                 keep_yr = cost.keep_year
             if not cost_round:
                 continue
