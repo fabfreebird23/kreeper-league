@@ -128,6 +128,15 @@
       "is_rookie_keeper": false,
       "keep_year": 1,
       "cost_choice": null,
+      "cost_round": 12
+    },
+    {
+      "player_id": "12534",
+      "player_name": "Kyle Monangai",
+      "position": "RB",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_choice": null,
       "cost_round": 13
     }
   ]
