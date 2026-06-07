@@ -8,6 +8,7 @@ Pages (sidebar nav):
 from __future__ import annotations
 
 import datetime as dt
+import math
 
 import pandas as pd
 import streamlit as st
@@ -742,6 +743,114 @@ def _board_cell_html(c: dict, keepers: list) -> str:
     return f'<td class="dbcell db-base">{pick}<br>{c["owner_short"]}</td>'
 
 
+@st.cache_data(ttl=1800, show_spinner="Setting the line…")
+def build_championship_odds():
+    """A for-fun Vegas-style title line: blend 3 seasons of results, current
+    roster strength (ADP), and keeper value into a power rating -> probabilities
+    -> American odds (with a bookmaker's vig)."""
+    from kreeper import sleeper
+
+    chain = sleeper.league_chain(LEAGUE["sleeper_league_id"])
+    completed = [c["season"] for c in chain if c["season"] != SEASON]
+    recency = dict(zip(sorted(completed, reverse=True), [0.5, 0.3, 0.2, 0.1, 0.05]))
+
+    hist = {o: 0.0 for o in MANAGERS}       # recency-weighted win %
+    pf = {o: 0.0 for o in MANAGERS}         # recency-weighted points for
+    record = {o: [0, 0] for o in MANAGERS}  # aggregate W, L over completed seasons
+    for c in chain:
+        if c["season"] not in recency:
+            continue
+        wt = recency[c["season"]]
+        for r in sleeper.get_rosters(c["league_id"]):
+            o = str(r.get("owner_id"))
+            if o not in hist:
+                continue
+            stt = r.get("settings", {}) or {}
+            w, l = stt.get("wins", 0) or 0, stt.get("losses", 0) or 0
+            hist[o] += wt * (w / max(1, w + l))
+            pf[o] += wt * (stt.get("fpts", 0) + stt.get("fpts_decimal", 0) / 100)
+            record[o][0] += w
+            record[o][1] += l
+
+    lb = build_value_leaderboard(400)
+    strength, kcap, best = {}, {}, {}
+    for o in MANAGERS:
+        ranks = sorted(
+            adp_rank_for(H.player_meta(p).name, H.player_meta(p).position) or 999
+            for p in CANDS.get(o, [])
+            if H.player_meta(p).position in ("QB", "RB", "WR", "TE")
+        )
+        strength[o] = sum(max(0, 260 - x) for x in ranks[:12])  # top-12 ADP capital
+        tl = lb[lb["Team"] == config.manager_name(o)].sort_values("Value", ascending=False)
+        kcap[o] = float(tl["Value"].head(5).sum())
+        best[o] = list(tl["Player"].head(3))
+
+    def _z(d):
+        v = list(d.values())
+        m = sum(v) / len(v)
+        sd = (sum((x - m) ** 2 for x in v) / len(v)) ** 0.5 or 1.0
+        return {k: (x - m) / sd for k, x in d.items()}
+
+    hz, pz, sz, kz = _z(hist), _z(pf), _z(strength), _z(kcap)
+    power = {o: 0.30 * hz[o] + 0.10 * pz[o] + 0.42 * sz[o] + 0.18 * kz[o] for o in MANAGERS}
+
+    T = 0.95  # temperature: lower = bigger favorites, higher = more parity
+    exps = {o: math.exp(power[o] / T) for o in power}
+    tot = sum(exps.values())
+    fair = {o: exps[o] / tot for o in power}
+    srank = {o: i + 1 for i, o in enumerate(sorted(strength, key=strength.get, reverse=True))}
+
+    def american(p):
+        p = min(0.95, max(0.01, p * 1.16))  # ~16% overround (the house edge)
+        return f"-{round(p / (1 - p) * 100)}" if p >= 0.5 else f"+{round((1 - p) / p * 100)}"
+
+    rows = []
+    for o in sorted(fair, key=fair.get, reverse=True):
+        rows.append({
+            "Team": config.manager_name(o),
+            "Odds": american(fair[o]),
+            "Win %": round(fair[o] * 100, 1),
+            "Record": f"{record[o][0]}-{record[o][1]}",
+            "RosterRk": srank[o],
+            "KeepVal": round(kcap[o]),
+            "Best": best[o],
+        })
+    return rows
+
+
+def render_odds() -> None:
+    st.markdown(f'<h2>{theme.crt("top")}{SEASON} Title Odds</h2>', unsafe_allow_html=True)
+    st.caption("For fun — a power rating from three seasons of results, current "
+               "roster strength (ADP), and keeper value, turned into a Vegas-style "
+               "line (juice included). Not a real sportsbook; no Ned were harmed.")
+    rows = build_championship_odds()
+    body = []
+    n = len(rows)
+    for i, r in enumerate(rows):
+        tag = ('<span class="kept-badge">FAVORITE</span>' if i == 0 else
+               ('<span class="rk-badge">LONGSHOT</span>' if i >= n - 2 else ""))
+        keepers = ", ".join(r["Best"][:3]) or "—"
+        body.append(
+            f'<tr><td class="rk">{i+1}</td>'
+            f'<td class="pl">{r["Team"]} {tag}</td>'
+            f'<td class="num" style="font-family:\'Anton\';font-size:17px;color:var(--pink);">{r["Odds"]}</td>'
+            f'<td class="num">{r["Win %"]}%</td>'
+            f'<td class="num">{r["Record"]}</td>'
+            f'<td class="num">{r["RosterRk"]}/{n}</td>'
+            f'<td class="num">{r["KeepVal"]:+d}</td>'
+            f'<td style="font-size:12px;opacity:.85;">{keepers}</td></tr>'
+        )
+    head = ('<tr><th>#</th><th>Team</th><th>Odds</th><th>Win&nbsp;%</th>'
+            '<th>3-Yr&nbsp;W-L</th><th>Roster</th><th>Keeper&nbsp;Value</th>'
+            '<th>Top Keepers</th></tr>')
+    st.markdown('<div class="neonwrap"><table class="lb lb-odds"><thead>' + head
+                + '</thead><tbody>' + "".join(body) + '</tbody></table></div>',
+                unsafe_allow_html=True)
+    st.caption("Odds = how the model prices each team to win it all (American "
+               "format: −150 = favorite, +600 = longshot). Roster = ADP-strength "
+               "rank · Keeper Value = draft rounds gained by your best keepers.")
+
+
 def render_draft_board() -> None:
     st.markdown(f'<h3>{theme.crt("draft")}{SEASON} Draft Board</h3>', unsafe_allow_html=True)
     try:
@@ -841,7 +950,8 @@ with st.sidebar:
     st.caption(f"**{LEAGUE['name']}** · season **{SEASON}** · {NT} teams · "
                f"{DRAFT_ROUNDS} rds · {LEAGUE.get('scoring','ppr').upper()}")
     page = st.radio("Navigate",
-                    ["Home", "Rookies", "Draft Board", "Set My Keepers", "Consensus ADP"],
+                    ["Home", "Title Odds", "Rookies", "Draft Board",
+                     "Set My Keepers", "Consensus ADP"],
                     label_visibility="collapsed")
     st.divider()
     st.subheader("ADP freshness")
@@ -860,6 +970,8 @@ with st.sidebar:
 
 if page == "Home":
     render_home()
+elif page == "Title Odds":
+    render_odds()
 elif page == "Rookies":
     render_rookies()
 elif page == "Draft Board":

@@ -190,6 +190,8 @@ table.dboard td.dbcell{ padding:3px 4px; }
   .lb-value th:nth-child(7), .lb-value td:nth-child(7){ display:none; }
   /* rookies: drop the redundant Consensus ADP column (6) */
   .lb-rook th:nth-child(6), .lb-rook td:nth-child(6){ display:none; }
+  /* title odds: drop Top Keepers (8) so the line fits without tall rows */
+  .lb-odds th:nth-child(8), .lb-odds td:nth-child(8){ display:none; }
 
   /* team cards stack two-up */
   .kcards{ grid-template-columns:1fr 1fr; gap:8px; }
