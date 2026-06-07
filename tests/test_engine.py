@@ -156,8 +156,34 @@ def test_adjust_to_owned_bumps_to_next_highest():
     from collections import Counter
     owned = Counter({r: 1 for r in range(1, 15)})
     owned[7] = 0  # traded away R7
-    assert engine.adjust_to_owned(7, owned, 14) == 6   # next-highest owned
+    assert engine.adjust_to_owned(7, owned, 14) == 6   # next-highest (earlier) owned
     assert engine.adjust_to_owned(5, owned, 14) == 5   # owns R5, no change
+
+
+def test_adjust_to_owned_none_without_high_enough_pick():
+    from collections import Counter
+    owned = Counter({r: 1 for r in range(4, 15)})  # traded away R1-R3
+    owned[5] = 0  # also no R5
+    assert engine.adjust_to_owned(4, owned, 14) == 4   # owns the round
+    assert engine.adjust_to_owned(5, owned, 14) == 4   # nearest earlier owned (R4)
+    assert engine.adjust_to_owned(3, owned, 14) is None  # no R3-or-earlier -> can't keep
+    assert engine.adjust_to_owned(1, owned, 14) is None
+
+
+def test_keeper_ineligible_without_high_enough_pick():
+    from collections import Counter
+    owned = Counter({r: 1 for r in range(4, 15)})  # earliest pick is R4
+    # A Year-1 keeper whose draft round was R3 — no R3/R2/R1 pick -> can't keep.
+    items = [{"player_id": "kw", "is_rookie": False, "profile": prof(1, 3),
+              "adp_rank": 24, "year2_choice": None}]
+    out = engine.allocate_keeper_costs(items, draft_rounds=14, num_teams=NT, rules=RULES, owned=owned)
+    assert out["kw"].eligible is False
+    assert out["kw"].recommended_round is None
+    # But an R4-cost keeper IS eligible (owns R4).
+    items2 = [{"player_id": "ok", "is_rookie": False, "profile": prof(1, 4),
+               "adp_rank": 24, "year2_choice": None}]
+    out2 = engine.allocate_keeper_costs(items2, draft_rounds=14, num_teams=NT, rules=RULES, owned=owned)
+    assert out2["ok"].eligible and out2["ok"].recommended_round == 4
 
 
 def test_allocation_snaps_to_owned_pick():

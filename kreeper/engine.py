@@ -23,8 +23,15 @@ from . import config
 
 
 def adjust_to_owned(target: Optional[int], owned, draft_rounds: int) -> Optional[int]:
-    """If the team doesn't own a pick in `target` round, return their next-highest
-    owned round (earlier round first, e.g. R7 traded -> R6). No reservation."""
+    """The pick a keeper at `target` round would use, or None if the team can't
+    keep them.
+
+    A keeper must cost a pick at their round OR EARLIER (a higher pick, e.g. a
+    R3 keeper needs a R3/R2/R1 pick). If the team owns the round, that's the
+    cost; otherwise it moves UP to their nearest earlier owned round (R7 traded
+    -> R6). A team may never drop to a later/cheaper pick, so if they own no pick
+    at the cost round or earlier, they're not eligible to keep the player (None).
+    """
     if not target or owned is None:
         return target
     if owned.get(target, 0) > 0:
@@ -32,10 +39,7 @@ def adjust_to_owned(target: Optional[int], owned, draft_rounds: int) -> Optional
     for r in range(target - 1, 0, -1):
         if owned.get(r, 0) > 0:
             return r
-    for r in range(target + 1, draft_rounds + 1):
-        if owned.get(r, 0) > 0:
-            return r
-    return target
+    return None
 
 
 def adp_rank_to_round(adp_rank: Optional[float], num_teams: int) -> Optional[int]:
@@ -220,7 +224,9 @@ def allocate_keeper_costs(
         return None
 
     def take_near(target: Optional[int]) -> Optional[int]:
-        """Owned pick at target, else next-highest (earlier) owned, else later."""
+        """Owned pick at target, else nearest earlier (higher) owned pick. Never
+        drops to a later/cheaper pick — returns None when the team owns no pick at
+        the cost round or earlier (so the player can't be kept)."""
         if target and _avail(target):
             consumed[target] += 1
             return target
@@ -228,11 +234,7 @@ def allocate_keeper_costs(
             if _avail(r):
                 consumed[r] += 1
                 return r
-        for r in range((target or 0) + 1, draft_rounds + 1):
-            if _avail(r):
-                consumed[r] += 1
-                return r
-        return target
+        return None
 
     results: Dict[str, KeeperCost] = {}
 
@@ -269,9 +271,19 @@ def allocate_keeper_costs(
         if cost.eligible:
             want = _resolve_choice(cost, it.get("year2_choice"))
             got = take_near(want)
-            cost.recommended_round = got
-            cost.notes = (cost.notes or []) + _bumped_note(want, got)
-        if prof.get("acquired_via") == "trade":
+            if got is None:
+                # No pick at the cost round or earlier -> can't keep this player.
+                cost.eligible = False
+                cost.recommended_round = None
+                cost.reason = (
+                    f"You don't own a round {want} pick (or any earlier/higher "
+                    "pick) — not eligible to keep this player."
+                )
+                cost.notes = []
+            else:
+                cost.recommended_round = got
+                cost.notes = (cost.notes or []) + _bumped_note(want, got)
+        if cost.eligible and prof.get("acquired_via") == "trade":
             cost.notes = (cost.notes or []) + [
                 "Traded in — keeper round and year clock carried over from the previous owner."
             ]

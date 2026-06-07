@@ -184,6 +184,7 @@ def adp_rank_for(name: str, position: str = "") -> float | None:
 
 def build_candidate_rows(owner_id: str) -> pd.DataFrame:
     rows = []
+    owned = get_owned().get(owner_id)
     for pid in CANDS.get(owner_id, []):
         pm = H.player_meta(pid)
         if pm.position not in ("QB", "RB", "WR", "TE"):
@@ -193,22 +194,27 @@ def build_candidate_rows(owner_id: str) -> pd.DataFrame:
         cost = engine.compute(prof, adp_rank=rank, is_rookie_keeper=False)
         from_rookie = bool(storage.prior_rookie_seasons(owner_id, pid, SEASON))
         inherits = (not from_rookie) and prof.get("acquired_via") in ("draft", "trade") and prof.get("original_round")
+        no_pick = False
         if inherits:
-            # Natural keeper round (the rules cost). If you don't own that round,
-            # the actual pick used is resolved at allocation time on your keeper
-            # slip and the draft board — not collapsed onto one pick here.
-            reg_cost = f"Round {cost.recommended_round}" if cost.recommended_round else cost.recommended_label
+            # The pick used is the cost round, or the nearest earlier (higher)
+            # pick you own. If you own nothing at the cost round or earlier, you
+            # can't keep this player.
+            placed = engine.adjust_to_owned(cost.recommended_round, owned, DRAFT_ROUNDS)
+            if placed is None:
+                no_pick = True
+                reg_cost = "No pick to keep"
+            else:
+                reg_cost = f"Round {placed}"
         else:
             reg_cost = "Last rounds"
         if from_rookie:
-            keep_year = 1
-            acq = "rookie→reg"
+            keep_year, acq, eligible = 1, "rookie→reg", True
         elif not cost.eligible:
-            keep_year = "DONE"
-            acq = prof.get("acquired_via")
+            keep_year, acq, eligible = "DONE", prof.get("acquired_via"), False
+        elif no_pick:
+            keep_year, acq, eligible = "NO PICK", prof.get("acquired_via"), False
         else:
-            keep_year = cost.keep_year
-            acq = prof.get("acquired_via")
+            keep_year, acq, eligible = cost.keep_year, prof.get("acquired_via"), True
         rows.append(
             {
                 "player_id": pid,
@@ -217,7 +223,7 @@ def build_candidate_rows(owner_id: str) -> pd.DataFrame:
                 "Pos": pm.position,
                 "NFL": pm.team,
                 "Keep Year": keep_year,
-                "Eligible": True if from_rookie else cost.eligible,
+                "Eligible": eligible,
                 "Reg. Cost": reg_cost,
                 "ADP Rank": int(rank) if rank else None,
                 "Orig. Rd": prof.get("original_round") if inherits else None,
@@ -284,14 +290,17 @@ def build_value_leaderboard(top_n: int = 50, hide_rookie_keepers: bool = False) 
                 if not cost.eligible:
                     continue  # already kept 3 years
                 inherits = prof.get("acquired_via") in ("draft", "trade") and prof.get("original_round")
-                # Natural keeper round (the rules cost). Owned-pick snapping is an
-                # allocation concern (handled on the slip/board); applying it per
-                # player here would collapse every early keeper of a team that
-                # traded its early picks onto the same round.
-                cost_round = cost.recommended_round if inherits else DRAFT_ROUNDS
+                if inherits:
+                    # Must own a pick at the cost round or earlier (a higher pick);
+                    # otherwise the team can't keep this player at all -> not a
+                    # keeper option, so drop them from the value board.
+                    cost_round = engine.adjust_to_owned(
+                        cost.recommended_round, get_owned().get(owner_id), DRAFT_ROUNDS)
+                else:
+                    cost_round = DRAFT_ROUNDS
                 keep_yr = cost.keep_year
             if not cost_round:
-                continue
+                continue  # ineligible (no high-enough pick) or no round resolved
             adp_round = engine.adp_rank_to_round(rank, NT)
             is_kept = str(pid) in kept_ids or normalize_name(pm.name) in kept_names
             rows.append(
@@ -624,20 +633,21 @@ def render_my_keepers() -> None:
             "Cost": f"Round {c.recommended_round}" if c.recommended_round else c.recommended_label,
         })
 
+    # Ownership eligibility: a keeper must cost a pick at its round or earlier (a
+    # higher pick). allocate_keeper_costs flags anyone you can't actually keep.
+    for it in items:
+        c = costs[it["player_id"]]
+        if not c.eligible or c.recommended_round is None:
+            reason = c.reason or "no pick available to keep this player."
+            ineligible.append(f"**{it['name']}** — {reason}")
+
     for msg in ineligible:
-        st.error("Ineligible: " + msg)
+        st.error("Can't keep: " + msg)
     problems = []
     if len(reg_items) > MAX_REG:
         problems.append(f"Too many **regular** keepers: {len(reg_items)} (max {MAX_REG}).")
     if len(rook_items) > MAX_ROOKIE:
         problems.append(f"Too many **rookie** keepers: {len(rook_items)} (max {MAX_ROOKIE}).")
-    # Pick-fit: every keeper must land on a pick this team actually owns.
-    unplaced = [it["name"] for it in items if costs[it["player_id"]].recommended_round is None]
-    if unplaced:
-        problems.append(
-            f"No draft pick available for: **{', '.join(unplaced)}** — you don't own "
-            "enough picks to keep this many. Trade for a pick or drop a keeper."
-        )
 
     if summary:
         st.dataframe(pd.DataFrame(summary), hide_index=True, use_container_width=True)
