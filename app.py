@@ -745,9 +745,11 @@ def _board_cell_html(c: dict, keepers: list) -> str:
 
 @st.cache_data(ttl=1800, show_spinner="Setting the line…")
 def build_championship_odds():
-    """A for-fun Vegas-style title line: blend 3 seasons of results, current
-    roster strength (ADP), and keeper value into a power rating -> probabilities
-    -> American odds (with a bookmaker's vig)."""
+    """A for-fun Vegas-style title line. Rosters reset at the draft, so the only
+    thing that carries over is each team's KEEPERS — the model blends three
+    seasons of results with keeper strength (talent retained) and keeper value
+    (draft capital saved), then converts to win probabilities and American odds
+    with a bookmaker's vig."""
     from kreeper import sleeper
 
     chain = sleeper.league_chain(LEAGUE["sleeper_league_id"])
@@ -755,7 +757,6 @@ def build_championship_odds():
     recency = dict(zip(sorted(completed, reverse=True), [0.5, 0.3, 0.2, 0.1, 0.05]))
 
     hist = {o: 0.0 for o in MANAGERS}       # recency-weighted win %
-    pf = {o: 0.0 for o in MANAGERS}         # recency-weighted points for
     record = {o: [0, 0] for o in MANAGERS}  # aggregate W, L over completed seasons
     for c in chain:
         if c["season"] not in recency:
@@ -768,21 +769,19 @@ def build_championship_odds():
             stt = r.get("settings", {}) or {}
             w, l = stt.get("wins", 0) or 0, stt.get("losses", 0) or 0
             hist[o] += wt * (w / max(1, w + l))
-            pf[o] += wt * (stt.get("fpts", 0) + stt.get("fpts_decimal", 0) / 100)
             record[o][0] += w
             record[o][1] += l
 
+    # Keeper-based strength: only the players a team can carry over matter. Take
+    # each team's most valuable eligible keepers (their likely keep set) and
+    # measure the talent retained (ADP) and the draft capital saved (value).
     lb = build_value_leaderboard(400)
-    strength, kcap, best = {}, {}, {}
+    keep_n = MAX_REG + MAX_ROOKIE
+    talent, kcap, best = {}, {}, {}
     for o in MANAGERS:
-        ranks = sorted(
-            adp_rank_for(H.player_meta(p).name, H.player_meta(p).position) or 999
-            for p in CANDS.get(o, [])
-            if H.player_meta(p).position in ("QB", "RB", "WR", "TE")
-        )
-        strength[o] = sum(max(0, 260 - x) for x in ranks[:12])  # top-12 ADP capital
-        tl = lb[lb["Team"] == config.manager_name(o)].sort_values("Value", ascending=False)
-        kcap[o] = float(tl["Value"].head(5).sum())
+        tl = lb[lb["Team"] == config.manager_name(o)].sort_values("Value", ascending=False).head(keep_n)
+        talent[o] = float(sum(max(0, 260 - int(a)) for a in tl["ADP"]))
+        kcap[o] = float(tl["Value"].sum())
         best[o] = list(tl["Player"].head(3))
 
     def _z(d):
@@ -791,14 +790,14 @@ def build_championship_odds():
         sd = (sum((x - m) ** 2 for x in v) / len(v)) ** 0.5 or 1.0
         return {k: (x - m) / sd for k, x in d.items()}
 
-    hz, pz, sz, kz = _z(hist), _z(pf), _z(strength), _z(kcap)
-    power = {o: 0.30 * hz[o] + 0.10 * pz[o] + 0.42 * sz[o] + 0.18 * kz[o] for o in MANAGERS}
+    hz, tz, vz = _z(hist), _z(talent), _z(kcap)
+    power = {o: 0.35 * hz[o] + 0.40 * tz[o] + 0.25 * vz[o] for o in MANAGERS}
 
-    T = 0.95  # temperature: lower = bigger favorites, higher = more parity
+    T = 1.05  # temperature: lower = bigger favorites, higher = more parity
     exps = {o: math.exp(power[o] / T) for o in power}
     tot = sum(exps.values())
     fair = {o: exps[o] / tot for o in power}
-    srank = {o: i + 1 for i, o in enumerate(sorted(strength, key=strength.get, reverse=True))}
+    keeprank = {o: i + 1 for i, o in enumerate(sorted(talent, key=talent.get, reverse=True))}
 
     def american(p):
         p = min(0.95, max(0.01, p * 1.16))  # ~16% overround (the house edge)
@@ -811,7 +810,7 @@ def build_championship_odds():
             "Odds": american(fair[o]),
             "Win %": round(fair[o] * 100, 1),
             "Record": f"{record[o][0]}-{record[o][1]}",
-            "RosterRk": srank[o],
+            "KeeperRk": keeprank[o],
             "KeepVal": round(kcap[o]),
             "Best": best[o],
         })
@@ -820,9 +819,10 @@ def build_championship_odds():
 
 def render_odds() -> None:
     st.markdown(f'<h2>{theme.crt("top")}{SEASON} Title Odds</h2>', unsafe_allow_html=True)
-    st.caption("For fun — a power rating from three seasons of results, current "
-               "roster strength (ADP), and keeper value, turned into a Vegas-style "
-               "line (juice included). Not a real sportsbook; no Ned were harmed.")
+    st.caption("For fun — rosters reset at the draft, so this prices each team on "
+               "what carries over: three seasons of results plus keeper strength "
+               "and value. A Vegas-style line, juice included. Not a real "
+               "sportsbook; no Ned were harmed.")
     rows = build_championship_odds()
     body = []
     n = len(rows)
@@ -836,19 +836,19 @@ def render_odds() -> None:
             f'<td class="num" style="font-family:\'Anton\';font-size:17px;color:var(--pink);">{r["Odds"]}</td>'
             f'<td class="num">{r["Win %"]}%</td>'
             f'<td class="num">{r["Record"]}</td>'
-            f'<td class="num">{r["RosterRk"]}/{n}</td>'
+            f'<td class="num">{r["KeeperRk"]}/{n}</td>'
             f'<td class="num">{r["KeepVal"]:+d}</td>'
             f'<td style="font-size:12px;opacity:.85;">{keepers}</td></tr>'
         )
     head = ('<tr><th>#</th><th>Team</th><th>Odds</th><th>Win&nbsp;%</th>'
-            '<th>3-Yr&nbsp;W-L</th><th>Roster&nbsp;Rk</th><th>Keeper&nbsp;Value</th>'
+            '<th>3-Yr&nbsp;W-L</th><th>Keeper&nbsp;Rk</th><th>Keeper&nbsp;Value</th>'
             '<th>Top Keepers</th></tr>')
     st.markdown('<div class="neonwrap"><table class="lb lb-odds"><thead>' + head
                 + '</thead><tbody>' + "".join(body) + '</tbody></table></div>',
                 unsafe_allow_html=True)
     st.caption("Odds = how the model prices each team to win it all (American "
-               "format: −150 = favorite, +600 = longshot). Roster Rk = current "
-               "roster strength by ADP (1 = strongest) · Keeper Value = draft "
+               "format: −150 = favorite, +600 = longshot). Keeper Rk = strength of "
+               "your kept players by ADP (1 = best core) · Keeper Value = draft "
                "rounds gained by your best keepers.")
 
 
