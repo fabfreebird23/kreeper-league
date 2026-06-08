@@ -241,12 +241,24 @@ def _years_exp(pid: str):
     return (H.players.get(str(pid)) or {}).get("years_exp")
 
 
+def _was_regular_keeper(pid: str) -> bool:
+    """True if the player has ever been kept as a REGULAR (non-rookie) keeper in
+    our ledger — i.e. the rookie->regular conversion already happened."""
+    pid = str(pid)
+    return any(p == pid and (p, s) not in H.rookie_kept_set for (p, s) in H.kept_set)
+
+
 def rookie_keeper_eligible(owner_id: str, pid: str) -> bool:
     """A player may be kept as a ROOKIE keeper only if THIS team drafted them in
     the player's rookie season and has held them continuously since. A trade (or
-    picking them up as a veteran) breaks rookie-keeper eligibility.
+    picking them up as a veteran) breaks rookie-keeper eligibility, and the
+    rookie->regular move is one-way: once kept as a regular keeper they can never
+    return to a rookie keeper.
     """
     pid = str(pid)
+    # One-way: a player who has been a regular keeper can't go back to rookie.
+    if _was_regular_keeper(pid):
+        return False
     # An established rookie keeper for THIS owner stays eligible (seeded ledger
     # may predate our Sleeper draft window).
     if storage.prior_rookie_seasons(owner_id, pid, SEASON):
