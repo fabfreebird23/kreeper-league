@@ -1,506 +1,502 @@
-key,name_key,name,position,consensus_adp,n_sources,ESPN,FantasyPros,FootballGuys,DraftKings,Drafters,MFL,NFFC,Underdog,consensus_rank
-bijanrobinson,bijanrobinson,Bijan Robinson,RB,1.34,6,2.07,1.5,1.0,1.0,2.0,1.0,1.0,1.0,1.0
-jahmyrgibbs,jahmyrgibbs,Jahmyr Gibbs,RB,1.85,6,2.11,1.5,2.0,2.0,1.0,2.0,2.0,2.0,2.0
-jamarrchase,jamarrchase,Ja'Marr Chase,WR,3.3,6,4.82,3.0,3.0,3.0,3.0,3.0,3.0,3.0,3.0
-pukanacua,pukanacua,Puka Nacua,WR,4.11,6,3.67,4.0,4.0,4.0,4.0,5.0,4.0,4.0,4.0
-jaxonsmithnjigba,jaxonsmithnjigba,Jaxon Smith-Njigba,WR,5.53,6,6.16,5.0,5.0,5.0,5.0,7.0,5.0,5.0,5.0
-christianmccaffrey,christianmccaffrey,Christian McCaffrey,RB,6.85,6,5.12,6.0,6.0,6.0,6.0,11.0,6.0,7.0,6.0
-jonathantaylor,jonathantaylor,Jonathan Taylor,RB,7.71,6,8.27,7.5,7.0,7.0,8.0,10.0,7.0,6.0,7.0
-amonrastbrown,amonrastbrown,Amon-Ra St. Brown,WR,8.17,6,8.02,7.5,8.0,9.0,7.0,9.0,8.0,8.0,8.0
-ceedeelamb,ceedeelamb,CeeDee Lamb,WR,11.56,6,11.38,11.0,9.0,11.0,10.0,17.0,11.0,9.0,9.0
-jamescook,jamescook,James Cook III,RB,11.7,6,13.19,11.0,11.0,10.0,12.0,14.0,10.0,11.0,10.0
-justinjefferson,justinjefferson,Justin Jefferson,WR,11.77,6,12.64,11.0,12.0,8.0,9.0,18.0,13.0,10.0,11.0
-devonachane,devonachane,De'Von Achane,RB,11.92,6,11.49,14.0,10.0,13.0,13.0,12.0,9.0,13.0,12.0
-ashtonjeanty,ashtonjeanty,Ashton Jeanty,RB,12.27,6,13.59,9.5,13.0,12.0,11.0,13.0,12.0,12.0,13.0
-saquonbarkley,saquonbarkley,Saquon Barkley,RB,15.92,6,15.54,14.5,14.0,14.0,14.0,20.0,18.0,14.0,14.0
-omarionhampton,omarionhampton,Omarion Hampton,RB,17.41,6,21.45,16.0,16.0,17.0,18.0,19.0,14.0,15.0,15.0
-treymcbride,treymcbride,Trey McBride,TE,17.94,6,20.66,21.0,18.0,20.0,22.0,6.0,15.0,24.0,16.0
-drakelondon,drakelondon,Drake London,WR,18.92,6,18.54,17.5,17.0,16.0,16.0,25.0,19.0,19.0,17.0
-brockbowers,brockbowers,Brock Bowers,TE,19.27,6,23.64,19.5,22.0,21.0,19.0,8.0,24.0,20.0,18.0
-chasebrown,chasebrown,Chase Brown,RB,19.91,6,27.49,14.5,15.0,18.0,17.0,23.0,16.0,18.0,19.0
-kenwalker,kenwalker,Ken Walker,,20.0,5,,,20.0,15.0,15.0,34.0,20.0,16.0,20.0
-derrickhenry,derrickhenry,Derrick Henry,RB,20.86,6,18.19,21.5,21.0,19.0,20.0,29.0,22.0,17.0,21.0
-jeremiyahlove,jeremiyahlove,Jeremiyah Love,RB,21.42,6,17.49,23.0,19.0,25.0,24.0,24.0,17.0,21.0,22.0
-joshallen,joshallen,Josh Allen,QB,22.99,6,23.96,27.0,27.0,24.0,33.0,4.0,23.0,30.0,23.0
-maliknabers,maliknabers,Malik Nabers,WR,24.68,6,28.1,33.0,23.0,27.0,28.0,22.0,21.0,22.0,24.0
-georgepickens,georgepickens,George Pickens,WR,26.11,6,27.68,23.5,26.0,23.0,26.0,32.0,25.0,23.0,25.0
-rasheerice,rasheerice,Rashee Rice,WR,26.9,6,25.4,28.5,25.0,22.0,23.0,38.0,26.0,27.0,26.0
-nicocollins,nicocollins,Nico Collins,WR,27.17,6,24.03,23.0,24.0,26.0,21.0,40.0,27.0,25.0,27.0
-kennethwalkeriii,kennethwalkeriii,Kenneth Walker III,RB,27.34,1,27.34,16.0,,,,,,,28.0
-joshjacobs,joshjacobs,Josh Jacobs,RB,29.19,6,28.14,37.0,28.0,30.0,27.0,36.0,28.0,26.0,29.0
-breecehall,breecehall,Breece Hall,RB,31.63,6,32.8,29.5,31.0,33.0,30.0,33.0,32.0,29.0,30.0
-ajbrown,ajbrown,A.J. Brown,WR,31.89,6,27.34,24.0,30.0,29.0,25.0,51.0,31.0,28.0,31.0
-chrisolave,chrisolave,Chris Olave,WR,32.6,6,33.61,28.0,29.0,28.0,29.0,43.0,29.0,33.0,32.0
-kyrenwilliams,kyrenwilliams,Kyren Williams,RB,33.55,6,36.28,32.0,32.0,31.0,35.0,35.0,30.0,34.0,33.0
-travisetienne,travisetienne,Travis Etienne Jr.,RB,36.91,6,43.46,32.5,33.0,34.0,32.0,47.0,34.0,31.0,34.0
-tetairoamcmillan,tetairoamcmillan,Tetairoa McMillan,WR,37.33,6,40.97,38.5,34.0,37.0,37.0,39.0,33.0,37.0,35.0
-javontewilliams,javontewilliams,Javonte Williams,RB,38.37,6,37.19,34.5,35.0,40.0,40.0,42.0,35.0,36.0,36.0
-devontasmith,devontasmith,DeVonta Smith,WR,39.49,6,36.96,32.0,36.0,32.0,31.0,59.0,46.0,32.0,37.0
-garrettwilson,garrettwilson,Garrett Wilson,WR,39.5,6,37.98,37.0,37.0,39.0,34.0,49.0,38.0,39.0,38.0
-colstonloveland,colstonloveland,Colston Loveland,TE,40.17,6,44.04,41.5,40.0,42.0,42.0,26.0,41.0,46.0,39.0
-lamarjackson,lamarjackson,Lamar Jackson,QB,41.82,6,36.95,50.0,45.0,48.0,54.0,15.0,42.0,55.0,40.0
-zayflowers,zayflowers,Zay Flowers,WR,42.35,6,45.09,35.5,39.0,38.0,36.0,57.0,40.0,38.0,41.0
-teehiggins,teehiggins,Tee Higgins,WR,42.59,6,50.52,36.5,38.0,35.0,38.0,60.0,37.0,35.0,42.0
-camskattebo,camskattebo,Cam Skattebo,RB,44.41,6,42.49,44.0,42.0,44.0,43.0,50.0,44.0,43.0,43.0
-emekaegbuka,emekaegbuka,Emeka Egbuka,WR,46.64,6,51.84,39.5,44.0,36.0,41.0,62.0,49.0,40.0,44.0
-buckyirving,buckyirving,Bucky Irving,RB,46.95,6,52.7,52.5,41.0,47.0,49.0,53.0,36.0,44.0,45.0
-laddmcconkey,laddmcconkey,Ladd McConkey,WR,47.16,6,57.99,37.0,43.0,41.0,39.0,61.0,43.0,41.0,46.0
-davanteadams,davanteadams,Davante Adams,WR,50.29,6,43.73,49.5,46.0,45.0,44.0,69.0,48.0,52.0,47.0
-joeburrow,joeburrow,Joe Burrow,QB,52.15,6,56.87,57.5,54.0,55.0,64.0,27.0,47.0,63.0,48.0
-quinshonjudkins,quinshonjudkins,Quinshon Judkins,RB,52.84,6,55.05,55.0,50.0,52.0,58.0,44.0,52.0,56.0,49.0
-drakemaye,drakemaye,Drake Maye,QB,53.08,6,49.48,61.0,56.0,64.0,68.0,16.0,50.0,71.0,50.0
-treveyonhenderson,treveyonhenderson,TreVeyon Henderson,RB,53.16,6,58.98,50.5,48.0,57.0,53.0,64.0,39.0,47.0,51.0
-lutherburden,lutherburden,Luther Burden III,WR,54.96,6,73.77,42.5,47.0,46.0,46.0,77.0,45.0,42.0,52.0
-jaydendaniels,jaydendaniels,Jayden Daniels,QB,55.29,6,52.71,64.0,61.0,68.0,65.0,21.0,60.0,65.0,53.0
-tylerwarren,tylerwarren,Tyler Warren,TE,55.65,6,46.92,65.0,60.0,61.0,69.0,30.0,61.0,66.0,54.0
-jaylenwaddle,jaylenwaddle,Jaylen Waddle,WR,56.46,6,61.76,49.0,49.0,49.0,48.0,76.0,54.0,50.0,55.0
-jamesonwilliams,jamesonwilliams,Jameson Williams,WR,57.0,6,67.97,52.0,52.0,50.0,51.0,74.0,51.0,48.0,56.0
-terrymclaurin,terrymclaurin,Terry McLaurin,WR,57.25,6,53.47,47.0,51.0,51.0,47.0,86.0,55.0,51.0,57.0
-dandreswift,dandreswift,D'Andre Swift,RB,58.38,6,69.27,51.5,53.0,58.0,52.0,65.0,53.0,53.0,58.0
-davidmontgomery,davidmontgomery,David Montgomery,RB,58.61,6,71.68,49.5,55.0,53.0,50.0,72.0,56.0,49.0,59.0
-jalenhurts,jalenhurts,Jalen Hurts,QB,61.31,6,60.87,71.5,66.0,73.0,72.0,28.0,65.0,69.0,60.0
-djmoore,djmoore,DJ Moore,WR,63.21,6,66.25,52.0,57.0,43.0,45.0,100.0,71.0,54.0,61.0
-romeodunze,romeodunze,Rome Odunze,WR,64.21,6,73.27,56.5,59.0,56.0,57.0,83.0,59.0,57.0,62.0
-carnelltate,carnelltate,Carnell Tate,WR,64.77,6,57.65,61.5,63.0,62.0,61.0,81.0,66.0,61.0,63.0
-bhayshultuten,bhayshultuten,Bhayshul Tuten,RB,65.41,6,75.47,62.0,62.0,63.0,59.0,68.0,67.0,60.0,64.0
-mikeevans,mikeevans,Mike Evans,WR,65.91,6,80.48,56.0,58.0,54.0,56.0,103.0,57.0,45.0,65.0
-jadarianprice,jadarianprice,Jadarian Price,RB,66.61,6,62.64,62.5,67.0,60.0,60.0,66.0,93.0,58.0,66.0
-calebwilliams,calebwilliams,Caleb Williams,QB,67.5,6,101.01,69.5,77.0,69.0,71.0,31.0,63.0,70.0,67.0
-chubahubbard,chubahubbard,Chuba Hubbard,RB,69.88,6,78.28,68.0,65.0,70.0,66.0,73.0,64.0,68.0,68.0
-christianwatson,christianwatson,Christian Watson,WR,71.54,6,95.22,55.0,64.0,59.0,55.0,99.0,62.0,59.0,69.0
-haroldfannin,haroldfannin,Harold Fannin Jr.,TE,74.06,6,64.36,88.0,70.0,82.0,89.0,48.0,69.0,92.0,70.0
-marvinharrisonjr,marvinharrisonjr,Marvin Harrison Jr.,WR,74.23,6,79.4,67.0,68.0,66.0,63.0,95.0,75.0,67.0,71.0
-dakprescott,dakprescott,Dak Prescott,QB,76.36,6,93.17,78.0,82.0,75.0,79.0,56.0,77.0,78.0,72.0
-jaxsondart,jaxsondart,Jaxson Dart,QB,76.46,6,71.76,86.0,79.0,94.0,92.0,37.0,73.0,91.0,73.0
-brianthomasjr,brianthomasjr,Brian Thomas Jr.,WR,76.7,6,101.22,74.0,76.0,72.0,70.0,75.0,78.0,64.0,74.0
-alecpierce,alecpierce,Alec Pierce,WR,79.07,6,88.41,76.0,72.0,71.0,75.0,89.0,79.0,72.0,75.0
-jordyntyson,jordyntyson,Jordyn Tyson,WR,79.55,6,88.32,71.5,73.0,65.0,62.0,112.0,88.0,62.0,76.0
-trevorlawrence,trevorlawrence,Trevor Lawrence,QB,81.7,6,117.17,80.5,88.0,84.0,81.0,46.0,76.0,86.0,77.0
-tuckerkraft,tuckerkraft,Tucker Kraft,TE,81.92,6,111.55,86.5,80.0,78.0,86.0,54.0,81.0,81.0,78.0
-justinherbert,justinherbert,Justin Herbert,QB,82.73,6,127.4,76.5,87.0,89.0,82.0,41.0,74.0,83.0,79.0
-texansdst,texansdst,Texans D/ST,DST,82.99,1,82.99,,,,,,,,80.0
-kylepitts,kylepitts,Kyle Pitts Sr.,TE,83.2,6,68.23,95.0,89.0,92.0,106.0,45.0,85.0,103.0,81.0
-jaylenwarren,jaylenwarren,Jaylen Warren,RB,83.37,6,92.22,70.5,74.0,85.0,78.0,98.0,68.0,79.0,82.0
-tonypollard,tonypollard,Tony Pollard,RB,84.35,6,90.12,80.0,81.0,81.0,76.0,96.0,86.0,77.0,83.0
-dkmetcalf,dkmetcalf,DK Metcalf,WR,84.45,6,84.71,73.0,71.0,74.0,74.0,126.0,72.0,76.0,84.0
-samlaporta,samlaporta,Sam LaPorta,TE,84.54,6,74.22,95.0,90.0,86.0,94.0,58.0,98.0,97.0,85.0
-courtlandsutton,courtlandsutton,Courtland Sutton,WR,84.63,6,88.76,78.0,75.0,83.0,84.0,102.0,70.0,80.0,86.0
-rhamondrestevenson,rhamondrestevenson,Rhamondre Stevenson,RB,86.19,6,107.16,78.0,78.0,77.0,73.0,105.0,80.0,75.0,87.0
-parkerwashington,parkerwashington,Parker Washington,WR,87.73,6,104.38,71.0,85.0,67.0,67.0,122.0,92.0,74.0,88.0
-patrickmahomes,patrickmahomes,Patrick Mahomes II,QB,87.91,6,110.45,93.0,93.0,88.0,90.0,52.0,94.0,93.0,89.0
-rjharvey,rjharvey,RJ Harvey,RB,88.83,6,111.96,79.5,69.0,76.0,85.0,118.0,58.0,84.0,90.0
-broncosdst,broncosdst,Broncos D/ST,DST,89.85,1,89.85,,,,,,,,91.0
-matthewstafford,matthewstafford,Matthew Stafford,QB,90.59,6,97.55,92.0,97.0,91.0,101.0,67.0,83.0,104.0,92.0
-makailemon,makailemon,Makai Lemon,WR,90.79,6,101.76,85.0,83.0,79.0,77.0,127.0,87.0,73.0,93.0
-brockpurdy,brockpurdy,Brock Purdy,QB,90.91,6,100.48,96.0,95.0,98.0,96.0,63.0,90.0,98.0,94.0
-michaelwilson,michaelwilson,Michael Wilson,WR,93.24,6,115.45,91.0,84.0,80.0,87.0,108.0,82.0,87.0,95.0
-chrisgodwin,chrisgodwin,Chris Godwin Jr.,WR,94.39,6,103.35,92.5,92.0,87.0,80.0,101.0,106.0,89.0,96.0
-ramsdst,ramsdst,Rams D/ST,DST,95.05,1,95.05,,,,,,,,97.0
-ricodowdle,ricodowdle,Rico Dowdle,RB,95.34,6,99.06,89.0,86.0,93.0,88.0,115.0,89.0,88.0,98.0
-bonix,bonix,Bo Nix,QB,96.81,6,122.86,104.0,100.0,103.0,104.0,55.0,96.0,100.0,99.0
-seahawksdst,seahawksdst,Seahawks D/ST,DST,98.07,1,98.07,,,,,,,,100.0
-kylemonangai,kylemonangai,Kyle Monangai,RB,100.27,6,114.61,93.0,91.0,96.0,97.0,120.0,84.0,90.0,101.0
-georgekittle,georgekittle,George Kittle,TE,102.82,6,93.92,124.0,107.0,99.0,118.0,70.0,117.0,119.0,102.0
-jakobimeyers,jakobimeyers,Jakobi Meyers,WR,106.02,6,105.09,98.0,94.0,100.0,95.0,149.0,91.0,96.0,103.0
-jaredgoff,jaredgoff,Jared Goff,QB,106.72,6,153.31,102.5,109.0,104.0,105.0,78.0,95.0,105.0,104.0
-traviskelce,traviskelce,Travis Kelce,TE,106.93,6,89.59,122.0,108.0,115.0,120.0,71.0,125.0,121.0,105.0
-jordanaddison,jordanaddison,Jordan Addison,WR,109.58,6,127.49,99.0,98.0,95.0,93.0,153.0,104.0,85.0,106.0
-blakecorum,blakecorum,Blake Corum,RB,111.62,6,123.71,101.0,99.0,102.0,103.0,143.0,103.0,95.0,107.0
-jkdobbins,jkdobbins,J.K. Dobbins,RB,112.07,6,106.42,107.0,102.0,108.0,108.0,138.0,110.0,102.0,108.0
-kennethgainwell,kennethgainwell,Kenneth Gainwell,RB,112.3,6,104.81,91.5,104.0,113.0,102.0,129.0,107.0,118.0,109.0
-kylermurray,kylermurray,Kyler Murray,QB,112.93,6,155.58,109.0,111.0,107.0,109.0,85.0,112.0,109.0,110.0
-jaydenreed,jaydenreed,Jayden Reed,WR,112.94,6,142.66,95.5,105.0,90.0,83.0,159.0,121.0,82.0,111.0
-rickypearsall,rickypearsall,Ricky Pearsall,WR,113.84,6,119.04,98.0,101.0,106.0,99.0,161.0,97.0,101.0,112.0
-jordanlove,jordanlove,Jordan Love,QB,113.89,6,164.37,110.5,126.0,109.0,107.0,88.0,105.0,110.0,113.0
-tylershough,tylershough,Tyler Shough,QB,114.5,6,157.98,110.0,117.0,112.0,113.0,90.0,102.0,112.0,114.0
-jakeferguson,jakeferguson,Jake Ferguson,TE,114.84,6,108.07,126.0,113.0,127.0,131.0,84.0,113.0,126.0,115.0
-seattleseahawks,seattleseahawks,Seattle Seahawks,DST,115.0,2,,155.0,175.0,,,80.0,150.0,,116.0
-quentinjohnston,quentinjohnston,Quentin Johnston,WR,115.24,6,142.42,95.5,106.0,97.0,91.0,167.0,100.0,94.0,117.0
-wandalerobinson,wandalerobinson,Wan'Dale Robinson,WR,115.72,6,110.31,110.0,103.0,101.0,112.0,146.0,108.0,117.0,118.0
-bakermayfield,bakermayfield,Baker Mayfield,QB,116.48,6,160.86,112.0,122.0,119.0,115.0,87.0,101.0,116.0,119.0
-joshdowns,joshdowns,Josh Downs,WR,116.87,6,129.2,103.5,112.0,110.0,98.0,137.0,128.0,99.0,120.0
-dallasgoedert,dallasgoedert,Dallas Goedert,TE,117.43,6,102.59,131.5,125.0,125.0,126.0,91.0,126.0,134.0,121.0
-aaronjones,aaronjones,Aaron Jones Sr.,RB,119.5,6,95.98,122.0,114.0,121.0,117.0,124.0,139.0,120.0,122.0
-patriotsdst,patriotsdst,Patriots D/ST,DST,122.12,1,122.12,,,,,,,,123.0
-steelersdst,steelersdst,Steelers D/ST,DST,122.21,1,122.21,,,,,,,,124.0
-isaiahlikely,isaiahlikely,Isaiah Likely,TE,125.9,6,128.39,128.0,121.0,126.0,130.0,107.0,131.0,133.0,125.0
-xavierworthy,xavierworthy,Xavier Worthy,WR,126.64,6,127.82,112.0,123.0,114.0,110.0,170.0,132.0,106.0,126.0
-daltonkincaid,daltonkincaid,Dalton Kincaid,TE,126.74,6,154.45,120.5,120.0,111.0,132.0,111.0,122.0,130.0,127.0
-romeodoubs,romeodoubs,Romeo Doubs,WR,126.83,6,141.96,115.5,115.0,116.0,116.0,155.0,119.0,113.0,128.0
-markandrews,markandrews,Mark Andrews,TE,127.65,6,138.9,135.5,131.0,130.0,134.0,92.0,144.0,127.0,129.0
-matthewgolden,matthewgolden,Matthew Golden,WR,127.78,6,116.7,119.0,119.0,117.0,111.0,178.0,136.0,108.0,130.0
-malikwillis,malikwillis,Malik Willis,QB,128.78,6,167.68,124.5,138.0,128.0,122.0,106.0,118.0,131.0,131.0
-jacorycroskeymerritt,jacorycroskeymerritt,Jacory Croskey-Merritt,RB,128.98,6,133.88,127.5,110.0,118.0,125.0,156.0,127.0,114.0,132.0
-kcconcepcion,kcconcepcion,KC Concepcion,WR,129.86,6,124.15,124.5,124.0,120.0,119.0,164.0,137.0,115.0,133.0
-eaglesdst,eaglesdst,Eagles D/ST,DST,130.62,1,130.62,,,,,,,,134.0
-rachaadwhite,rachaadwhite,Rachaad White,RB,131.83,6,106.96,116.0,118.0,133.0,123.0,169.0,135.0,124.0,135.0
-cjstroud,cjstroud,C.J. Stroud,QB,132.46,6,167.76,135.5,139.0,137.0,137.0,97.0,114.0,142.0,136.0
-khalilshakir,khalilshakir,Khalil Shakir,WR,133.53,6,134.19,122.5,127.0,122.0,121.0,176.0,120.0,128.0,137.0
-samdarnold,samdarnold,Sam Darnold,QB,134.85,6,166.12,136.0,141.0,135.0,139.0,116.0,116.0,137.0,138.0
-ravensdst,ravensdst,Ravens D/ST,DST,136.27,1,136.27,,,,,,,,139.0
-camward,camward,Cam Ward,QB,136.77,6,167.64,135.5,153.0,140.0,135.0,110.0,130.0,138.0,140.0
-brandonaubrey,brandonaubrey,Brandon Aubrey,K,138.22,2,83.43,,185.0,,,,193.0,,141.0
-denverbroncos,denverbroncos,Denver Broncos,DST,138.5,2,,159.0,174.0,,,121.0,156.0,,142.0
-jonathonbrooks,jonathonbrooks,Jonathon Brooks,RB,138.67,6,129.01,111.5,128.0,124.0,124.0,181.0,151.0,123.0,143.0
-michaelpittmanjr,michaelpittmanjr,Michael Pittman Jr.,WR,138.8,6,85.82,95.5,96.0,105.0,100.0,336.0,99.0,107.0,144.0
-jordanmason,jordanmason,Jordan Mason,RB,138.83,6,152.98,122.0,116.0,129.0,129.0,177.0,123.0,122.0,145.0
-orondegadsden,orondegadsden,Oronde Gadsden II,TE,139.29,6,168.75,141.5,130.0,138.0,149.0,131.0,109.0,140.0,146.0
-kenyonsadiq,kenyonsadiq,Kenyon Sadiq,TE,139.46,6,140.73,153.5,143.0,141.0,155.0,104.0,147.0,149.0,147.0
-houstontexans,houstontexans,Houston Texans,DST,139.5,2,,143.0,167.0,,,139.0,140.0,,148.0
-jaydenhiggins,jaydenhiggins,Jayden Higgins,WR,140.28,6,161.65,122.5,129.0,134.0,133.0,173.0,115.0,125.0,149.0
-chrisrodriguez,chrisrodriguez,Chris Rodriguez Jr.,RB,142.89,6,163.36,123.5,134.0,123.0,114.0,189.0,157.0,111.0,150.0
-danieljones,danieljones,Daniel Jones,QB,144.35,6,167.12,140.0,154.0,139.0,138.0,136.0,141.0,145.0,151.0
-jalencoker,jalencoker,Jalen Coker,WR,146.32,6,158.93,133.0,132.0,131.0,127.0,205.0,124.0,132.0,152.0
-bryceyoung,bryceyoung,Bryce Young,QB,146.66,6,168.97,146.0,152.0,147.0,144.0,128.0,138.0,154.0,153.0
-zachcharbonnet,zachcharbonnet,Zach Charbonnet,RB,146.76,6,138.58,174.0,137.0,132.0,182.0,119.0,149.0,160.0,154.0
-tyronetracy,tyronetracy,Tyrone Tracy Jr.,RB,147.09,6,167.53,132.5,135.0,136.0,128.0,180.0,142.0,129.0,155.0
-juwanjohnson,juwanjohnson,Juwan Johnson,TE,148.75,6,165.5,145.0,140.0,151.0,153.0,135.0,133.0,155.0,156.0
-woodymarks,woodymarks,Woody Marks,RB,149.22,6,141.29,142.5,133.0,145.0,147.0,185.0,129.0,148.0,157.0
-brentonstrange,brentonstrange,Brenton Strange,TE,151.68,6,168.1,152.0,149.0,150.0,156.0,140.0,143.0,153.0,158.0
-hunterhenry,hunterhenry,Hunter Henry,TE,151.7,6,160.19,156.5,148.0,154.0,160.0,132.0,154.0,150.0,159.0
-stefondiggs,stefondiggs,Stefon Diggs,WR,153.12,6,160.71,139.0,142.0,144.0,136.0,197.0,146.0,135.0,160.0
-vikingsdst,vikingsdst,Vikings D/ST,DST,153.98,1,153.98,,,,,,,,161.0
-tjhockenson,tjhockenson,T.J. Hockenson,TE,154.73,6,150.36,167.0,156.0,162.0,162.0,123.0,168.0,163.0,162.0
-brownsdst,brownsdst,Browns D/ST,DST,154.81,1,154.81,,,,,,,,163.0
-travishunter,travishunter,Travis Hunter,WR,155.03,5,116.16,168.0,162.0,152.0,148.0,220.0,,139.0,164.0
-harrisonbutker,harrisonbutker,Harrison Butker,K,155.1,1,155.1,,252.0,,,,,,165.0
-lionsdst,lionsdst,Lions D/ST,DST,156.18,1,156.18,,,,,,,,166.0
-chigokonkwo,chigokonkwo,Chig Okonkwo,TE,157.69,6,169.17,149.5,164.0,153.0,145.0,151.0,176.0,152.0,167.0
-tylerallgeier,tylerallgeier,Tyler Allgeier,RB,157.99,6,164.92,146.5,136.0,155.0,157.0,202.0,111.0,158.0,168.0
-jaguarsdst,jaguarsdst,Jaguars D/ST,DST,158.28,1,158.28,,,,,,,,169.0
-rashidshaheed,rashidshaheed,Rashid Shaheed,WR,158.84,6,163.04,148.0,146.0,146.0,146.0,204.0,158.0,136.0,170.0
-fernandomendoza,fernandomendoza,Fernando Mendoza,QB,159.01,6,164.04,168.5,171.0,161.0,159.0,142.0,161.0,167.0,171.0
-isiahpacheco,isiahpacheco,Isiah Pacheco,RB,159.57,6,142.42,151.0,145.0,143.0,140.0,203.0,178.0,151.0,172.0
-tylerloop,tylerloop,Tyler Loop,K,159.91,1,159.91,,245.0,,,,,,173.0
-chrisboswell,chrisboswell,Chris Boswell,K,160.56,1,160.56,,247.0,,,,,,174.0
-jauanjennings,jauanjennings,Jauan Jennings,WR,160.61,6,167.68,149.5,144.0,148.0,143.0,224.0,134.0,147.0,175.0
-camerondicker,camerondicker,Cameron Dicker,K,161.75,2,110.5,,200.0,,,,213.0,,176.0
-jalenmcmillan,jalenmcmillan,Jalen McMillan,WR,161.91,6,164.48,148.5,155.0,142.0,141.0,211.0,167.0,146.0,177.0
-kaimifairbairn,kaimifairbairn,Ka'imi Fairbairn,K,162.93,2,124.86,,201.0,,,,201.0,,178.0
-jasonmyers,jasonmyers,Jason Myers,K,163.24,2,121.47,,212.0,,,,205.0,,179.0
-chargersdst,chargersdst,Chargers D/ST,DST,163.62,1,163.62,,,,,,,,180.0
-jonahcoleman,jonahcoleman,Jonah Coleman,RB,164.41,6,169.46,157.0,151.0,167.0,164.0,198.0,145.0,143.0,181.0
-omarcooper,omarcooper,Omar Cooper Jr.,WR,164.59,6,157.57,158.5,150.0,149.0,152.0,218.0,170.0,141.0,182.0
-tyjaespears,tyjaespears,Tyjae Spears,RB,165.08,6,145.47,154.5,147.0,159.0,151.0,209.0,164.0,162.0,183.0
-cairosantos,cairosantos,Cairo Santos,K,165.31,1,165.31,,266.0,,,,,,184.0
-chiefsdst,chiefsdst,Chiefs D/ST,DST,165.48,1,165.48,,,,,,,,185.0
-jacobybrissett,jacobybrissett,Jacoby Brissett,QB,165.51,6,170.05,174.5,179.0,158.0,170.0,157.0,155.0,183.0,186.0
-cowboysdst,cowboysdst,Cowboys D/ST,DST,167.05,1,167.05,,,,,,,,187.0
-packersdst,packersdst,Packers D/ST,DST,167.47,1,167.47,,,,,,,,188.0
-49ersdst,49ersdst,49ers D/ST,DST,167.99,1,167.99,,,,,,,,189.0
-daltonschultz,daltonschultz,Dalton Schultz,TE,168.04,6,169.24,174.5,173.0,172.0,173.0,158.0,165.0,171.0,190.0
-evanmcpherson,evanmcpherson,Evan McPherson,K,168.15,1,168.15,,279.0,,,,,,191.0
-keatonmitchell,keatonmitchell,Keaton Mitchell,RB,168.36,6,170.17,147.5,163.0,157.0,142.0,226.0,171.0,144.0,192.0
-bearsdst,bearsdst,Bears D/ST,DST,168.48,1,168.48,,,,,,,,193.0
-buccaneersdst,buccaneersdst,Buccaneers D/ST,DST,168.55,1,168.55,,,,,,,,194.0
-andyborregales,andyborregales,Andy Borregales,K,168.78,1,168.78,,283.0,,,,,,195.0
-jakeelliott,jakeelliott,Jake Elliott,K,168.89,1,168.89,,287.0,,,,,,196.0
-treysmack,treysmack,Trey Smack,K,169.04,1,169.04,,289.0,,,,,,197.0
-giantsdst,giantsdst,Giants D/ST,DST,169.04,1,169.04,,,,,,,,198.0
-billsdst,billsdst,Bills D/ST,DST,169.24,1,169.24,,,,,,,,199.0
-titansdst,titansdst,Titans D/ST,DST,169.26,1,169.26,,,,,,,,200.0
-bengalsdst,bengalsdst,Bengals D/ST,DST,169.49,1,169.49,,,,,,,,201.0
-willutz,willutz,Wil Lutz,K,169.54,1,169.54,,305.0,,,,,,202.0
-raidersdst,raidersdst,Raiders D/ST,DST,169.6,1,169.6,,,,,,,,203.0
-falconsdst,falconsdst,Falcons D/ST,DST,169.63,1,169.63,,,,,,,,204.0
-nickfolk,nickfolk,Nick Folk,K,169.64,1,169.64,,313.0,,,,,,205.0
-commandersdst,commandersdst,Commanders D/ST,DST,169.69,1,169.69,,,,,,,,206.0
-dolphinsdst,dolphinsdst,Dolphins D/ST,DST,169.7,1,169.7,,,,,,,,207.0
-demariodouglas,demariodouglas,DeMario Douglas,WR,169.75,1,169.75,320.0,,,,,,,208.0
-tylerbass,tylerbass,Tyler Bass,K,169.78,1,169.78,,,,,,,,209.0
-eliraridon,eliraridon,Eli Raridon,TE,169.78,1,169.78,329.0,,,,,,,210.0
-darnellwashington,darnellwashington,Darnell Washington,TE,169.78,1,169.78,328.5,,,,,,,211.0
-mattgay,mattgay,Matt Gay,K,169.81,1,169.81,,,,,,,,212.0
-panthersdst,panthersdst,Panthers D/ST,DST,169.81,1,169.81,,,,,,,,213.0
-bensauls,bensauls,Ben Sauls,K,169.84,1,169.84,,,,,,,,214.0
-andreszmyt,andreszmyt,Andre Szmyt,K,169.85,1,169.85,,,,,,,,215.0
-coltsdst,coltsdst,Colts D/ST,DST,169.86,1,169.86,,,,,,,,216.0
-saintsdst,saintsdst,Saints D/ST,DST,169.87,1,169.87,,,,,,,,217.0
-blakegrupe,blakegrupe,Blake Grupe,K,169.89,1,169.89,,,,,,,,218.0
-jakemoody,jakemoody,Jake Moody,K,169.9,1,169.9,,,,,,,,219.0
-cardinalsdst,cardinalsdst,Cardinals D/ST,DST,169.9,1,169.9,,,,,,,,220.0
-chadryland,chadryland,Chad Ryland,K,169.9,1,169.9,,,,,,,,221.0
-tysimpson,tysimpson,Ty Simpson,QB,169.91,1,169.91,354.0,,,,,,,222.0
-jalenroyals,jalenroyals,Jalen Royals,WR,169.91,1,169.91,336.0,,,,,,,223.0
-zanegonzalez,zanegonzalez,Zane Gonzalez,K,169.91,1,169.91,,,,,,,,224.0
-kavontaeturpin,kavontaeturpin,KaVontae Turpin,WR,169.92,1,169.92,265.0,,,,,,,225.0
-jordanwhittington,jordanwhittington,Jordan Whittington,WR,169.92,1,169.92,249.0,,,,,,,226.0
-ryanfitzgerald,ryanfitzgerald,Ryan Fitzgerald,K,169.92,1,169.92,,,,,,,,227.0
-tommydevito,tommydevito,Tommy DeVito,QB,169.93,1,169.93,281.0,,,,,,,228.0
-cadeyork,cadeyork,Cade York,K,169.95,1,169.95,,,,,,,,229.0
-erickall,erickall,Erick All Jr.,TE,169.98,1,169.98,,,,,,,,230.0
-devontezwalker,devontezwalker,Devontez Walker,WR,169.99,1,169.99,273.0,,,,,,,231.0
-drewsample,drewsample,Drew Sample,TE,169.99,1,169.99,,,,,,,,232.0
-cadestover,cadestover,Cade Stover,TE,169.99,1,169.99,,,,,,,,233.0
-jjmccarthy,jjmccarthy,J.J. McCarthy,QB,169.99,1,169.99,362.0,,,,,,,234.0
-jetsdst,jetsdst,Jets D/ST,DST,169.99,1,169.99,,,,,,,,235.0
-treylonburks,treylonburks,Treylon Burks,WR,170.0,1,170.0,290.0,,,,,,,236.0
-colekmet,colekmet,Cole Kmet,TE,170.0,1,170.0,399.0,,,,,,,237.0
-dawsonknox,dawsonknox,Dawson Knox,TE,170.0,1,170.0,332.5,,,,,,,238.0
-tutuatwell,tutuatwell,Tutu Atwell,WR,170.01,1,170.01,347.0,,,,,,,239.0
-joemilton,joemilton,Joe Milton III,QB,170.01,1,170.01,272.0,,,,,,,240.0
-kalifraymond,kalifraymond,Kalif Raymond,WR,170.01,1,170.01,264.0,,,,,,,241.0
-josholiver,josholiver,Josh Oliver,TE,170.02,1,170.02,,,,,,,,242.0
-johnbates,johnbates,John Bates,TE,170.02,1,170.02,,,,,,,,243.0
-joeyslye,joeyslye,Joey Slye,K,170.03,1,170.03,,,,,,,,244.0
-dontethornton,dontethornton,Dont'e Thornton Jr.,WR,170.03,1,170.03,276.0,,,,,,,245.0
-joshuapalmer,joshuapalmer,Joshua Palmer,WR,170.04,1,170.04,318.0,,,,,,,246.0
-xavierhutchinson,xavierhutchinson,Xavier Hutchinson,WR,170.04,1,170.04,,,,,,,,247.0
-charliesmyth,charliesmyth,Charlie Smyth,K,170.04,1,170.04,,331.0,,,,,,248.0
-ashtondulin,ashtondulin,Ashton Dulin,WR,170.04,1,170.04,,,,,,,,249.0
-mitchellevans,mitchellevans,Mitchell Evans,TE,170.04,1,170.04,,,,,,,,250.0
-kendrickbourne,kendrickbourne,Kendrick Bourne,WR,170.05,1,170.05,309.0,,,,,,,251.0
-willkacmarek,willkacmarek,Will Kacmarek,TE,170.06,1,170.06,,,,,,,,252.0
-olamidezaccheaus,olamidezaccheaus,Olamide Zaccheaus,WR,170.06,1,170.06,375.0,,,,,,,253.0
-jaylinlane,jaylinlane,Jaylin Lane,WR,170.07,1,170.07,,,,,,,,254.0
-jameiswinston,jameiswinston,Jameis Winston,QB,170.07,1,170.07,366.0,,,,,,,255.0
-anthonyrichardson,anthonyrichardson,Anthony Richardson Sr.,QB,170.08,1,170.08,344.0,,,,,,,256.0
-reggiegilliam,reggiegilliam,Reggie Gilliam,RB,170.09,1,170.09,,,,,,,,257.0
-masonrudolph,masonrudolph,Mason Rudolph,QB,170.1,1,170.1,262.0,,,,,,,258.0
-jakebrowning,jakebrowning,Jake Browning,QB,170.11,1,170.11,259.0,,,,,,,259.0
-michaelmayer,michaelmayer,Michael Mayer,TE,170.12,1,170.12,314.5,,,,,,,260.0
-nickmullens,nickmullens,Nick Mullens,QB,170.13,1,170.13,290.0,,,,,,,261.0
-tahjbrooks,tahjbrooks,Tahj Brooks,RB,170.14,1,170.14,348.0,,,,,,,262.0
-jarrettstidham,jarrettstidham,Jarrett Stidham,QB,170.14,1,170.14,324.0,,,,,,,263.0
-noahgray,noahgray,Noah Gray,TE,170.14,1,170.14,374.0,,,,,,,264.0
-dyamibrown,dyamibrown,Dyami Brown,WR,170.15,1,170.15,282.0,,,,,,,265.0
-kendremiller,kendremiller,Kendre Miller,RB,170.15,1,170.15,297.0,,,,,,,266.0
-marvinmims,marvinmims,Marvin Mims Jr.,WR,170.15,1,170.15,343.5,,,,,,,267.0
-patrickricard,patrickricard,Patrick Ricard,RB,170.16,1,170.16,,,,,,,,268.0
-kylejuszczyk,kylejuszczyk,Kyle Juszczyk,RB,170.18,1,170.18,,,,,,,,269.0
-austinhooper,austinhooper,Austin Hooper,TE,170.18,1,170.18,,,,,,,,270.0
-elijahhiggins,elijahhiggins,Elijah Higgins,TE,170.2,1,170.2,285.0,,,,,,,271.0
-maxklare,maxklare,Max Klare,TE,170.2,1,170.2,406.0,,,,,,,272.0
-elijaharroyo,elijaharroyo,Elijah Arroyo,TE,170.21,1,170.21,339.0,,,,,,,273.0
-georgeholani,georgeholani,George Holani,RB,170.21,1,170.21,321.0,,,,,,,274.0
-tommytremble,tommytremble,Tommy Tremble,TE,170.21,1,170.21,300.0,,,,,,,275.0
-savionwilliams,savionwilliams,Savion Williams,WR,170.22,1,170.22,335.0,,,,,,,276.0
-connorheyward,connorheyward,Connor Heyward,RB,170.22,1,170.22,,,,,,,,277.0
-jatavionsanders,jatavionsanders,Ja'Tavion Sanders,TE,170.22,1,170.22,303.0,,,,,,,278.0
-noahfant,noahfant,Noah Fant,TE,170.22,1,170.22,,,,,,,,279.0
-trevoretienne,trevoretienne,Trevor Etienne,RB,170.23,1,170.23,315.0,,,,,,,280.0
-vanjefferson,vanjefferson,Van Jefferson,WR,170.23,1,170.23,,,,,,,,281.0
-rileynowakowski,rileynowakowski,Riley Nowakowski,TE,170.23,1,170.23,,,,,,,,282.0
-tylerbadie,tylerbadie,Tyler Badie,RB,170.23,1,170.23,,,,,,,,283.0
-devinsingletary,devinsingletary,Devin Singletary,RB,170.24,1,170.24,334.0,,,,,,,284.0
-andrewbeck,andrewbeck,Andrew Beck,RB,170.24,1,170.24,,,,,,,,285.0
-hunterluepke,hunterluepke,Hunter Luepke,RB,170.24,1,170.24,,,,,,,,286.0
-alecingold,alecingold,Alec Ingold,RB,170.25,1,170.25,,,,,,,,287.0
-xavierlegette,xavierlegette,Xavier Legette,WR,170.26,1,170.26,412.0,,,,,,,288.0
-nickwestbrookikhine,nickwestbrookikhine,Nick Westbrook-Ikhine,WR,170.27,1,170.27,292.0,,,,,,,289.0
-lequintallen,lequintallen,LeQuint Allen Jr.,RB,170.27,1,170.27,321.0,,,,,,,290.0
-adamprentice,adamprentice,Adam Prentice,RB,170.3,1,170.3,,,,,,,,291.0
-jalentolbert,jalentolbert,Jalen Tolbert,WR,170.3,1,170.3,326.5,,,,,,,292.0
-ajbarner,ajbarner,AJ Barner,TE,170.39,6,169.36,182.5,182.0,174.0,175.0,162.0,172.0,170.0,293.0
-camlittle,camlittle,Cam Little,K,172.33,2,134.67,,214.0,,,,210.0,,294.0
-tretucker,tretucker,Tre Tucker,WR,173.19,6,169.13,158.0,172.0,165.0,150.0,225.0,173.0,157.0,295.0
-aaronrodgers,aaronrodgers,Aaron Rodgers,QB,173.72,6,169.33,163.5,191.0,163.0,163.0,171.0,203.0,173.0,296.0
-dylansampson,dylansampson,Dylan Sampson,RB,175.16,6,169.94,152.0,161.0,173.0,154.0,227.0,159.0,168.0,297.0
-alvinkamara,alvinkamara,Alvin Kamara,RB,175.87,6,148.24,182.0,157.0,166.0,169.0,212.0,175.0,185.0,298.0
-genosmith,genosmith,Geno Smith,QB,176.66,6,169.95,175.5,195.0,169.0,172.0,186.0,186.0,177.0,299.0
-denzelboston,denzelboston,Denzel Boston,WR,176.9,6,167.4,164.0,158.0,168.0,168.0,244.0,153.0,161.0,300.0
-deebosamuel,deebosamuel,Deebo Samuel Sr.,WR,177.42,6,168.55,164.5,159.0,177.0,165.0,236.0,152.0,166.0,301.0
-jerryjeudy,jerryjeudy,Jerry Jeudy,WR,178.87,6,166.21,178.0,168.0,176.0,180.0,193.0,177.0,181.0,302.0
-jalennailor,jalennailor,Jalen Nailor,WR,181.29,6,169.76,162.5,176.0,160.0,158.0,253.0,191.0,156.0,303.0
-gunnarhelm,gunnarhelm,Gunnar Helm,TE,184.31,6,169.89,188.5,203.0,188.0,181.0,182.0,207.0,178.0,304.0
-minnesotavikings,minnesotavikings,Minnesota Vikings,DST,186.5,2,,186.0,199.0,,,199.0,174.0,,305.0
-eddypineiro,eddypineiro,Eddy Pineiro,K,187.14,2,146.29,,232.0,,,,228.0,,306.0
-cadeotton,cadeotton,Cade Otton,TE,187.34,6,170.06,198.0,213.0,182.0,188.0,188.0,212.0,184.0,307.0
-antoniowilliams,antoniowilliams,Antonio Williams,WR,187.9,6,169.42,175.0,192.0,164.0,171.0,217.0,247.0,159.0,308.0
-harrisonmevis,harrisonmevis,Harrison Mevis,K,188.93,2,137.86,,242.0,,,,240.0,,309.0
-brianrobinson,brianrobinson,Brian Robinson Jr.,RB,189.09,6,167.53,170.5,165.0,171.0,166.0,275.0,190.0,165.0,310.0
-brandonaiyuk,brandonaiyuk,Brandon Aiyuk,WR,189.21,6,169.26,189.0,160.0,178.0,178.0,272.0,163.0,175.0,311.0
-emmettjohnson,emmettjohnson,Emmett Johnson,RB,189.45,6,169.67,171.5,169.0,193.0,186.0,258.0,148.0,182.0,312.0
-germiebernard,germiebernard,Germie Bernard,WR,190.36,5,168.8,219.0,206.0,186.0,183.0,234.0,,180.0,313.0
-isaacteslaa,isaacteslaa,Isaac TeSlaa,WR,191.93,6,169.58,182.5,190.0,170.0,167.0,281.0,195.0,169.0,314.0
-kaytronallen,kaytronallen,Kaytron Allen,RB,192.64,6,169.84,180.5,194.0,196.0,176.0,208.0,216.0,190.0,315.0
-mikewashington,mikewashington,Mike Washington Jr.,RB,193.46,6,168.73,192.5,170.0,184.0,210.0,245.0,166.0,187.0,316.0
-nicholassingleton,nicholassingleton,Nicholas Singleton,RB,193.95,6,169.7,188.0,181.0,179.0,194.0,249.0,200.0,172.0,317.0
-patfreiermuth,patfreiermuth,Pat Freiermuth,TE,194.16,6,168.97,196.0,217.0,198.0,190.0,187.0,230.0,191.0,318.0
-malikwashington,malikwashington,Malik Washington,WR,194.19,6,170.12,194.0,226.0,181.0,189.0,196.0,226.0,203.0,319.0
-dezhaunstribling,dezhaunstribling,De'Zhaun Stribling,WR,194.4,5,170.02,213.0,215.0,175.0,177.0,286.0,,164.0,320.0
-davidnjoku,davidnjoku,David Njoku,TE,194.88,6,169.26,205.5,189.0,180.0,187.0,222.0,219.0,192.0,321.0
-newenglandpatriots,newenglandpatriots,New England Patriots,DST,196.0,2,,184.0,198.0,,,210.0,182.0,,322.0
-jakebates,jakebates,Jake Bates,K,196.56,2,150.11,,240.0,,,,243.0,,323.0
-elistowers,elistowers,Eli Stowers,TE,197.29,6,169.72,219.0,220.0,192.0,211.0,183.0,232.0,196.0,324.0
-tankbigsby,tankbigsby,Tank Bigsby,RB,197.94,6,167.62,181.5,178.0,187.0,179.0,284.0,196.0,174.0,325.0
-emanuelwilson,emanuelwilson,Emanuel Wilson,RB,198.02,6,170.1,169.5,177.0,185.0,174.0,297.0,169.0,193.0,326.0
-treharris,treharris,Tre' Harris,WR,198.2,6,170.17,177.0,196.0,200.0,184.0,264.0,183.0,188.0,327.0
-willreichard,willreichard,Will Reichard,K,198.66,2,164.31,,263.0,,,,233.0,,328.0
-kayshonboutte,kayshonboutte,Kayshon Boutte,WR,199.96,6,169.77,209.0,184.0,194.0,207.0,246.0,181.0,202.0,329.0
-gregdulcich,gregdulcich,Greg Dulcich,TE,200.23,5,170.16,216.0,248.0,215.0,199.0,207.0,,210.0,330.0
-colbyparkinson,colbyparkinson,Colby Parkinson,TE,200.5,6,169.97,215.0,225.0,197.0,217.0,192.0,199.0,228.0,331.0
-tuatagovailoa,tuatagovailoa,Tua Tagovailoa,QB,202.5,6,169.99,202.5,221.0,199.0,206.0,233.0,198.0,209.0,332.0
-buffalobills,buffalobills,Buffalo Bills,DST,203.0,2,,213.0,243.0,,,191.0,215.0,,333.0
-calvinridley,calvinridley,Calvin Ridley,WR,203.25,6,166.52,204.0,180.0,183.0,185.0,292.0,217.0,176.0,334.0
-chrisbell,chrisbell,Chris Bell,WR,203.77,5,168.86,218.0,211.0,190.0,204.0,267.0,,189.0,335.0
-joeflacco,joeflacco,Joe Flacco,QB,204.52,2,170.04,393.0,312.0,239.0,,,,,336.0
-jahandotson,jahandotson,Jahan Dotson,WR,204.57,2,170.14,342.0,278.0,,239.0,,,,337.0
-chasemclaughlin,chasemclaughlin,Chase McLaughlin,K,204.59,2,167.18,,258.0,,,,242.0,,338.0
-tyreekhill,tyreekhill,Tyreek Hill,WR,204.8,6,162.83,233.0,166.0,156.0,195.0,328.0,188.0,199.0,339.0
-jamesconner,jamesconner,James Conner,RB,204.86,6,169.16,205.5,183.0,210.0,212.0,254.0,160.0,224.0,340.0
-clevelandbrowns,clevelandbrowns,Cleveland Browns,DST,205.0,2,,190.0,204.0,,,231.0,179.0,,341.0
-jaketonges,jaketonges,Jake Tonges,TE,205.5,6,169.99,220.0,229.0,227.0,222.0,184.0,214.0,216.0,342.0
-odellbeckham,odellbeckham,Odell Beckham Jr.,WR,205.9,2,166.8,286.0,320.0,245.0,,,,,343.0
-cooperkupp,cooperkupp,Cooper Kupp,WR,206.49,5,168.43,221.0,224.0,195.0,193.0,270.0,,206.0,344.0
-kimanividal,kimanividal,Kimani Vidal,RB,206.97,6,169.84,197.0,188.0,205.0,205.0,263.0,180.0,219.0,345.0
-willshipley,willshipley,Will Shipley,RB,207.13,2,170.26,254.0,330.0,244.0,,,,,346.0
-mikegesicki,mikegesicki,Mike Gesicki,TE,207.39,5,169.94,277.0,257.0,222.0,215.0,223.0,,207.0,347.0
-atlantafalcons,atlantafalcons,Atlanta Falcons,DST,208.0,1,,215.0,268.0,,,,208.0,,348.0
-rileyleonard,rileyleonard,Riley Leonard,QB,208.05,2,170.09,,328.0,246.0,,,,,349.0
-isaiahdavis,isaiahdavis,Isaiah Davis,RB,209.11,2,170.21,376.0,322.0,248.0,,,,,350.0
-losangelesrams,losangelesrams,Los Angeles Rams,DST,209.5,2,,169.0,186.0,,,257.0,162.0,,351.0
-tedhurst,tedhurst,Ted Hurst III,WR,210.25,5,170.26,275.5,236.0,202.0,208.0,285.0,,186.0,352.0
-terranceferguson,terranceferguson,Terrance Ferguson,TE,210.65,6,168.89,221.0,208.0,214.0,201.0,242.0,234.0,204.0,353.0
-tankdell,tankdell,Tank Dell,WR,211.44,6,168.64,220.0,207.0,189.0,202.0,287.0,227.0,195.0,354.0
-raydavis,raydavis,Ray Davis,RB,213.32,6,169.92,198.0,219.0,206.0,192.0,274.0,238.0,200.0,355.0
-zachariahbranch,zachariahbranch,Zachariah Branch,WR,213.34,5,169.7,213.0,233.0,208.0,200.0,291.0,,198.0,356.0
-seantucker,seantucker,Sean Tucker,RB,213.88,6,170.25,185.0,197.0,212.0,196.0,299.0,209.0,197.0,357.0
-deshaunwatson,deshaunwatson,Deshaun Watson,QB,215.01,5,170.05,215.5,255.0,213.0,209.0,268.0,,215.0,358.0
-ryanflournoy,ryanflournoy,Ryan Flournoy,WR,215.49,6,169.93,178.5,216.0,191.0,161.0,353.0,239.0,179.0,359.0
-braelonallen,braelonallen,Braelon Allen,RB,215.74,6,169.44,198.0,187.0,201.0,191.0,321.0,211.0,201.0,360.0
-michaelpenix,michaelpenix,Michael Penix Jr.,QB,216.2,6,170.17,228.0,237.0,218.0,220.0,243.0,224.0,222.0,361.0
-adonaimitchell,adonaimitchell,Adonai Mitchell,WR,217.71,6,170.26,214.0,205.0,207.0,197.0,296.0,222.0,214.0,362.0
-shedeursanders,shedeursanders,Shedeur Sanders,QB,218.51,5,169.54,232.0,259.0,209.0,230.0,252.0,,232.0,363.0
-chrisbrazzell,chrisbrazzell,Chris Brazzell II,WR,218.75,4,170.01,302.0,251.0,226.0,,261.0,,218.0,364.0
-troyfranklin,troyfranklin,Troy Franklin,WR,219.17,6,170.02,217.0,209.0,224.0,216.0,307.0,185.0,213.0,365.0
-kaelonblack,kaelonblack,Kaelon Black,RB,220.37,5,169.83,231.0,230.0,216.0,213.0,298.0,,205.0,366.0
-demondclaiborne,demondclaiborne,Demond Claiborne,RB,221.04,5,170.2,238.0,256.0,225.0,224.0,265.0,,221.0,367.0
-devaughnvele,devaughnvele,Devaughn Vele,WR,221.35,3,170.04,333.0,318.0,,250.0,,,244.0,368.0
-malachifields,malachifields,Malachi Fields,WR,222.53,5,169.64,226.5,227.0,204.0,219.0,312.0,,208.0,369.0
-evanengram,evanengram,Evan Engram,TE,222.58,5,169.92,303.0,291.0,228.0,249.0,229.0,,237.0,370.0
-darnellmooney,darnellmooney,Darnell Mooney,WR,223.71,5,169.55,205.5,231.0,211.0,198.0,346.0,,194.0,371.0
-carsonbeck,carsonbeck,Carson Beck,QB,224.6,5,170.0,301.0,282.0,229.0,243.0,240.0,,241.0,372.0
-kirkcousins,kirkcousins,Kirk Cousins,QB,226.34,6,170.06,236.5,260.0,223.0,227.0,256.0,246.0,236.0,373.0
-masontaylor,masontaylor,Mason Taylor,TE,226.4,3,170.19,306.5,264.0,,,278.0,231.0,,374.0
-philadelphiaeagles,philadelphiaeagles,Philadelphia Eagles,DST,226.5,2,,187.0,193.0,,,269.0,184.0,,375.0
-baltimoreravens,baltimoreravens,Baltimore Ravens,DST,228.0,2,,198.0,222.0,,,259.0,197.0,,376.0
-losangeleschargers,losangeleschargers,Los Angeles Chargers,DST,228.0,2,,196.0,218.0,,,262.0,194.0,,377.0
-indianapoliscolts,indianapoliscolts,Indianapolis Colts,DST,229.0,1,,232.0,274.0,,,,229.0,,378.0
-dontayvionwicks,dontayvionwicks,Dontayvion Wicks,WR,231.0,5,170.02,265.0,249.0,220.0,214.0,340.0,,211.0,379.0
-chimeredike,chimeredike,Chimere Dike,WR,232.67,3,,261.5,228.0,,,260.0,192.0,246.0,380.0
-marshawnlloyd,marshawnlloyd,MarShawn Lloyd,RB,232.72,4,169.86,269.5,304.0,,234.0,280.0,,247.0,381.0
-adamrandall,adamrandall,Adam Randall,RB,233.8,4,170.2,314.0,280.0,,232.0,290.0,,243.0,382.0
-justicehill,justicehill,Justice Hill,RB,234.15,5,169.77,247.0,261.0,221.0,203.0,348.0,,229.0,383.0
-theojohnson,theojohnson,Theo Johnson,TE,234.27,4,170.07,310.0,296.0,,,276.0,249.0,242.0,384.0
-elijahsarratt,elijahsarratt,Elijah Sarratt,WR,234.43,5,170.14,306.0,281.0,230.0,247.0,313.0,,212.0,385.0
-joemixon,joemixon,Joe Mixon,RB,235.0,1,,334.0,293.0,235.0,,,,,386.0
-keoncoleman,keoncoleman,Keon Coleman,WR,235.99,5,169.93,299.0,270.0,217.0,231.0,339.0,,223.0,387.0
-carolinapanthers,carolinapanthers,Carolina Panthers,DST,236.0,1,,234.0,294.0,,,,236.0,,388.0
-jmaritaylor,jmaritaylor,J'Mari Taylor,,236.0,1,,,317.0,236.0,,,,,389.0
-jaylinnoel,jaylinnoel,Jaylin Noel,WR,236.26,4,170.03,299.5,262.0,,237.0,305.0,,233.0,390.0
-chrisbrooks,chrisbrooks,Chris Brooks,RB,236.73,3,170.19,236.5,321.0,,246.0,294.0,,,391.0
-nickchubb,nickchubb,Nick Chubb,RB,237.0,1,,251.0,310.0,237.0,,,,,392.0
-kalebjohnson,kalebjohnson,Kaleb Johnson,RB,237.08,2,170.17,402.0,273.0,,,304.0,,,393.0
-justinfields,justinfields,Justin Fields,QB,237.77,4,170.07,363.0,295.0,234.0,236.0,311.0,,,394.0
-toryhorton,toryhorton,Tory Horton,WR,237.85,5,170.24,311.0,253.0,219.0,223.0,360.0,,217.0,395.0
-pittsburghsteelers,pittsburghsteelers,Pittsburgh Steelers,DST,238.5,2,,189.0,202.0,,,288.0,189.0,,396.0
-christiankirk,christiankirk,Christian Kirk,WR,239.0,6,169.98,220.0,254.0,203.0,218.0,370.0,248.0,225.0,397.0
-jaylenwright,jaylenwright,Jaylen Wright,RB,239.07,4,170.3,247.0,267.0,,248.0,293.0,245.0,,398.0
-jordanjames,jordanjames,Jordan James,RB,239.18,5,169.9,218.0,272.0,240.0,228.0,319.0,,239.0,399.0
-tampabaybuccaneers,tampabaybuccaneers,Tampa Bay Buccaneers,DST,241.0,1,,242.0,276.0,,,,241.0,,400.0
-romanhemby,romanhemby,Roman Hemby,,241.0,1,,,325.0,241.0,,,,,401.0
-jeromeford,jeromeford,Jerome Ford,RB,242.0,1,,330.0,323.0,242.0,,,,,402.0
-patbryant,patbryant,Pat Bryant,WR,242.02,6,170.09,297.0,235.0,238.0,226.0,363.0,235.0,220.0,403.0
-macjones,macjones,Mac Jones,QB,242.03,2,170.05,359.0,326.0,,,314.0,,,404.0
-tyquanthornton,tyquanthornton,Tyquan Thornton,WR,243.82,5,170.08,311.0,286.0,247.0,225.0,350.0,,227.0,405.0
-tennesseetitans,tennesseetitans,Tennessee Titans,DST,244.0,1,,244.0,300.0,,,,244.0,,406.0
-jackbech,jackbech,Jack Bech,WR,245.0,3,169.99,326.0,277.0,,,330.0,,235.0,407.0
-jakobilane,jakobilane,Ja'Kobi Lane,WR,245.14,3,169.43,324.5,285.0,,,335.0,,231.0,408.0
-albertokwuegbunam,albertokwuegbunam,Albert Okwuegbunam Jr.,TE,247.0,1,,247.0,,,,,,,409.0
-treybenson,treybenson,Trey Benson,RB,247.1,3,170.31,337.0,241.0,,,367.0,204.0,,410.0
-malikdavis,malikdavis,Malik Davis,RB,247.36,3,170.07,274.0,333.0,,,323.0,,249.0,411.0
-dallascowboys,dallascowboys,Dallas Cowboys,DST,250.0,1,,239.0,246.0,,,,250.0,,412.0
-philmafah,philmafah,Phil Mafah,RB,250.0,1,,250.0,,,,,,,413.0
-rashodbateman,rashodbateman,Rashod Bateman,WR,250.4,5,169.98,303.0,290.0,249.0,242.0,365.0,,226.0,414.0
-samajeperine,samajeperine,Samaje Perine,RB,251.27,4,170.09,304.0,288.0,233.0,221.0,381.0,,,415.0
-kareemhunt,kareemhunt,Kareem Hunt,RB,251.5,2,,313.0,303.0,232.0,,271.0,,,416.0
-roberthenry,roberthenry,Robert Henry Jr.,RB,252.0,1,,252.0,,,,,,,417.0
-olliegordon,olliegordon,Ollie Gordon II,RB,252.06,4,170.24,315.0,292.0,231.0,235.0,372.0,,,418.0
-dariusslayton,dariusslayton,Darius Slayton,WR,252.29,4,170.17,336.5,316.0,,238.0,351.0,,250.0,419.0
-jaydonblue,jaydonblue,Jaydon Blue,RB,253.28,4,170.11,270.0,265.0,,241.0,368.0,,234.0,420.0
-andydalton,andydalton,Andy Dalton,QB,255.0,1,,255.0,,,,,,,421.0
-taysomhill,taysomhill,Taysom Hill,TE,257.0,1,,257.0,,,,,,,422.0
-djgiddens,djgiddens,DJ Giddens,RB,257.56,4,170.22,315.0,302.0,,229.0,383.0,,248.0,423.0
-calebdouglas,calebdouglas,Caleb Douglas,WR,258.67,3,170.01,313.5,311.0,,,366.0,,240.0,424.0
-chicagobears,chicagobears,Chicago Bears,DST,260.0,2,,204.0,244.0,,,318.0,202.0,,425.0
-jacksonvillejaguars,jacksonvillejaguars,Jacksonville Jaguars,DST,260.0,2,,191.0,210.0,,,333.0,187.0,,426.0
-pierrestrong,pierrestrong,Pierre Strong Jr.,RB,260.0,1,,260.0,,,,,,,427.0
-deionburks,deionburks,Deion Burks,WR,261.0,1,,261.0,,,,,,,428.0
-tyjohnson,tyjohnson,Ty Johnson,RB,261.08,3,170.23,302.5,297.0,,233.0,380.0,,,429.0
-marquisebrown,marquisebrown,Hollywood Brown,WR,262.47,2,169.94,312.0,309.0,,,355.0,,,430.0
-greenbaypackers,greenbaypackers,Green Bay Packers,DST,263.0,2,,209.0,223.0,,,320.0,206.0,,431.0
-lukemccaffrey,lukemccaffrey,Luke McCaffrey,WR,263.0,1,,263.0,,,,,,,432.0
-brycelance,brycelance,Bryce Lance,WR,263.67,3,170.0,294.0,327.0,,244.0,377.0,,,433.0
-newyorkgiants,newyorkgiants,New York Giants,DST,264.0,2,,222.0,239.0,,,303.0,225.0,,434.0
-tannermckee,tannermckee,Tanner McKee,QB,266.0,1,,266.0,,,,,,,435.0
-tyrodtaylor,tyrodtaylor,Tyrod Taylor,QB,267.0,1,,267.0,,,,,,,436.0
-andreiiosivas,andreiiosivas,Andrei Iosivas,WR,267.71,3,170.14,324.5,315.0,,,395.0,,238.0,437.0
-jordanwatkins,jordanwatkins,Jordan Watkins,WR,268.0,1,,268.0,,,,,,,438.0
-malikbenson,malikbenson,Malik Benson,WR,268.5,1,,268.5,,,,,,,439.0
-sethmcgowan,sethmcgowan,Seth McGowan,RB,268.78,3,170.33,338.0,329.0,243.0,,393.0,,,440.0
-samroush,samroush,Sam Roush,TE,269.0,1,,269.0,,,,,,,441.0
-brashardsmith,brashardsmith,Brashard Smith,RB,271.39,3,170.17,394.0,334.0,250.0,,394.0,,,442.0
-neworleanssaints,neworleanssaints,New Orleans Saints,DST,272.0,2,,220.0,275.0,,,326.0,218.0,,443.0
-lukemusgrave,lukemusgrave,Luke Musgrave,TE,273.0,1,,273.0,,,,,,,444.0
-skylerbell,skylerbell,Skyler Bell,WR,273.5,2,,323.5,301.0,,,317.0,,230.0,445.0
-kennymcintosh,kennymcintosh,Kenny McIntosh,RB,274.0,1,,274.0,,,,,,,446.0
-tylerhigbee,tylerhigbee,Tyler Higbee,TE,274.0,2,169.99,360.0,314.0,,,378.0,,,447.0
-calvinaustiniii,calvinaustiniii,Calvin Austin III,WR,275.0,1,,275.0,,,,,,,448.0
-sanfrancisco49ers,sanfrancisco49ers,San Francisco 49ers,DST,276.0,2,,231.0,269.0,,,315.0,237.0,,449.0
-jahdaewalker,jahdaewalker,Jahdae Walker,WR,277.0,1,,277.0,,,,,,,450.0
-kansascitychiefs,kansascitychiefs,Kansas City Chiefs,DST,277.5,2,,219.0,234.0,,,332.0,223.0,,451.0
-jacobcowing,jacobcowing,Jacob Cowing,WR,278.0,1,,278.0,,,,,,,452.0
-elicayomanor,elicayomanor,Elic Ayomanor,WR,279.0,2,,295.5,250.0,,,338.0,220.0,,453.0
-frankgore,frankgore,Frank Gore Jr.,RB,279.0,1,,279.0,,,,,,,454.0
-kevincoleman,kevincoleman,Kevin Coleman Jr.,WR,280.0,1,,280.0,,,,,,,455.0
-theowease,theowease,Theo Wease Jr.,WR,283.0,1,,283.0,,,,,,,456.0
-danielbellinger,danielbellinger,Daniel Bellinger,TE,284.0,1,,284.0,,,,,,,457.0
-detroitlions,detroitlions,Detroit Lions,DST,286.5,2,,217.0,238.0,,,352.0,221.0,,458.0
-jaleelmclaughlin,jaleelmclaughlin,Jaleel McLaughlin,RB,287.0,1,,287.0,,,,,,,459.0
-zavionthomas,zavionthomas,Zavion Thomas,WR,287.0,1,,287.0,,,,,,,460.0
-spencerrattler,spencerrattler,Spencer Rattler,QB,288.0,1,,288.0,,,,,,,461.0
-johnmetchie,johnmetchie,John Metchie III,WR,289.0,1,,289.0,,,,,,,462.0
-jammiller,jammiller,Jam Miller,RB,291.0,1,,291.0,,,,,,,463.0
-gardnerminshew,gardnerminshew,Gardner Minshew II,QB,295.0,1,,295.0,,,,,,,464.0
-cincinnatibengals,cincinnatibengals,Cincinnati Bengals,DST,296.0,2,,293.0,299.0,,,,,,465.0
-austinekeler,austinekeler,Austin Ekeler,RB,296.0,2,,308.0,284.0,,,,,,466.0
-jasonsanders,jasonsanders,Jason Sanders,,298.0,1,,,298.0,,,,,,467.0
-charliekolar,charliekolar,Charlie Kolar,TE,298.0,1,,298.0,,,,,,,468.0
-drewlock,drewlock,Drew Lock,QB,299.0,1,,299.0,,,,,,,469.0
-kyleallen,kyleallen,Kyle Allen,QB,302.0,1,,302.0,,,,,,,470.0
-michaelcarter,michaelcarter,Michael Carter,RB,303.0,1,,303.0,,,,,,,471.0
-damienmartinez,damienmartinez,Damien Martinez,RB,304.0,1,,304.0,,,,,,,472.0
-lasvegasraiders,lasvegasraiders,Las Vegas Raiders,DST,304.0,2,,301.0,307.0,,,,,,473.0
-konatamumpfield,konatamumpfield,Konata Mumpfield,WR,305.0,1,,305.0,,,,,,,474.0
-eftonchism,eftonchism,Efton Chism III,WR,306.0,1,,306.0,,,,,,,475.0
-eliheidenreich,eliheidenreich,Eli Heidenreich,RB,308.0,2,,283.5,324.0,,245.0,371.0,,,476.0
-quinnewers,quinnewers,Quinn Ewers,QB,309.0,1,,309.0,,,,,,,477.0
-gregdortch,gregdortch,Greg Dortch,WR,310.0,1,,310.0,,,,,,,478.0
-keenanallen,keenanallen,Keenan Allen,WR,311.0,2,,314.5,308.0,,240.0,382.0,,,479.0
-darrenwaller,darrenwaller,Darren Waller,TE,311.0,1,,311.0,,,,,,,480.0
-brenenthompson,brenenthompson,Brenen Thompson,WR,312.0,2,,300.0,332.0,,,379.0,,245.0,481.0
-isaacguerendo,isaacguerendo,Isaac Guerendo,RB,312.0,1,,312.0,,,,,,,482.0
-isaiahbond,isaiahbond,Isaiah Bond,WR,316.0,1,,316.0,,,,,,,483.0
-bensinnott,bensinnott,Ben Sinnott,TE,317.0,1,,317.0,,,,,,,484.0
-audricestime,audricestime,Audric Estime,RB,319.0,1,,319.0,,,,,,,485.0
-willhoward,willhoward,Will Howard,QB,321.0,1,,321.0,,,,,,,486.0
-washingtoncommanders,washingtoncommanders,Washington Commanders,DST,322.0,1,,322.0,,,,,,,487.0
-miamidolphins,miamidolphins,Miami Dolphins,DST,323.0,2,,327.0,319.0,,,,,,488.0
-colbieyoung,colbieyoung,Colbie Young,WR,325.0,1,,325.0,,,,,,,489.0
-oscardelp,oscardelp,Oscar Delp,TE,325.5,1,,325.5,,,,,,,490.0
-jarquezhunter,jarquezhunter,Jarquez Hunter,RB,326.0,1,,326.0,,,,,,,491.0
-zachertz,zachertz,Zach Ertz,TE,332.0,1,,332.0,,,,,,,492.0
-newyorkjets,newyorkjets,New York Jets,DST,333.0,1,,333.0,,,,,,,493.0
-tysonbagent,tysonbagent,Tyson Bagent,QB,339.0,1,,339.0,,,,,,,494.0
-arizonacardinals,arizonacardinals,Arizona Cardinals,DST,353.0,1,,353.0,,,,,,,495.0
-tylerhuntley,tylerhuntley,Tyler Huntley,QB,355.0,1,,355.0,,,,,,,496.0
-marcusmariota,marcusmariota,Marcus Mariota,QB,358.0,1,,358.0,,,,,,,497.0
-emaridemercado,emaridemercado,Emari Demercado,RB,361.0,1,,361.0,,,,,,,498.0
-jonnusmith,jonnusmith,Jonnu Smith,TE,368.0,1,,368.0,,,,,,,499.0
-justinjoly,justinjoly,Justin Joly,TE,370.0,1,,370.0,,,,,,,500.0
-mackhollins,mackhollins,Mack Hollins,WR,381.0,1,,381.0,,,,,,,501.0
-kylewilliams,kylewilliams,Kyle Williams,WR,388.0,1,,405.0,306.0,,,388.0,,,502.0
-najeeharris,najeeharris,Najee Harris,RB,397.0,1,,334.0,271.0,,,397.0,,,503.0
-tezjohnson,tezjohnson,Tez Johnson,WR,397.0,1,,397.0,,,,,,,504.0
-devinneal,devinneal,Devin Neal,RB,403.0,1,,403.0,,,,,,,505.0
+key,name_key,name,position,consensus_adp,n_sources,ESPN,FantasyPros,consensus_rank
+bijanrobinson,bijanrobinson,Bijan Robinson,RB,2.1,1,2.1,1.5,1.0
+jahmyrgibbs,jahmyrgibbs,Jahmyr Gibbs,RB,2.1,1,2.1,1.5,2.0
+pukanacua,pukanacua,Puka Nacua,WR,3.64,1,3.64,4.0,3.0
+jamarrchase,jamarrchase,Ja'Marr Chase,WR,4.84,1,4.84,3.0,4.0
+christianmccaffrey,christianmccaffrey,Christian McCaffrey,RB,5.18,1,5.18,6.0,5.0
+jaxonsmithnjigba,jaxonsmithnjigba,Jaxon Smith-Njigba,WR,6.21,1,6.21,5.0,6.0
+amonrastbrown,amonrastbrown,Amon-Ra St. Brown,WR,8.0,1,8.0,7.5,7.0
+jonathantaylor,jonathantaylor,Jonathan Taylor,RB,8.32,1,8.32,7.5,8.0
+ceedeelamb,ceedeelamb,CeeDee Lamb,WR,11.44,1,11.44,11.0,9.0
+devonachane,devonachane,De'Von Achane,RB,11.59,1,11.59,14.0,10.0
+justinjefferson,justinjefferson,Justin Jefferson,WR,12.66,1,12.66,11.0,11.0
+jamescook,jamescook,James Cook III,RB,13.25,1,13.25,11.0,12.0
+ashtonjeanty,ashtonjeanty,Ashton Jeanty,RB,13.57,1,13.57,9.5,13.0
+saquonbarkley,saquonbarkley,Saquon Barkley,RB,15.48,1,15.48,14.5,14.0
+jeremiyahlove,jeremiyahlove,Jeremiyah Love,RB,17.59,1,17.59,23.0,15.0
+derrickhenry,derrickhenry,Derrick Henry,RB,18.23,1,18.23,21.5,16.0
+drakelondon,drakelondon,Drake London,WR,18.46,1,18.46,17.5,17.0
+treymcbride,treymcbride,Trey McBride,TE,20.75,1,20.75,21.0,18.0
+omarionhampton,omarionhampton,Omarion Hampton,RB,21.42,1,21.42,16.0,19.0
+brockbowers,brockbowers,Brock Bowers,TE,23.75,1,23.75,19.5,20.0
+nicocollins,nicocollins,Nico Collins,WR,24.04,1,24.04,23.0,21.0
+joshallen,joshallen,Josh Allen,QB,24.08,1,24.08,27.0,22.0
+rasheerice,rasheerice,Rashee Rice,WR,25.66,1,25.66,28.5,23.0
+ajbrown,ajbrown,A.J. Brown,WR,26.83,1,26.83,23.5,24.0
+kennethwalkeriii,kennethwalkeriii,Kenneth Walker III,RB,27.55,1,27.55,16.0,25.0
+chasebrown,chasebrown,Chase Brown,RB,27.61,1,27.61,14.5,26.0
+georgepickens,georgepickens,George Pickens,WR,27.68,1,27.68,23.5,27.0
+joshjacobs,joshjacobs,Josh Jacobs,RB,27.98,1,27.98,37.5,28.0
+maliknabers,maliknabers,Malik Nabers,WR,28.56,1,28.56,33.5,29.0
+breecehall,breecehall,Breece Hall,RB,33.13,1,33.13,29.5,30.0
+chrisolave,chrisolave,Chris Olave,WR,33.62,1,33.62,27.5,31.0
+kyrenwilliams,kyrenwilliams,Kyren Williams,RB,36.42,1,36.42,32.0,32.0
+devontasmith,devontasmith,DeVonta Smith,WR,36.47,1,36.47,32.0,33.0
+lamarjackson,lamarjackson,Lamar Jackson,QB,37.28,1,37.28,50.5,34.0
+javontewilliams,javontewilliams,Javonte Williams,RB,37.3,1,37.3,34.5,35.0
+garrettwilson,garrettwilson,Garrett Wilson,WR,38.02,1,38.02,37.0,36.0
+tetairoamcmillan,tetairoamcmillan,Tetairoa McMillan,WR,40.95,1,40.95,38.5,37.0
+camskattebo,camskattebo,Cam Skattebo,RB,42.63,1,42.63,44.0,38.0
+travisetienne,travisetienne,Travis Etienne Jr.,RB,43.55,1,43.55,32.5,39.0
+davanteadams,davanteadams,Davante Adams,WR,43.74,1,43.74,49.5,40.0
+colstonloveland,colstonloveland,Colston Loveland,TE,44.25,1,44.25,41.5,41.0
+zayflowers,zayflowers,Zay Flowers,WR,45.28,1,45.28,35.5,42.0
+tylerwarren,tylerwarren,Tyler Warren,TE,47.07,1,47.07,65.0,43.0
+drakemaye,drakemaye,Drake Maye,QB,49.58,1,49.58,61.5,44.0
+teehiggins,teehiggins,Tee Higgins,WR,50.65,1,50.65,36.5,45.0
+emekaegbuka,emekaegbuka,Emeka Egbuka,WR,51.73,1,51.73,39.5,46.0
+buckyirving,buckyirving,Bucky Irving,RB,52.85,1,52.85,52.5,47.0
+jaydendaniels,jaydendaniels,Jayden Daniels,QB,53.02,1,53.02,64.5,48.0
+terrymclaurin,terrymclaurin,Terry McLaurin,WR,53.63,1,53.63,46.0,49.0
+quinshonjudkins,quinshonjudkins,Quinshon Judkins,RB,55.22,1,55.22,55.0,50.0
+joeburrow,joeburrow,Joe Burrow,QB,57.14,1,57.14,59.5,51.0
+carnelltate,carnelltate,Carnell Tate,WR,57.76,1,57.76,61.0,52.0
+laddmcconkey,laddmcconkey,Ladd McConkey,WR,57.96,1,57.96,37.0,53.0
+treveyonhenderson,treveyonhenderson,TreVeyon Henderson,RB,59.12,1,59.12,50.5,54.0
+jalenhurts,jalenhurts,Jalen Hurts,QB,60.9,1,60.9,72.5,55.0
+jaylenwaddle,jaylenwaddle,Jaylen Waddle,WR,61.63,1,61.63,49.0,56.0
+jadarianprice,jadarianprice,Jadarian Price,RB,62.78,1,62.78,62.5,57.0
+haroldfannin,haroldfannin,Harold Fannin Jr.,TE,64.37,1,64.37,87.5,58.0
+djmoore,djmoore,DJ Moore,WR,66.2,1,66.2,52.0,59.0
+jamesonwilliams,jamesonwilliams,Jameson Williams,WR,67.96,1,67.96,51.0,60.0
+kylepitts,kylepitts,Kyle Pitts Sr.,TE,68.41,1,68.41,95.0,61.0
+dandreswift,dandreswift,D'Andre Swift,RB,69.34,1,69.34,51.0,62.0
+davidmontgomery,davidmontgomery,David Montgomery,RB,71.7,1,71.7,49.0,63.0
+jaxsondart,jaxsondart,Jaxson Dart,QB,71.94,1,71.94,88.5,64.0
+romeodunze,romeodunze,Rome Odunze,WR,73.34,1,73.34,56.5,65.0
+lutherburden,lutherburden,Luther Burden III,WR,73.69,1,73.69,42.5,66.0
+samlaporta,samlaporta,Sam LaPorta,TE,74.2,1,74.2,95.5,67.0
+bhayshultuten,bhayshultuten,Bhayshul Tuten,RB,75.32,1,75.32,62.0,68.0
+chubahubbard,chubahubbard,Chuba Hubbard,RB,78.22,1,78.22,68.0,69.0
+marvinharrisonjr,marvinharrisonjr,Marvin Harrison Jr.,WR,79.36,1,79.36,67.0,70.0
+mikeevans,mikeevans,Mike Evans,WR,80.21,1,80.21,56.0,71.0
+texansdst,texansdst,Texans D/ST,DST,83.51,1,83.51,,72.0
+brandonaubrey,brandonaubrey,Brandon Aubrey,K,83.57,1,83.57,,73.0
+dkmetcalf,dkmetcalf,DK Metcalf,WR,84.49,1,84.49,72.5,74.0
+michaelpittmanjr,michaelpittmanjr,Michael Pittman Jr.,WR,85.68,1,85.68,94.0,75.0
+jordyntyson,jordyntyson,Jordyn Tyson,WR,88.19,1,88.19,70.0,76.0
+alecpierce,alecpierce,Alec Pierce,WR,88.42,1,88.42,75.5,77.0
+courtlandsutton,courtlandsutton,Courtland Sutton,WR,88.8,1,88.8,78.0,78.0
+traviskelce,traviskelce,Travis Kelce,TE,89.83,1,89.83,121.5,79.0
+tonypollard,tonypollard,Tony Pollard,RB,90.18,1,90.18,80.0,80.0
+broncosdst,broncosdst,Broncos D/ST,DST,90.46,1,90.46,,81.0
+ramsdst,ramsdst,Rams D/ST,DST,91.0,1,91.0,,82.0
+jaylenwarren,jaylenwarren,Jaylen Warren,RB,92.18,1,92.18,70.0,83.0
+dakprescott,dakprescott,Dak Prescott,QB,93.31,1,93.31,79.0,84.0
+georgekittle,georgekittle,George Kittle,TE,94.2,1,94.2,124.5,85.0
+christianwatson,christianwatson,Christian Watson,WR,94.56,1,94.56,55.0,86.0
+aaronjones,aaronjones,Aaron Jones Sr.,RB,95.94,1,95.94,121.5,87.0
+matthewstafford,matthewstafford,Matthew Stafford,QB,96.53,1,96.53,93.0,88.0
+seahawksdst,seahawksdst,Seahawks D/ST,DST,98.67,1,98.67,,89.0
+ricodowdle,ricodowdle,Rico Dowdle,RB,98.9,1,98.9,88.5,90.0
+brockpurdy,brockpurdy,Brock Purdy,QB,100.99,1,100.99,96.0,91.0
+brianthomasjr,brianthomasjr,Brian Thomas Jr.,WR,101.04,1,101.04,72.5,92.0
+calebwilliams,calebwilliams,Caleb Williams,QB,101.04,1,101.04,69.5,93.0
+makailemon,makailemon,Makai Lemon,WR,101.79,1,101.79,85.0,94.0
+dallasgoedert,dallasgoedert,Dallas Goedert,TE,102.32,1,102.32,130.5,95.0
+chrisgodwin,chrisgodwin,Chris Godwin Jr.,WR,103.14,1,103.14,92.0,96.0
+parkerwashington,parkerwashington,Parker Washington,WR,104.16,1,104.16,71.0,97.0
+kennethgainwell,kennethgainwell,Kenneth Gainwell,RB,104.61,1,104.61,90.0,98.0
+jakobimeyers,jakobimeyers,Jakobi Meyers,WR,104.82,1,104.82,99.0,99.0
+jkdobbins,jkdobbins,J.K. Dobbins,RB,106.24,1,106.24,107.5,100.0
+rachaadwhite,rachaadwhite,Rachaad White,RB,106.92,1,106.92,115.0,101.0
+rhamondrestevenson,rhamondrestevenson,Rhamondre Stevenson,RB,107.41,1,107.41,78.0,102.0
+jakeferguson,jakeferguson,Jake Ferguson,TE,108.17,1,108.17,126.0,103.0
+wandalerobinson,wandalerobinson,Wan'Dale Robinson,WR,110.05,1,110.05,110.0,104.0
+camerondicker,camerondicker,Cameron Dicker,K,110.57,1,110.57,,105.0
+patrickmahomes,patrickmahomes,Patrick Mahomes II,QB,110.92,1,110.92,94.5,106.0
+tuckerkraft,tuckerkraft,Tucker Kraft,TE,111.21,1,111.21,86.5,107.0
+rjharvey,rjharvey,RJ Harvey,RB,112.13,1,112.13,80.0,108.0
+kylemonangai,kylemonangai,Kyle Monangai,RB,114.62,1,114.62,94.0,109.0
+michaelwilson,michaelwilson,Michael Wilson,WR,115.14,1,115.14,89.5,110.0
+travishunter,travishunter,Travis Hunter,WR,115.75,1,115.75,167.5,111.0
+matthewgolden,matthewgolden,Matthew Golden,WR,116.53,1,116.53,118.0,112.0
+trevorlawrence,trevorlawrence,Trevor Lawrence,QB,117.29,1,117.29,80.5,113.0
+rickypearsall,rickypearsall,Ricky Pearsall,WR,118.85,1,118.85,98.0,114.0
+jasonmyers,jasonmyers,Jason Myers,K,121.71,1,121.71,,115.0
+steelersdst,steelersdst,Steelers D/ST,DST,122.49,1,122.49,,116.0
+patriotsdst,patriotsdst,Patriots D/ST,DST,122.55,1,122.55,,117.0
+bonix,bonix,Bo Nix,QB,123.05,1,123.05,105.0,118.0
+blakecorum,blakecorum,Blake Corum,RB,123.67,1,123.67,100.5,119.0
+kcconcepcion,kcconcepcion,KC Concepcion,WR,123.91,1,123.91,124.0,120.0
+kaimifairbairn,kaimifairbairn,Ka'imi Fairbairn,K,124.98,1,124.98,,121.0
+justinherbert,justinherbert,Justin Herbert,QB,126.76,1,126.76,76.5,122.0
+jordanaddison,jordanaddison,Jordan Addison,WR,127.43,1,127.43,98.5,123.0
+xavierworthy,xavierworthy,Xavier Worthy,WR,127.66,1,127.66,112.0,124.0
+isaiahlikely,isaiahlikely,Isaiah Likely,TE,128.51,1,128.51,127.5,125.0
+jonathonbrooks,jonathonbrooks,Jonathon Brooks,RB,128.73,1,128.73,111.5,126.0
+joshdowns,joshdowns,Josh Downs,WR,128.83,1,128.83,104.0,127.0
+eaglesdst,eaglesdst,Eagles D/ST,DST,130.74,1,130.74,,128.0
+jacorycroskeymerritt,jacorycroskeymerritt,Jacory Croskey-Merritt,RB,133.98,1,133.98,128.5,129.0
+khalilshakir,khalilshakir,Khalil Shakir,WR,134.17,1,134.17,123.0,130.0
+camlittle,camlittle,Cam Little,K,134.57,1,134.57,,131.0
+ravensdst,ravensdst,Ravens D/ST,DST,135.93,1,135.93,,132.0
+harrisonmevis,harrisonmevis,Harrison Mevis,K,137.78,1,137.78,,133.0
+zachcharbonnet,zachcharbonnet,Zach Charbonnet,RB,138.69,1,138.69,175.0,134.0
+markandrews,markandrews,Mark Andrews,TE,139.24,1,139.24,135.5,135.0
+kenyonsadiq,kenyonsadiq,Kenyon Sadiq,TE,140.89,1,140.89,153.0,136.0
+woodymarks,woodymarks,Woody Marks,RB,141.27,1,141.27,142.5,137.0
+quentinjohnston,quentinjohnston,Quentin Johnston,WR,142.07,1,142.07,95.0,138.0
+romeodoubs,romeodoubs,Romeo Doubs,WR,142.3,1,142.3,115.5,139.0
+jaydenreed,jaydenreed,Jayden Reed,WR,142.35,1,142.35,94.5,140.0
+isiahpacheco,isiahpacheco,Isiah Pacheco,RB,142.5,1,142.5,150.0,141.0
+houstontexans,houstontexans,Houston Texans,DST,143.0,1,,143.0,142.0
+tyjaespears,tyjaespears,Tyjae Spears,RB,145.31,1,145.31,156.0,143.0
+eddypineiro,eddypineiro,Eddy Pineiro,K,146.4,1,146.4,,144.0
+alvinkamara,alvinkamara,Alvin Kamara,RB,147.56,1,147.56,182.0,145.0
+jakebates,jakebates,Jake Bates,K,150.01,1,150.01,,146.0
+tjhockenson,tjhockenson,T.J. Hockenson,TE,150.48,1,150.48,167.0,147.0
+jordanmason,jordanmason,Jordan Mason,RB,152.88,1,152.88,122.0,148.0
+jaredgoff,jaredgoff,Jared Goff,QB,153.2,1,153.2,102.5,149.0
+vikingsdst,vikingsdst,Vikings D/ST,DST,153.73,1,153.73,,150.0
+daltonkincaid,daltonkincaid,Dalton Kincaid,TE,154.12,1,154.12,120.0,151.0
+seattleseahawks,seattleseahawks,Seattle Seahawks,DST,155.0,1,,155.0,152.0
+harrisonbutker,harrisonbutker,Harrison Butker,K,155.05,1,155.05,,153.0
+kylermurray,kylermurray,Kyler Murray,QB,155.79,1,155.79,109.5,154.0
+brownsdst,brownsdst,Browns D/ST,DST,155.87,1,155.87,,155.0
+lionsdst,lionsdst,Lions D/ST,DST,156.13,1,156.13,,156.0
+omarcooper,omarcooper,Omar Cooper Jr.,WR,157.18,1,157.18,157.5,157.0
+tylershough,tylershough,Tyler Shough,QB,157.91,1,157.91,110.0,158.0
+jaguarsdst,jaguarsdst,Jaguars D/ST,DST,157.96,1,157.96,,159.0
+jalencoker,jalencoker,Jalen Coker,WR,158.42,1,158.42,131.5,160.0
+denverbroncos,denverbroncos,Denver Broncos,DST,160.0,1,,160.0,161.0
+tylerloop,tylerloop,Tyler Loop,K,160.09,1,160.09,,162.0
+chrisboswell,chrisboswell,Chris Boswell,K,160.44,1,160.44,,163.0
+hunterhenry,hunterhenry,Hunter Henry,TE,160.55,1,160.55,156.5,164.0
+stefondiggs,stefondiggs,Stefon Diggs,WR,160.77,1,160.77,138.5,165.0
+bakermayfield,bakermayfield,Baker Mayfield,QB,160.89,1,160.89,113.0,166.0
+jaydenhiggins,jaydenhiggins,Jayden Higgins,WR,161.51,1,161.51,122.5,167.0
+rashidshaheed,rashidshaheed,Rashid Shaheed,WR,162.98,1,162.98,147.5,168.0
+tyreekhill,tyreekhill,Tyreek Hill,WR,163.19,1,163.19,233.0,169.0
+chargersdst,chargersdst,Chargers D/ST,DST,163.3,1,163.3,,170.0
+chrisrodriguez,chrisrodriguez,Chris Rodriguez Jr.,RB,163.59,1,163.59,123.0,171.0
+willreichard,willreichard,Will Reichard,K,164.2,1,164.2,,172.0
+jordanlove,jordanlove,Jordan Love,QB,164.2,1,164.2,111.0,173.0
+fernandomendoza,fernandomendoza,Fernando Mendoza,QB,164.2,1,164.2,169.0,174.0
+jalenmcmillan,jalenmcmillan,Jalen McMillan,WR,164.21,1,164.21,148.5,175.0
+tylerallgeier,tylerallgeier,Tyler Allgeier,RB,164.82,1,164.82,146.5,176.0
+losangelesrams,losangelesrams,Los Angeles Rams,DST,165.0,1,,165.0,177.0
+cairosantos,cairosantos,Cairo Santos,K,165.21,1,165.21,,178.0
+chiefsdst,chiefsdst,Chiefs D/ST,DST,165.5,1,165.5,,179.0
+juwanjohnson,juwanjohnson,Juwan Johnson,TE,165.58,1,165.58,145.0,180.0
+samdarnold,samdarnold,Sam Darnold,QB,166.09,1,166.09,138.0,181.0
+jerryjeudy,jerryjeudy,Jerry Jeudy,WR,166.25,1,166.25,177.0,182.0
+calvinridley,calvinridley,Calvin Ridley,WR,166.32,1,166.32,203.5,183.0
+odellbeckham,odellbeckham,Odell Beckham Jr.,WR,166.6,1,166.6,303.0,184.0
+cowboysdst,cowboysdst,Cowboys D/ST,DST,166.92,1,166.92,,185.0
+danieljones,danieljones,Daniel Jones,QB,167.04,1,167.04,140.5,186.0
+chasemclaughlin,chasemclaughlin,Chase McLaughlin,K,167.08,1,167.08,,187.0
+denzelboston,denzelboston,Denzel Boston,WR,167.44,1,167.44,164.5,188.0
+packersdst,packersdst,Packers D/ST,DST,167.49,1,167.49,,189.0
+tyronetracy,tyronetracy,Tyrone Tracy Jr.,RB,167.52,1,167.52,130.5,190.0
+brianrobinson,brianrobinson,Brian Robinson Jr.,RB,167.55,1,167.55,170.5,191.0
+tankbigsby,tankbigsby,Tank Bigsby,RB,167.59,1,167.59,180.0,192.0
+camward,camward,Cam Ward,QB,167.67,1,167.67,135.5,193.0
+jauanjennings,jauanjennings,Jauan Jennings,WR,167.69,1,167.69,149.5,194.0
+49ersdst,49ersdst,49ers D/ST,DST,167.77,1,167.77,,195.0
+malikwillis,malikwillis,Malik Willis,QB,167.8,1,167.8,126.5,196.0
+cjstroud,cjstroud,C.J. Stroud,QB,167.85,1,167.85,138.0,197.0
+evanmcpherson,evanmcpherson,Evan McPherson,K,168.0,1,168.0,,198.0
+brentonstrange,brentonstrange,Brenton Strange,TE,168.14,1,168.14,152.0,199.0
+cooperkupp,cooperkupp,Cooper Kupp,WR,168.42,1,168.42,221.0,200.0
+bearsdst,bearsdst,Bears D/ST,DST,168.44,1,168.44,,201.0
+buccaneersdst,buccaneersdst,Buccaneers D/ST,DST,168.45,1,168.45,,202.0
+tankdell,tankdell,Tank Dell,WR,168.58,1,168.58,219.0,203.0
+deebosamuel,deebosamuel,Deebo Samuel Sr.,WR,168.73,1,168.73,165.0,204.0
+mikewashington,mikewashington,Mike Washington Jr.,RB,168.76,1,168.76,192.0,205.0
+andyborregales,andyborregales,Andy Borregales,K,168.76,1,168.76,,206.0
+jakeelliott,jakeelliott,Jake Elliott,K,168.76,1,168.76,,207.0
+orondegadsden,orondegadsden,Oronde Gadsden II,TE,168.8,1,168.8,141.5,208.0
+bryceyoung,bryceyoung,Bryce Young,QB,168.82,1,168.82,148.0,209.0
+germiebernard,germiebernard,Germie Bernard,WR,168.84,1,168.84,217.5,210.0
+terranceferguson,terranceferguson,Terrance Ferguson,TE,168.86,1,168.86,221.0,211.0
+chrisbell,chrisbell,Chris Bell,WR,168.88,1,168.88,218.5,212.0
+chigokonkwo,chigokonkwo,Chig Okonkwo,TE,168.97,1,168.97,149.0,213.0
+giantsdst,giantsdst,Giants D/ST,DST,168.98,1,168.98,,214.0
+patfreiermuth,patfreiermuth,Pat Freiermuth,TE,168.99,1,168.99,196.0,215.0
+treysmack,treysmack,Trey Smack,K,169.01,1,169.01,,216.0
+tretucker,tretucker,Tre Tucker,WR,169.13,1,169.13,157.5,217.0
+billsdst,billsdst,Bills D/ST,DST,169.18,1,169.18,,218.0
+brandonaiyuk,brandonaiyuk,Brandon Aiyuk,WR,169.18,1,169.18,188.0,219.0
+jamesconner,jamesconner,James Conner,RB,169.18,1,169.18,208.0,220.0
+daltonschultz,daltonschultz,Dalton Schultz,TE,169.21,1,169.21,174.0,221.0
+davidnjoku,davidnjoku,David Njoku,TE,169.24,1,169.24,205.0,222.0
+ajbarner,ajbarner,AJ Barner,TE,169.27,1,169.27,184.0,223.0
+antoniowilliams,antoniowilliams,Antonio Williams,WR,169.29,1,169.29,174.5,224.0
+jakobilane,jakobilane,Ja'Kobi Lane,WR,169.29,1,169.29,324.5,225.0
+aaronrodgers,aaronrodgers,Aaron Rodgers,QB,169.32,1,169.32,165.0,226.0
+bengalsdst,bengalsdst,Bengals D/ST,DST,169.34,1,169.34,,227.0
+titansdst,titansdst,Titans D/ST,DST,169.38,1,169.38,,228.0
+braelonallen,braelonallen,Braelon Allen,RB,169.39,1,169.39,198.0,229.0
+isaacteslaa,isaacteslaa,Isaac TeSlaa,WR,169.46,1,169.46,180.0,230.0
+jonahcoleman,jonahcoleman,Jonah Coleman,RB,169.46,1,169.46,156.5,231.0
+willutz,willutz,Wil Lutz,K,169.47,1,169.47,,232.0
+darnellmooney,darnellmooney,Darnell Mooney,WR,169.53,1,169.53,205.0,233.0
+elistowers,elistowers,Eli Stowers,TE,169.57,1,169.57,219.0,234.0
+shedeursanders,shedeursanders,Shedeur Sanders,QB,169.57,1,169.57,234.5,235.0
+emmettjohnson,emmettjohnson,Emmett Johnson,RB,169.58,1,169.58,171.5,236.0
+nickfolk,nickfolk,Nick Folk,K,169.6,1,169.6,,237.0
+raidersdst,raidersdst,Raiders D/ST,DST,169.62,1,169.62,,238.0
+dolphinsdst,dolphinsdst,Dolphins D/ST,DST,169.65,1,169.65,,239.0
+justicehill,justicehill,Justice Hill,RB,169.67,1,169.67,252.5,240.0
+commandersdst,commandersdst,Commanders D/ST,DST,169.67,1,169.67,,241.0
+malachifields,malachifields,Malachi Fields,WR,169.68,1,169.68,227.0,242.0
+nicholassingleton,nicholassingleton,Nicholas Singleton,RB,169.69,1,169.69,188.0,243.0
+zachariahbranch,zachariahbranch,Zachariah Branch,WR,169.71,1,169.71,211.5,244.0
+darnellwashington,darnellwashington,Darnell Washington,TE,169.71,1,169.71,328.0,245.0
+falconsdst,falconsdst,Falcons D/ST,DST,169.72,1,169.72,,246.0
+panthersdst,panthersdst,Panthers D/ST,DST,169.73,1,169.73,,247.0
+tylerbass,tylerbass,Tyler Bass,K,169.74,1,169.74,,248.0
+demariodouglas,demariodouglas,DeMario Douglas,WR,169.75,1,169.75,327.0,249.0
+kimanividal,kimanividal,Kimani Vidal,RB,169.77,1,169.77,197.0,250.0
+eliraridon,eliraridon,Eli Raridon,TE,169.77,1,169.77,326.0,251.0
+jalennailor,jalennailor,Jalen Nailor,WR,169.77,1,169.77,163.0,252.0
+bensauls,bensauls,Ben Sauls,K,169.79,1,169.79,,253.0
+kayshonboutte,kayshonboutte,Kayshon Boutte,WR,169.8,1,169.8,209.0,254.0
+evanengram,evanengram,Evan Engram,TE,169.81,1,169.81,303.0,255.0
+saintsdst,saintsdst,Saints D/ST,DST,169.81,1,169.81,,256.0
+mattgay,mattgay,Matt Gay,K,169.82,1,169.82,,257.0
+andreszmyt,andreszmyt,Andre Szmyt,K,169.83,1,169.83,,258.0
+coltsdst,coltsdst,Colts D/ST,DST,169.83,1,169.83,,259.0
+kaelonblack,kaelonblack,Kaelon Black,RB,169.83,1,169.83,228.5,260.0
+jordanjames,jordanjames,Jordan James,RB,169.84,1,169.84,218.0,261.0
+blakegrupe,blakegrupe,Blake Grupe,K,169.85,1,169.85,,262.0
+marshawnlloyd,marshawnlloyd,MarShawn Lloyd,RB,169.85,1,169.85,261.0,263.0
+cardinalsdst,cardinalsdst,Cardinals D/ST,DST,169.85,1,169.85,,264.0
+mikegesicki,mikegesicki,Mike Gesicki,TE,169.86,1,169.86,277.0,265.0
+jordanwhittington,jordanwhittington,Jordan Whittington,WR,169.87,1,169.87,250.0,266.0
+tysimpson,tysimpson,Ty Simpson,QB,169.87,1,169.87,354.0,267.0
+colbyparkinson,colbyparkinson,Colby Parkinson,TE,169.87,1,169.87,215.0,268.0
+kaytronallen,kaytronallen,Kaytron Allen,RB,169.88,1,169.88,180.5,269.0
+ryanfitzgerald,ryanfitzgerald,Ryan Fitzgerald,K,169.88,1,169.88,,270.0
+colekmet,colekmet,Cole Kmet,TE,169.89,1,169.89,396.0,271.0
+gunnarhelm,gunnarhelm,Gunnar Helm,TE,169.89,1,169.89,189.0,272.0
+raydavis,raydavis,Ray Davis,RB,169.9,1,169.9,197.5,273.0
+marquisebrown,marquisebrown,Hollywood Brown,WR,169.9,1,169.9,312.5,274.0
+chadryland,chadryland,Chad Ryland,K,169.9,1,169.9,,275.0
+tommydevito,tommydevito,Tommy DeVito,QB,169.91,1,169.91,281.0,276.0
+kavontaeturpin,kavontaeturpin,KaVontae Turpin,WR,169.91,1,169.91,265.0,277.0
+jalenroyals,jalenroyals,Jalen Royals,WR,169.91,1,169.91,336.0,278.0
+jakemoody,jakemoody,Jake Moody,K,169.92,1,169.92,,279.0
+jjmccarthy,jjmccarthy,J.J. McCarthy,QB,169.92,1,169.92,358.0,280.0
+zanegonzalez,zanegonzalez,Zane Gonzalez,K,169.92,1,169.92,,281.0
+jaketonges,jaketonges,Jake Tonges,TE,169.92,1,169.92,220.0,282.0
+genosmith,genosmith,Geno Smith,QB,169.93,1,169.93,176.5,283.0
+tylerhigbee,tylerhigbee,Tyler Higbee,TE,169.94,1,169.94,363.0,284.0
+christiankirk,christiankirk,Christian Kirk,WR,169.95,1,169.95,218.5,285.0
+ryanflournoy,ryanflournoy,Ryan Flournoy,WR,169.95,1,169.95,178.0,286.0
+cadestover,cadestover,Cade Stover,TE,169.96,1,169.96,,287.0
+cadeyork,cadeyork,Cade York,K,169.96,1,169.96,,288.0
+keoncoleman,keoncoleman,Keon Coleman,WR,169.96,1,169.96,296.5,289.0
+dezhaunstribling,dezhaunstribling,De'Zhaun Stribling,WR,169.96,1,169.96,210.0,290.0
+joeflacco,joeflacco,Joe Flacco,QB,169.96,1,169.96,392.0,291.0
+jetsdst,jetsdst,Jets D/ST,DST,169.96,1,169.96,,292.0
+joemilton,joemilton,Joe Milton III,QB,169.96,1,169.96,272.0,293.0
+dylansampson,dylansampson,Dylan Sampson,RB,169.97,1,169.97,151.5,294.0
+troyfranklin,troyfranklin,Troy Franklin,WR,169.97,1,169.97,217.5,295.0
+dontayvionwicks,dontayvionwicks,Dontayvion Wicks,WR,169.97,1,169.97,266.0,296.0
+jackbech,jackbech,Jack Bech,WR,169.97,1,169.97,322.0,297.0
+erickall,erickall,Erick All Jr.,TE,169.98,1,169.98,,298.0
+cadeotton,cadeotton,Cade Otton,TE,169.98,1,169.98,198.0,299.0
+chrisbrazzell,chrisbrazzell,Chris Brazzell II,WR,169.98,1,169.98,301.5,300.0
+devontezwalker,devontezwalker,Devontez Walker,WR,169.99,1,169.99,273.0,301.0
+drewsample,drewsample,Drew Sample,TE,169.99,1,169.99,,302.0
+brycelance,brycelance,Bryce Lance,WR,169.99,1,169.99,295.5,303.0
+carsonbeck,carsonbeck,Carson Beck,QB,169.99,1,169.99,305.5,304.0
+kalifraymond,kalifraymond,Kalif Raymond,WR,169.99,1,169.99,264.0,305.0
+dawsonknox,dawsonknox,Dawson Knox,TE,170.0,1,170.0,333.5,306.0
+josholiver,josholiver,Josh Oliver,TE,170.0,1,170.0,,307.0
+treylonburks,treylonburks,Treylon Burks,WR,170.0,1,170.0,288.5,308.0
+tutuatwell,tutuatwell,Tutu Atwell,WR,170.01,1,170.01,351.0,309.0
+dontethornton,dontethornton,Dont'e Thornton Jr.,WR,170.01,1,170.01,275.0,310.0
+jacobybrissett,jacobybrissett,Jacoby Brissett,QB,170.01,1,170.01,175.0,311.0
+rashodbateman,rashodbateman,Rashod Bateman,WR,170.02,1,170.02,302.0,312.0
+calebdouglas,calebdouglas,Caleb Douglas,WR,170.02,1,170.02,313.0,313.0
+johnbates,johnbates,John Bates,TE,170.02,1,170.02,,314.0
+jaylinnoel,jaylinnoel,Jaylin Noel,WR,170.02,1,170.02,297.5,315.0
+devaughnvele,devaughnvele,Devaughn Vele,WR,170.02,1,170.02,333.0,316.0
+joshuapalmer,joshuapalmer,Joshua Palmer,WR,170.03,1,170.03,318.0,317.0
+kendrickbourne,kendrickbourne,Kendrick Bourne,WR,170.03,1,170.03,307.5,318.0
+xavierhutchinson,xavierhutchinson,Xavier Hutchinson,WR,170.03,1,170.03,,319.0
+patbryant,patbryant,Pat Bryant,WR,170.03,1,170.03,297.0,320.0
+mitchellevans,mitchellevans,Mitchell Evans,TE,170.03,1,170.03,,321.0
+jameiswinston,jameiswinston,Jameis Winston,QB,170.03,1,170.03,362.0,322.0
+justinfields,justinfields,Justin Fields,QB,170.03,1,170.03,365.0,323.0
+charliesmyth,charliesmyth,Charlie Smyth,K,170.03,1,170.03,,324.0
+joeyslye,joeyslye,Joey Slye,K,170.03,1,170.03,,325.0
+macjones,macjones,Mac Jones,QB,170.04,1,170.04,359.0,326.0
+kirkcousins,kirkcousins,Kirk Cousins,QB,170.04,1,170.04,239.5,327.0
+emanuelwilson,emanuelwilson,Emanuel Wilson,RB,170.04,1,170.04,171.0,328.0
+deshaunwatson,deshaunwatson,Deshaun Watson,QB,170.04,1,170.04,217.5,329.0
+jaydonblue,jaydonblue,Jaydon Blue,RB,170.04,1,170.04,267.5,330.0
+ashtondulin,ashtondulin,Ashton Dulin,WR,170.04,1,170.04,,331.0
+tuatagovailoa,tuatagovailoa,Tua Tagovailoa,QB,170.05,1,170.05,203.0,332.0
+anthonyrichardson,anthonyrichardson,Anthony Richardson Sr.,QB,170.05,1,170.05,343.0,333.0
+michaelmayer,michaelmayer,Michael Mayer,TE,170.05,1,170.05,315.5,334.0
+tyquanthornton,tyquanthornton,Tyquan Thornton,WR,170.05,1,170.05,311.0,335.0
+olamidezaccheaus,olamidezaccheaus,Olamide Zaccheaus,WR,170.05,1,170.05,381.0,336.0
+samajeperine,samajeperine,Samaje Perine,RB,170.06,1,170.06,305.0,337.0
+willkacmarek,willkacmarek,Will Kacmarek,TE,170.06,1,170.06,,338.0
+jaylinlane,jaylinlane,Jaylin Lane,WR,170.07,1,170.07,,339.0
+reggiegilliam,reggiegilliam,Reggie Gilliam,RB,170.08,1,170.08,,340.0
+malikdavis,malikdavis,Malik Davis,RB,170.08,1,170.08,274.5,341.0
+malikwashington,malikwashington,Malik Washington,WR,170.09,1,170.09,194.0,342.0
+demondclaiborne,demondclaiborne,Demond Claiborne,RB,170.09,1,170.09,237.0,343.0
+noahgray,noahgray,Noah Gray,TE,170.09,1,170.09,375.0,344.0
+rileyleonard,rileyleonard,Riley Leonard,QB,170.09,1,170.09,,345.0
+jakebrowning,jakebrowning,Jake Browning,QB,170.1,1,170.1,259.0,346.0
+theojohnson,theojohnson,Theo Johnson,TE,170.1,1,170.1,309.5,347.0
+masonrudolph,masonrudolph,Mason Rudolph,QB,170.1,1,170.1,262.0,348.0
+marvinmims,marvinmims,Marvin Mims Jr.,WR,170.1,1,170.1,343.5,349.0
+nickmullens,nickmullens,Nick Mullens,QB,170.11,1,170.11,290.0,350.0
+dariusslayton,dariusslayton,Darius Slayton,WR,170.12,1,170.12,336.5,351.0
+brashardsmith,brashardsmith,Brashard Smith,RB,170.12,1,170.12,398.0,352.0
+gregdulcich,gregdulcich,Greg Dulcich,TE,170.12,1,170.12,214.0,353.0
+dyamibrown,dyamibrown,Dyami Brown,WR,170.13,1,170.13,282.0,354.0
+chrisbrooks,chrisbrooks,Chris Brooks,RB,170.13,1,170.13,235.5,355.0
+jarrettstidham,jarrettstidham,Jarrett Stidham,QB,170.13,1,170.13,322.0,356.0
+treharris,treharris,Tre' Harris,WR,170.13,1,170.13,177.0,357.0
+elijahsarratt,elijahsarratt,Elijah Sarratt,WR,170.14,1,170.14,305.5,358.0
+jahandotson,jahandotson,Jahan Dotson,WR,170.14,1,170.14,342.0,359.0
+kendremiller,kendremiller,Kendre Miller,RB,170.15,1,170.15,295.0,360.0
+andreiiosivas,andreiiosivas,Andrei Iosivas,WR,170.15,1,170.15,324.0,361.0
+keatonmitchell,keatonmitchell,Keaton Mitchell,RB,170.15,1,170.15,146.0,362.0
+masontaylor,masontaylor,Mason Taylor,TE,170.16,1,170.16,305.5,363.0
+tahjbrooks,tahjbrooks,Tahj Brooks,RB,170.16,1,170.16,353.0,364.0
+patrickricard,patrickricard,Patrick Ricard,RB,170.16,1,170.16,,365.0
+austinhooper,austinhooper,Austin Hooper,TE,170.17,1,170.17,,366.0
+michaelpenix,michaelpenix,Michael Penix Jr.,QB,170.17,1,170.17,229.0,367.0
+kylejuszczyk,kylejuszczyk,Kyle Juszczyk,RB,170.17,1,170.17,,368.0
+kalebjohnson,kalebjohnson,Kaleb Johnson,RB,170.18,1,170.18,404.0,369.0
+adamrandall,adamrandall,Adam Randall,RB,170.18,1,170.18,316.5,370.0
+elijahhiggins,elijahhiggins,Elijah Higgins,TE,170.19,1,170.19,285.0,371.0
+noahfant,noahfant,Noah Fant,TE,170.19,1,170.19,,372.0
+maxklare,maxklare,Max Klare,TE,170.19,1,170.19,406.0,373.0
+tommytremble,tommytremble,Tommy Tremble,TE,170.19,1,170.19,298.0,374.0
+trevoretienne,trevoretienne,Trevor Etienne,RB,170.19,1,170.19,316.0,375.0
+georgeholani,georgeholani,George Holani,RB,170.19,1,170.19,323.5,376.0
+jatavionsanders,jatavionsanders,Ja'Tavion Sanders,TE,170.19,1,170.19,304.5,377.0
+elijaharroyo,elijaharroyo,Elijah Arroyo,TE,170.19,1,170.19,339.0,378.0
+rileynowakowski,rileynowakowski,Riley Nowakowski,TE,170.2,1,170.2,,379.0
+isaiahdavis,isaiahdavis,Isaiah Davis,RB,170.2,1,170.2,379.0,380.0
+savionwilliams,savionwilliams,Savion Williams,WR,170.2,1,170.2,335.0,381.0
+olliegordon,olliegordon,Ollie Gordon II,RB,170.21,1,170.21,314.5,382.0
+lequintallen,lequintallen,LeQuint Allen Jr.,RB,170.21,1,170.21,317.5,383.0
+toryhorton,toryhorton,Tory Horton,WR,170.21,1,170.21,309.0,384.0
+connorheyward,connorheyward,Connor Heyward,RB,170.21,1,170.21,,385.0
+devinsingletary,devinsingletary,Devin Singletary,RB,170.22,1,170.22,332.5,386.0
+tyjohnson,tyjohnson,Ty Johnson,RB,170.22,1,170.22,303.0,387.0
+xavierlegette,xavierlegette,Xavier Legette,WR,170.22,1,170.22,412.0,388.0
+djgiddens,djgiddens,DJ Giddens,RB,170.23,1,170.23,316.5,389.0
+hunterluepke,hunterluepke,Hunter Luepke,RB,170.23,1,170.23,,390.0
+andrewbeck,andrewbeck,Andrew Beck,RB,170.23,1,170.23,,391.0
+tylerbadie,tylerbadie,Tyler Badie,RB,170.24,1,170.24,,392.0
+willshipley,willshipley,Will Shipley,RB,170.25,1,170.25,256.0,393.0
+adonaimitchell,adonaimitchell,Adonai Mitchell,WR,170.25,1,170.25,213.5,394.0
+seantucker,seantucker,Sean Tucker,RB,170.25,1,170.25,183.5,395.0
+alecingold,alecingold,Alec Ingold,RB,170.26,1,170.26,,396.0
+nickwestbrookikhine,nickwestbrookikhine,Nick Westbrook-Ikhine,WR,170.26,1,170.26,292.0,397.0
+tedhurst,tedhurst,Ted Hurst III,WR,170.26,1,170.26,276.0,398.0
+vanjefferson,vanjefferson,Van Jefferson,WR,170.26,1,170.26,,399.0
+treybenson,treybenson,Trey Benson,RB,170.27,1,170.27,337.0,400.0
+sethmcgowan,sethmcgowan,Seth McGowan,RB,170.27,1,170.27,341.0,401.0
+jalentolbert,jalentolbert,Jalen Tolbert,WR,170.27,1,170.27,326.5,402.0
+jaylenwright,jaylenwright,Jaylen Wright,RB,170.28,1,170.28,247.5,403.0
+adamprentice,adamprentice,Adam Prentice,RB,170.31,1,170.31,,404.0
+newenglandpatriots,newenglandpatriots,New England Patriots,DST,182.0,1,,182.0,405.0
+philadelphiaeagles,philadelphiaeagles,Philadelphia Eagles,DST,186.0,1,,186.0,406.0
+minnesotavikings,minnesotavikings,Minnesota Vikings,DST,187.0,1,,187.0,407.0
+pittsburghsteelers,pittsburghsteelers,Pittsburgh Steelers,DST,188.0,1,,188.0,408.0
+jacksonvillejaguars,jacksonvillejaguars,Jacksonville Jaguars,DST,192.0,1,,192.0,409.0
+clevelandbrowns,clevelandbrowns,Cleveland Browns,DST,194.0,1,,194.0,410.0
+losangeleschargers,losangeleschargers,Los Angeles Chargers,DST,197.0,1,,197.0,411.0
+baltimoreravens,baltimoreravens,Baltimore Ravens,DST,199.0,1,,199.0,412.0
+chicagobears,chicagobears,Chicago Bears,DST,204.0,1,,204.0,413.0
+greenbaypackers,greenbaypackers,Green Bay Packers,DST,210.0,1,,210.0,414.0
+buffalobills,buffalobills,Buffalo Bills,DST,213.0,1,,213.0,415.0
+atlantafalcons,atlantafalcons,Atlanta Falcons,DST,215.0,1,,215.0,416.0
+detroitlions,detroitlions,Detroit Lions,DST,218.0,1,,218.0,417.0
+kansascitychiefs,kansascitychiefs,Kansas City Chiefs,DST,219.0,1,,219.0,418.0
+neworleanssaints,neworleanssaints,New Orleans Saints,DST,220.0,1,,220.0,419.0
+newyorkgiants,newyorkgiants,New York Giants,DST,222.0,1,,222.0,420.0
+indianapoliscolts,indianapoliscolts,Indianapolis Colts,DST,231.0,1,,231.0,421.0
+sanfrancisco49ers,sanfrancisco49ers,San Francisco 49ers,DST,232.0,1,,232.0,422.0
+carolinapanthers,carolinapanthers,Carolina Panthers,DST,236.0,1,,236.0,423.0
+dallascowboys,dallascowboys,Dallas Cowboys,DST,237.0,1,,237.0,424.0
+tampabaybuccaneers,tampabaybuccaneers,Tampa Bay Buccaneers,DST,242.0,1,,242.0,425.0
+tennesseetitans,tennesseetitans,Tennessee Titans,DST,245.0,1,,245.0,426.0
+albertokwuegbunam,albertokwuegbunam,Albert Okwuegbunam Jr.,TE,248.0,1,,248.0,427.0
+philmafah,philmafah,Phil Mafah,RB,251.0,1,,251.0,428.0
+nickchubb,nickchubb,Nick Chubb,RB,252.0,1,,252.0,429.0
+roberthenry,roberthenry,Robert Henry Jr.,RB,253.0,1,,253.0,430.0
+andydalton,andydalton,Andy Dalton,QB,257.0,1,,257.0,431.0
+taysomhill,taysomhill,Taysom Hill,TE,258.0,1,,258.0,432.0
+pierrestrong,pierrestrong,Pierre Strong Jr.,RB,260.0,1,,260.0,433.0
+deionburks,deionburks,Deion Burks,WR,261.0,1,,261.0,434.0
+chimeredike,chimeredike,Chimere Dike,WR,262.0,1,,262.0,435.0
+lukemccaffrey,lukemccaffrey,Luke McCaffrey,WR,263.0,1,,263.0,436.0
+tannermckee,tannermckee,Tanner McKee,QB,266.0,1,,266.0,437.0
+jordanwatkins,jordanwatkins,Jordan Watkins,WR,267.0,1,,267.0,438.0
+tyrodtaylor,tyrodtaylor,Tyrod Taylor,QB,268.0,1,,268.0,439.0
+malikbenson,malikbenson,Malik Benson,WR,268.5,1,,268.5,440.0
+samroush,samroush,Sam Roush,TE,269.0,1,,269.0,441.0
+lukemusgrave,lukemusgrave,Luke Musgrave,TE,273.0,1,,273.0,442.0
+kennymcintosh,kennymcintosh,Kenny McIntosh,RB,274.0,1,,274.0,443.0
+calvinaustiniii,calvinaustiniii,Calvin Austin III,WR,276.0,1,,276.0,444.0
+jahdaewalker,jahdaewalker,Jahdae Walker,WR,277.0,1,,277.0,445.0
+jacobcowing,jacobcowing,Jacob Cowing,WR,278.0,1,,278.0,446.0
+frankgore,frankgore,Frank Gore Jr.,RB,279.0,1,,279.0,447.0
+kevincoleman,kevincoleman,Kevin Coleman Jr.,WR,280.0,1,,280.0,448.0
+theowease,theowease,Theo Wease Jr.,WR,283.0,1,,283.0,449.0
+eliheidenreich,eliheidenreich,Eli Heidenreich,RB,283.5,1,,283.5,450.0
+danielbellinger,danielbellinger,Daniel Bellinger,TE,284.0,1,,284.0,451.0
+jaleelmclaughlin,jaleelmclaughlin,Jaleel McLaughlin,RB,286.0,1,,286.0,452.0
+zavionthomas,zavionthomas,Zavion Thomas,WR,286.5,1,,286.5,453.0
+spencerrattler,spencerrattler,Spencer Rattler,QB,287.0,1,,287.0,454.0
+johnmetchie,johnmetchie,John Metchie III,WR,288.0,1,,288.0,455.0
+jammiller,jammiller,Jam Miller,RB,289.0,1,,289.0,456.0
+cincinnatibengals,cincinnatibengals,Cincinnati Bengals,DST,293.0,1,,293.0,457.0
+gardnerminshew,gardnerminshew,Gardner Minshew II,QB,294.0,1,,294.0,458.0
+elicayomanor,elicayomanor,Elic Ayomanor,WR,295.0,1,,295.0,459.0
+charliekolar,charliekolar,Charlie Kolar,TE,296.0,1,,296.0,460.0
+drewlock,drewlock,Drew Lock,QB,297.0,1,,297.0,461.0
+lasvegasraiders,lasvegasraiders,Las Vegas Raiders,DST,299.0,1,,299.0,462.0
+kyleallen,kyleallen,Kyle Allen,QB,300.0,1,,300.0,463.0
+brenenthompson,brenenthompson,Brenen Thompson,WR,300.0,1,,300.0,464.0
+michaelcarter,michaelcarter,Michael Carter,RB,301.0,1,,301.0,465.0
+damienmartinez,damienmartinez,Damien Martinez,RB,302.0,1,,302.0,466.0
+konatamumpfield,konatamumpfield,Konata Mumpfield,WR,304.0,1,,304.0,467.0
+eftonchism,eftonchism,Efton Chism III,WR,307.0,1,,307.0,468.0
+austinekeler,austinekeler,Austin Ekeler,RB,308.0,1,,308.0,469.0
+quinnewers,quinnewers,Quinn Ewers,QB,309.0,1,,309.0,470.0
+gregdortch,gregdortch,Greg Dortch,WR,310.0,1,,310.0,471.0
+keenanallen,keenanallen,Keenan Allen,WR,311.5,1,,311.5,472.0
+darrenwaller,darrenwaller,Darren Waller,TE,312.0,1,,312.0,473.0
+isaacguerendo,isaacguerendo,Isaac Guerendo,RB,313.0,1,,313.0,474.0
+kareemhunt,kareemhunt,Kareem Hunt,RB,314.0,1,,314.0,475.0
+bensinnott,bensinnott,Ben Sinnott,TE,317.0,1,,317.0,476.0
+audricestime,audricestime,Audric Estime,RB,319.0,1,,319.0,477.0
+willhoward,willhoward,Will Howard,QB,320.0,1,,320.0,478.0
+jarquezhunter,jarquezhunter,Jarquez Hunter,RB,321.0,1,,321.0,479.0
+washingtoncommanders,washingtoncommanders,Washington Commanders,DST,323.0,1,,323.0,480.0
+skylerbell,skylerbell,Skyler Bell,WR,323.0,1,,323.0,481.0
+colbieyoung,colbieyoung,Colbie Young,WR,324.0,1,,324.0,482.0
+oscardelp,oscardelp,Oscar Delp,TE,325.0,1,,325.0,483.0
+isaiahbond,isaiahbond,Isaiah Bond,WR,328.0,1,,328.0,484.0
+jeromeford,jeromeford,Jerome Ford,RB,329.0,1,,329.0,485.0
+miamidolphins,miamidolphins,Miami Dolphins,DST,330.0,1,,330.0,486.0
+zachertz,zachertz,Zach Ertz,TE,332.0,1,,332.0,487.0
+newyorkjets,newyorkjets,New York Jets,DST,333.0,1,,333.0,488.0
+joemixon,joemixon,Joe Mixon,RB,334.0,1,,334.0,489.0
+najeeharris,najeeharris,Najee Harris,RB,334.5,1,,334.5,490.0
+tysonbagent,tysonbagent,Tyson Bagent,QB,338.0,1,,338.0,491.0
+tylerhuntley,tylerhuntley,Tyler Huntley,QB,350.0,1,,350.0,492.0
+arizonacardinals,arizonacardinals,Arizona Cardinals,DST,355.0,1,,355.0,493.0
+emaridemercado,emaridemercado,Emari Demercado,RB,360.0,1,,360.0,494.0
+marcusmariota,marcusmariota,Marcus Mariota,QB,364.0,1,,364.0,495.0
+justinjoly,justinjoly,Justin Joly,TE,366.0,1,,366.0,496.0
+jonnusmith,jonnusmith,Jonnu Smith,TE,370.0,1,,370.0,497.0
+mackhollins,mackhollins,Mack Hollins,WR,380.0,1,,380.0,498.0
+tezjohnson,tezjohnson,Tez Johnson,WR,399.0,1,,399.0,499.0
+kylewilliams,kylewilliams,Kyle Williams,WR,402.0,1,,402.0,500.0
+devinneal,devinneal,Devin Neal,RB,405.0,1,,405.0,501.0
