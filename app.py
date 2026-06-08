@@ -396,10 +396,19 @@ def build_value_leaderboard(top_n: int = 50, hide_rookie_keepers: bool = False) 
 
 @st.cache_data(ttl=300, show_spinner=False)
 def build_trade_targets() -> pd.DataFrame:
-    """Every rostered keeper's NATURAL cost round — the round that carries over to
-    a new team on a trade. Lets you scout, for a pick you own, which players you
-    could trade for and keep at that round.
+    """Every rostered keeper's cost round — the round that carries over to a new
+    team on a trade. Lets you scout, for a pick you own, which players you could
+    trade for and keep at that round.
     """
+    # Rookie keepers cost a last-round pick. (On a trade they convert to a regular
+    # keeper — rookie status doesn't transfer — but still slot at a last round.)
+    rookie_hist = set()
+    for yr in range(SEASON - 1, SEASON - 7, -1):
+        for oid, picks in storage.load(yr).items():
+            for s in picks:
+                if s.get("is_rookie_keeper") and s.get("player_id"):
+                    rookie_hist.add((str(oid), str(s["player_id"])))
+
     rows = []
     for owner_id, pids in CANDS.items():
         mgr = config.manager_name(owner_id)
@@ -412,24 +421,28 @@ def build_trade_targets() -> pd.DataFrame:
             rank = adp_rank_for(pm.name, pm.position)
             if not rank:
                 continue
-            prof = H.keeper_profile(owner_id, pid, SEASON)
-            cost = engine.compute(prof, adp_rank=rank, is_rookie_keeper=False)
-            if not cost.eligible:
-                continue  # already kept 3 years
-            inherits = prof.get("acquired_via") in ("draft", "trade") and prof.get("original_round")
-            # Natural round (carries on trade); undrafted/waiver = a last-round pick.
-            cost_round = cost.recommended_round if inherits else DRAFT_ROUNDS
+            from_rookie = (str(owner_id), str(pid)) in rookie_hist
+            if from_rookie:
+                cost_round, keep_yr = DRAFT_ROUNDS, "RK"
+            else:
+                prof = H.keeper_profile(owner_id, pid, SEASON)
+                cost = engine.compute(prof, adp_rank=rank, is_rookie_keeper=False)
+                if not cost.eligible:
+                    continue  # already kept 3 years
+                inherits = prof.get("acquired_via") in ("draft", "trade") and prof.get("original_round")
+                # Natural round (carries on trade); undrafted/waiver = last-round pick.
+                cost_round = cost.recommended_round if inherits else DRAFT_ROUNDS
+                keep_yr = cost.keep_year if inherits else 1
             if not cost_round:
                 continue
             adp_round = engine.adp_rank_to_round(rank, NT)
             rows.append({
                 "_pid": str(pid), "Player": pm.name, "Pos": pm.position,
-                "Owner": mgr, "Keep Yr": cost.keep_year if inherits else 1,
+                "Owner": mgr, "Keep Yr": keep_yr, "Rookie": from_rookie,
                 "Cost Rd": int(cost_round), "ADP": int(rank), "ADP Rd": adp_round,
                 "Value": int(cost_round) - adp_round,
             })
-    df = pd.DataFrame(rows)
-    return df
+    return pd.DataFrame(rows)
 
 
 def build_rookies_table(top_n: int = 40) -> pd.DataFrame:
@@ -604,9 +617,10 @@ def render_trade_targets() -> None:
     for i, (_, r) in enumerate(view.iterrows(), 1):
         val = int(r["Value"])
         color = "#0c7a6e" if val > 0 else ("#b3232a" if val < 0 else "#8b86a0")
+        rk = ' <span class="rk-badge">RK</span>' if r.get("Rookie") else ""
         rows.append(
             f'<tr><td class="rk">{i}</td>'
-            f'<td class="pl">{theme.img_tag(r["_pid"])}{r["Player"]}</td>'
+            f'<td class="pl">{theme.img_tag(r["_pid"])}{r["Player"]}{rk}</td>'
             f'<td class="pos"><span class="posdot p-{r["Pos"]}"></span>{r["Pos"]}</td>'
             f'<td>{r["Owner"]}</td>'
             f'<td class="num">{r["Keep Yr"]}</td>'
@@ -622,7 +636,9 @@ def render_trade_targets() -> None:
                 unsafe_allow_html=True)
     st.caption(f"Value = Round {rnd} − the player's ADP round (draft capital you'd "
                "gain by keeping them there). Remember: to keep a player you must own "
-               "a pick at their cost round or earlier.")
+               "a pick at their cost round or earlier. **RK** = rookie keeper — kept "
+               "at a last round, and on a trade they convert to a regular keeper "
+               "(rookie status doesn't transfer, and the 3-year clock starts).")
 
 
 def render_rookies() -> None:
