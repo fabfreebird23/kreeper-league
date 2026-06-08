@@ -394,6 +394,44 @@ def build_value_leaderboard(top_n: int = 50, hide_rookie_keepers: bool = False) 
     return df
 
 
+@st.cache_data(ttl=300, show_spinner=False)
+def build_trade_targets() -> pd.DataFrame:
+    """Every rostered keeper's NATURAL cost round — the round that carries over to
+    a new team on a trade. Lets you scout, for a pick you own, which players you
+    could trade for and keep at that round.
+    """
+    rows = []
+    for owner_id, pids in CANDS.items():
+        mgr = config.manager_name(owner_id)
+        for pid in pids:
+            pm = H.player_meta(pid)
+            if pm.position not in ("QB", "RB", "WR", "TE"):
+                continue
+            if _years_exp(pid) == 0:
+                continue  # real NFL rookie -> Rookies tab
+            rank = adp_rank_for(pm.name, pm.position)
+            if not rank:
+                continue
+            prof = H.keeper_profile(owner_id, pid, SEASON)
+            cost = engine.compute(prof, adp_rank=rank, is_rookie_keeper=False)
+            if not cost.eligible:
+                continue  # already kept 3 years
+            inherits = prof.get("acquired_via") in ("draft", "trade") and prof.get("original_round")
+            # Natural round (carries on trade); undrafted/waiver = a last-round pick.
+            cost_round = cost.recommended_round if inherits else DRAFT_ROUNDS
+            if not cost_round:
+                continue
+            adp_round = engine.adp_rank_to_round(rank, NT)
+            rows.append({
+                "_pid": str(pid), "Player": pm.name, "Pos": pm.position,
+                "Owner": mgr, "Keep Yr": cost.keep_year if inherits else 1,
+                "Cost Rd": int(cost_round), "ADP": int(rank), "ADP Rd": adp_round,
+                "Value": int(cost_round) - adp_round,
+            })
+    df = pd.DataFrame(rows)
+    return df
+
+
 def build_rookies_table(top_n: int = 40) -> pd.DataFrame:
     """This year's NFL rookies (years_exp == 0) ranked by consensus ADP."""
     name_idx = get_name_index()
@@ -525,6 +563,66 @@ def render_home() -> None:
             who = e.get("name") or config.manager_name(e.get("owner", ""))
             lines.append(f"- **{who}** → {n} keeper{'' if n == 1 else 's'} · {_fmt_ts(e.get('ts', ''))}")
         st.markdown("\n".join(lines))
+
+
+def render_trade_targets() -> None:
+    st.markdown(f'<h2>{theme.crt("draft")}Keeper Trade Market</h2>', unsafe_allow_html=True)
+    st.caption("Pick the round you want to keep someone at — these are the players "
+               "across the league whose keeper cost is that round. The keeper round "
+               "carries over on a trade, so you could deal for one and keep them "
+               "there. Best value (cheapest relative to ADP) up top.")
+    df = build_trade_targets()
+    if df.empty:
+        st.info("No keeper data yet — run `python scripts/refresh_adp.py` to populate ADP.")
+        return
+
+    c1, c2 = st.columns([1, 1])
+    with c1:
+        rnd = st.selectbox("Keeper cost round", list(range(1, DRAFT_ROUNDS + 1)),
+                           index=1, help="The round a keeper would cost on your roster.")
+    with c2:
+        me = st.selectbox("Hide my own players (optional)",
+                          ["— show everyone —"] + list(NAME_TO_ID.keys()), index=0)
+
+    view = df[df["Cost Rd"] == rnd].copy()
+    owned_note = ""
+    if me in NAME_TO_ID:
+        view = view[view["Owner"] != me]
+        owned = get_owned().get(NAME_TO_ID[me]) or {}
+        can = any(owned.get(r, 0) > 0 for r in range(1, rnd + 1))
+        owned_note = (f" You own a Round&nbsp;{rnd}-or-earlier pick, so you could keep one. "
+                      if can else
+                      f" ⚠️ You don't own a Round&nbsp;{rnd}-or-earlier pick — you couldn't keep "
+                      "a player at this round without acquiring one first. ")
+
+    view = view.sort_values(["Value", "ADP"], ascending=[False, True])
+    if view.empty:
+        st.info(f"No keeper-eligible players cost Round {rnd} right now.")
+        return
+
+    rows = []
+    for i, (_, r) in enumerate(view.iterrows(), 1):
+        val = int(r["Value"])
+        color = "#0c7a6e" if val > 0 else ("#b3232a" if val < 0 else "#8b86a0")
+        rows.append(
+            f'<tr><td class="rk">{i}</td>'
+            f'<td class="pl">{theme.img_tag(r["_pid"])}{r["Player"]}</td>'
+            f'<td class="pos"><span class="posdot p-{r["Pos"]}"></span>{r["Pos"]}</td>'
+            f'<td>{r["Owner"]}</td>'
+            f'<td class="num">{r["Keep Yr"]}</td>'
+            f'<td class="num">{r["ADP"]}</td>'
+            f'<td class="num" style="color:{color};font-weight:600;">{val:+d}</td></tr>'
+        )
+    head = (f'<tr><th>#</th><th>Player</th><th>Pos</th><th>Owner</th>'
+            f'<th>Keep&nbsp;Yr</th><th>ADP</th><th>Value</th></tr>')
+    st.markdown(f'<p style="margin:.2rem 0 .6rem;">Keepable at <b>Round {rnd}</b>:{owned_note}</p>',
+                unsafe_allow_html=True)
+    st.markdown('<div class="neonwrap"><table class="lb lb-trade"><thead>' + head
+                + '</thead><tbody>' + "".join(rows) + '</tbody></table></div>',
+                unsafe_allow_html=True)
+    st.caption(f"Value = Round {rnd} − the player's ADP round (draft capital you'd "
+               "gain by keeping them there). Remember: to keep a player you must own "
+               "a pick at their cost round or earlier.")
 
 
 def render_rookies() -> None:
@@ -964,7 +1062,7 @@ with st.sidebar:
                f"{DRAFT_ROUNDS} rds · {LEAGUE.get('scoring','ppr').upper()}")
     page = st.radio("Navigate",
                     ["Home", "Title Odds", "Draft Board", "Set My Keepers",
-                     "Rookies", "Consensus ADP"],
+                     "Trade Market", "Rookies", "Consensus ADP"],
                     label_visibility="collapsed")
     st.divider()
     st.subheader("ADP freshness")
@@ -991,5 +1089,7 @@ elif page == "Draft Board":
     render_draft_board()
 elif page == "Set My Keepers":
     render_my_keepers()
+elif page == "Trade Market":
+    render_trade_targets()
 else:
     render_adp()
