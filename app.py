@@ -706,11 +706,13 @@ def _dk_parse_csv(text: str) -> list:
 
 
 def _dk_smart_parse(text: str) -> list:
-    """Parse from a CSV export or a plain ranked list — whichever matches more."""
+    """Parse from a CSV export or a plain ranked list. Prefer the CSV parse for
+    comma/tab data (it strips the header row and quotes) unless the plain-list
+    parse clearly matches more players."""
     line = _dk_parse_rankings(text)
     if "," in text or "\t" in text:
         csvp = _dk_parse_csv(text)
-        if sum(1 for r in csvp if r.get("pid")) > sum(1 for r in line if r.get("pid")):
+        if csvp and sum(1 for r in csvp if r.get("pid")) >= sum(1 for r in line if r.get("pid")):
             return csvp
     return line
 
