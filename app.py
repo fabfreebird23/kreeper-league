@@ -452,19 +452,55 @@ def build_trade_targets() -> pd.DataFrame:
 
 
 @st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=86400, show_spinner=False)
+def position_keeper_caps() -> dict:
+    """Max keepers a team would realistically hold at a position, from the league's
+    starting lineup (you don't keep two QBs/TEs when you only start one). Positions
+    not listed are uncapped (RB/WR fill flex)."""
+    from collections import Counter
+    from kreeper import sleeper
+    rp = sleeper.get_league(LEAGUE["sleeper_league_id"]).get("roster_positions", [])
+    c = Counter(rp)
+    return {"QB": c.get("QB", 0) + c.get("SUPER_FLEX", 0) or 1,
+            "TE": c.get("TE", 0) or 1}
+
+
+def _select_keepers(team_lb, cap, pos_cap, seed_positions=None):
+    """Pick a team's realistic keeper set: top by value, but no more than the
+    positional cap at QB/TE. Returns a list of leaderboard rows."""
+    from collections import Counter
+    pcount = Counter(seed_positions or [])
+    chosen = []
+    for _, r in team_lb.sort_values("Value", ascending=False).iterrows():
+        if len(chosen) >= cap:
+            break
+        limit = pos_cap.get(r["Pos"])
+        if limit is not None and pcount[r["Pos"]] >= limit:
+            continue  # already keeping the max QBs/TEs
+        chosen.append(r)
+        pcount[r["Pos"]] += 1
+    return chosen
+
+
 def _projected_kept_ids() -> set:
     """player_ids likely off the draft board: everyone declared as a keeper, plus
-    each team's most valuable eligible keepers up to the league caps."""
+    each team's most valuable eligible keepers (respecting roster + positional
+    limits — no team keeps two QBs or two TEs)."""
+    declared_pos = {}   # owner -> [positions already declared]
     kept = set()
-    for picks in storage.load(SEASON).values():
+    for oid, picks in storage.load(SEASON).items():
         for s in picks:
             if s.get("player_id"):
                 kept.add(str(s["player_id"]))
+                declared_pos.setdefault(str(oid), []).append(s.get("position"))
     lb = build_value_leaderboard(400)
     cap = MAX_REG + MAX_ROOKIE
+    pos_cap = position_keeper_caps()
     for o in MANAGERS:
-        tl = lb[lb["Team"] == config.manager_name(o)].sort_values("Value", ascending=False).head(cap)
-        kept.update(str(p) for p in tl["_pid"])
+        seeded = declared_pos.get(str(o), [])
+        team = lb[(lb["Team"] == config.manager_name(o)) & (~lb["_pid"].astype(str).isin(kept))]
+        for r in _select_keepers(team, cap - len(seeded), pos_cap, seeded):
+            kept.add(str(r["_pid"]))
     return kept
 
 
@@ -1268,12 +1304,14 @@ def build_championship_odds():
     # measure the talent retained (ADP) and the draft capital saved (value).
     lb = build_value_leaderboard(400)
     keep_n = MAX_REG + MAX_ROOKIE
+    pos_cap = position_keeper_caps()
     talent, kcap, best = {}, {}, {}
     for o in MANAGERS:
-        tl = lb[lb["Team"] == config.manager_name(o)].sort_values("Value", ascending=False).head(keep_n)
-        talent[o] = float(sum(max(0, 260 - int(a)) for a in tl["ADP"]))
-        kcap[o] = float(tl["Value"].sum())
-        best[o] = list(tl["Player"].head(3))
+        team = lb[lb["Team"] == config.manager_name(o)]
+        sel = _select_keepers(team, keep_n, pos_cap)  # realistic keep set (no 2 QB/TE)
+        talent[o] = float(sum(max(0, 260 - int(r["ADP"])) for r in sel))
+        kcap[o] = float(sum(r["Value"] for r in sel))
+        best[o] = [r["Player"] for r in sel[:3]]
 
     def _z(d):
         v = list(d.values())
