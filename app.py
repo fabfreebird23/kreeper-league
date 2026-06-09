@@ -132,6 +132,12 @@ def get_owned():
     return draftboard.owned_picks_by_owner()
 
 
+@st.cache_data(ttl=600, show_spinner=False)
+def get_owned_for(season: int):
+    """owner_id -> Counter of rounds owned for a given (incl. future) season."""
+    return draftboard.owned_picks_by_owner(season=season)
+
+
 @st.cache_data(ttl=86400, show_spinner=False)
 def get_name_index():
     """normalized name -> Sleeper player_id (skill positions; prefer active/with team)."""
@@ -777,12 +783,15 @@ def render_trade_analyzer() -> None:
                 out[f"{pm.name} ({pm.position})"] = str(pid)
         return out
 
+    pick_seasons = [SEASON, SEASON + 1, SEASON + 2]
+
     def pick_opts(oid):
-        owned = get_owned().get(oid) or {}
         opts = []
-        for r in range(1, DRAFT_ROUNDS + 1):
-            for i in range(owned.get(r, 0)):
-                opts.append(f"Round {r}" + (f" (#{i+1})" if owned.get(r, 0) > 1 else ""))
+        for yr in pick_seasons:
+            owned = get_owned_for(yr).get(oid) or {}
+            for r in range(1, DRAFT_ROUNDS + 1):
+                for i in range(owned.get(r, 0)):
+                    opts.append(f"{yr} R{r}" + (f" (#{i+1})" if owned.get(r, 0) > 1 else ""))
         return opts
 
     ra, rb = roster_opts(oa), roster_opts(ob)
@@ -801,9 +810,16 @@ def render_trade_analyzer() -> None:
         bonus = max(0, kv.get(pid, 0)) * 6   # cheap-keeper edge, on top of talent
         return talent + bonus
 
+    def pick_pts(label):
+        # "2027 R1 (#2)" -> discounted value (future picks worth less, slot unknown)
+        yr = int(label.split()[0])
+        rnd = int(label.split()[1][1:])
+        discount = 0.8 ** (yr - SEASON)
+        return _pick_value(rnd) * discount
+
     def side_value(players, ropts, picks):
         pv = sum(player_value(ropts[p]) for p in players)
-        pc = sum(_pick_value(int(p.split()[1])) for p in picks)
+        pc = sum(pick_pts(p) for p in picks)
         return pv, pc
 
     # What each team RECEIVES (the other side's outgoing assets).
@@ -830,7 +846,8 @@ def render_trade_analyzer() -> None:
         st.success(f"📈 Edge to **{winner}** by ~{round(margin)} pts.")
     st.caption("Heuristic only — player value = a draft-value curve at their ADP "
                "plus a bonus for any keeper discount; picks use the same curve at a "
-               "mid-round slot. Doesn't model roster need or positional scarcity.")
+               "mid-round slot. Future picks (next two years) are discounted ~20% "
+               "per year out. Doesn't model roster need or positional scarcity.")
 
 
 def render_keeper_landscape() -> None:
