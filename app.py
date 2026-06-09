@@ -8,7 +8,9 @@ Pages (sidebar nav):
 from __future__ import annotations
 
 import datetime as dt
+import json
 import math
+import re
 
 import pandas as pd
 import streamlit as st
@@ -620,6 +622,249 @@ def render_team_boxes() -> None:
             inner = '<div class="empty">— no keepers yet —</div>'
         cards.append(f'<div class="kcard"><h4>{m["name"]}</h4>{inner}</div>')
     st.markdown('<div class="kcards">' + "".join(cards) + "</div>", unsafe_allow_html=True)
+
+
+# ===================== My Draft Kit (private, password-gated) =================
+def _dk_parse_rankings(text: str) -> list:
+    """Parse pasted rankings: one player per line (any leading rank number / pos /
+    team is stripped); a line like 'Tier 3' sets the tier for players below it."""
+    idx = get_name_index()
+    rows, tier, rank = [], 1, 0
+    for line in text.splitlines():
+        s = line.strip()
+        if not s:
+            continue
+        m = re.match(r"^[\-\*\s>]*tier\s*[:#]?\s*(\d+)", s, re.I)
+        if m:
+            tier = int(m.group(1))
+            continue
+        nm = re.sub(r"^\s*\d+[\.\):]?\s*", "", s)        # leading "12." / "12)"
+        nm = re.sub(r"[,\t|].*$", "", nm)                # CSV/extra columns
+        nm = re.sub(r"\([^)]*\)", "", nm)                # "(WR - PHI)"
+        nm = re.sub(r"\b(QB|RB|WR|TE|K|DST|DEF)\d*\b", "", nm, flags=re.I).strip(" -–")
+        if not nm:
+            continue
+        rank += 1
+        rows.append({"rank": rank, "name": nm, "tier": tier,
+                     "pid": idx.get(normalize_name(nm))})
+    return rows
+
+
+@st.cache_data(ttl=86400, show_spinner=False)
+def _dk_adp_pool():
+    """ADP-ordered draftable players (pid, name, pos, adp) for AI mock picks."""
+    idx = get_name_index()
+    out = []
+    for _, ar in ADP_DF.iterrows():
+        pos, rank = ar.get("position"), ar.get("consensus_rank")
+        if pos not in ("QB", "RB", "WR", "TE") or pd.isna(rank):
+            continue
+        pid = idx.get(normalize_name(ar["name"]))
+        if pid:
+            out.append({"pid": str(pid), "name": ar["name"], "pos": pos, "adp": int(rank)})
+    out.sort(key=lambda x: x["adp"])
+    return out
+
+
+_TIER_COLORS = ["#0c7a6e", "#7b5cff", "#2bb5e8", "#ff4f9d", "#d98a00", "#8b86a0"]
+
+
+def _dk_board_html(rows, drafted, limit=60):
+    """Best-available table: each row = a ranked player not yet drafted."""
+    body = []
+    shown = 0
+    for r in rows:
+        if shown >= limit:
+            break
+        if not r.get("pid") or str(r["pid"]) in drafted:
+            continue
+        shown += 1
+        col = _TIER_COLORS[(r["tier"] - 1) % len(_TIER_COLORS)]
+        pos = (H.player_meta(r["pid"]).position if r.get("pid") else "")
+        body.append(
+            f'<tr><td class="rk">{r["rank"]}</td>'
+            f'<td class="pl">{theme.img_tag(r["pid"])}{r["name"]}</td>'
+            f'<td class="pos">{pos}</td>'
+            f'<td class="num"><span style="background:{col};color:#fff;padding:1px 7px;'
+            f'border-radius:6px;font-size:11px;">T{r["tier"]}</span></td></tr>'
+        )
+    head = '<tr><th>Rk</th><th>Player</th><th>Pos</th><th>Tier</th></tr>'
+    return ('<div class="neonwrap" style="max-height:560px;overflow:auto;">'
+            '<table class="lb"><thead>' + head + '</thead><tbody>'
+            + "".join(body) + '</tbody></table></div>')
+
+
+def _dk_rankings_ui():
+    st.caption("Paste your UDK (or any) rankings — one player per line, top to "
+               "bottom. A line like **Tier 3** sets the tier for players below it. "
+               "Leading rank numbers, positions and teams are ignored. Or upload a "
+               "file you saved here before.")
+    up = st.file_uploader("Upload saved rankings (.json)", type="json", key="dk_up")
+    if up is not None:
+        try:
+            st.session_state.dk_rankings = json.load(up)
+            st.success(f"Loaded {len(st.session_state.dk_rankings)} ranked players.")
+        except Exception:  # noqa: BLE001
+            st.error("Couldn't read that file.")
+    text = st.text_area("Paste rankings", height=220, key="dk_text",
+                        placeholder="Tier 1\nJa'Marr Chase\nBijan Robinson\nJustin Jefferson\nTier 2\n...")
+    if st.button("Parse rankings", type="primary"):
+        st.session_state.dk_rankings = _dk_parse_rankings(text)
+    ranks = st.session_state.get("dk_rankings")
+    if not ranks:
+        return
+    unmatched = [r["name"] for r in ranks if not r.get("pid")]
+    st.success(f"**{len(ranks)}** ranked · **{len(ranks) - len(unmatched)}** matched"
+               f" · **{len(unmatched)}** unmatched.")
+    if unmatched:
+        with st.expander(f"⚠️ {len(unmatched)} names didn't match — fix spelling & re-parse"):
+            st.write(", ".join(unmatched))
+    st.download_button("⬇ Save my rankings (.json)", json.dumps(ranks),
+                       file_name=f"my_rankings_{SEASON}.json", mime="application/json")
+    st.dataframe(pd.DataFrame([{"Rk": r["rank"], "Tier": r["tier"], "Player": r["name"],
+                                "Matched": "✓" if r.get("pid") else "—"} for r in ranks]),
+                 hide_index=True, use_container_width=True, height=320)
+
+
+def _dk_assistant_ui():
+    ranks = st.session_state.get("dk_rankings")
+    if not ranks:
+        st.info("Add your rankings on the **My Rankings** tab first.")
+        return
+    from kreeper import sleeper
+    names = list(NAME_TO_ID.keys())
+    default_me = names.index("Brandon Cliffton") if "Brandon Cliffton" in names else 0
+    c1, c2, c3 = st.columns([1, 1, 1])
+    me = c1.selectbox("Your team", names, index=default_me, key="dk_live_me")
+    pos_f = c2.selectbox("Position", ["All", "QB", "RB", "WR", "TE"], key="dk_live_pos")
+    with c3:
+        st.write("")
+        auto = st.checkbox("Auto-refresh (12s)", key="dk_live_auto")
+        st.button("🔄 Refresh now")
+    if auto:
+        try:
+            from streamlit_autorefresh import st_autorefresh
+            st_autorefresh(interval=12000, key="dk_live_tick")
+        except Exception:  # noqa: BLE001
+            st.caption("(auto-refresh unavailable — use the button)")
+
+    lg = sleeper.get_league(LEAGUE["sleeper_league_id"])
+    draft_id = lg.get("draft_id")
+    picks = sleeper.get_draft_picks_fresh(draft_id) if draft_id else []
+    drafted = {str(p.get("player_id")) for p in picks if p.get("player_id")}
+    me_id = NAME_TO_ID[me]
+    my_pids = [str(p.get("player_id")) for p in picks if str(p.get("picked_by")) == str(me_id)]
+
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Picks made", len(picks))
+    m2.metric("On the clock", f"#{len(picks) + 1}" if draft_id else "—")
+    m3.metric("Your players", len(my_pids))
+
+    rows = ranks if pos_f == "All" else [
+        r for r in ranks if r.get("pid") and H.player_meta(r["pid"]).position == pos_f]
+    st.markdown("##### 🎯 Best available (your board)")
+    st.markdown(_dk_board_html(rows, drafted), unsafe_allow_html=True)
+
+    if my_pids:
+        from collections import Counter
+        pc = Counter(H.player_meta(p).position for p in my_pids)
+        st.markdown("##### Your roster · " + " · ".join(f"{k}:{v}" for k, v in sorted(pc.items())))
+        st.write(", ".join(H.player_meta(p).name for p in my_pids))
+    st.caption("Reads your league's live Sleeper draft — best available is ranked "
+               "by YOUR list, colored by tier, with drafted players removed. Hit "
+               "Refresh (or auto) as picks come in.")
+
+
+def _dk_mock_ui():
+    ranks = st.session_state.get("dk_rankings")
+    if not ranks:
+        st.info("Add your rankings on the **My Rankings** tab first.")
+        return
+    order = config.load().get("draft_order") or list(MANAGERS.keys())
+    slot_names = [config.manager_name(o) for o in order]
+    default_me = slot_names.index("Brandon Cliffton") if "Brandon Cliffton" in slot_names else 0
+    me_slot = st.selectbox("Your draft slot", slot_names, index=default_me, key="dk_mock_slot")
+    my_slot = slot_names.index(me_slot)
+    n = len(order)
+
+    if st.button("🔁 Start / reset mock"):
+        st.session_state.dk_mock = {"taken": list(_projected_kept_ids()), "log": []}
+    state = st.session_state.get("dk_mock")
+    if not state:
+        st.info("Click **Start** to mock from the current board (likely keepers removed).")
+        return
+
+    taken = set(state["taken"])
+    adp_pool = _dk_adp_pool()
+
+    def snake_slot(pick_idx):  # 0-based overall pick -> 0-based slot
+        rd = pick_idx // n
+        i = pick_idx % n
+        return i if rd % 2 == 0 else (n - 1 - i)
+
+    # Auto-run AI picks until it's the user's turn (or the draft is full).
+    progressed = False
+    while len(state["log"]) < n * DRAFT_ROUNDS and snake_slot(len(state["log"])) != my_slot:
+        nxt = next((p for p in adp_pool if p["pid"] not in taken), None)
+        if not nxt:
+            break
+        taken.add(nxt["pid"])
+        state["log"].append({"slot": snake_slot(len(state["log"])), "pid": nxt["pid"], "by": "ADP"})
+        progressed = True
+    if progressed:
+        state["taken"] = list(taken)
+
+    pick_no = len(state["log"]) + 1
+    rd = (pick_no - 1) // n + 1
+    st.caption(f"Pick **{pick_no}** · Round **{rd}** · you're on the clock at slot {my_slot + 1}.")
+
+    cols = st.columns(4)
+    avail = [r for r in ranks if r.get("pid") and str(r["pid"]) not in taken][:8]
+    st.markdown("##### Your pick — top of your board")
+    for i, r in enumerate(avail):
+        if cols[i % 4].button(f'{r["name"]}', key=f"dk_pick_{len(state['log'])}_{r['pid']}"):
+            taken.add(str(r["pid"]))
+            state["taken"] = list(taken)
+            state["log"].append({"slot": my_slot, "pid": str(r["pid"]), "by": "you"})
+            st.rerun()
+
+    mine = [p["pid"] for p in state["log"] if p["slot"] == my_slot]
+    if mine:
+        st.markdown("##### Your team")
+        st.write(", ".join(H.player_meta(p).name for p in mine))
+    st.caption("Practice mock: other teams auto-pick by consensus ADP; you pick off "
+               "your own board. Keepers are pre-removed.")
+
+
+def render_draft_kit():
+    st.markdown(f'<h2>{theme.crt("draft")}My Draft Kit 🔒</h2>', unsafe_allow_html=True)
+    try:
+        pw = st.secrets.get("draft_kit_password")
+    except Exception:  # noqa: BLE001
+        pw = None
+    if not pw:
+        st.warning('Private tab. To enable it, add `draft_kit_password = "your-password"` '
+                   "to your Streamlit secrets (same place as `github_token`).")
+        return
+    if not st.session_state.get("dk_auth"):
+        with st.form("dk_login"):
+            entered = st.text_input("Password", type="password")
+            if st.form_submit_button("Unlock") and entered:
+                if entered == pw:
+                    st.session_state.dk_auth = True
+                    st.rerun()
+                else:
+                    st.error("Wrong password.")
+        return
+    st.caption("Your private draft command center — your rankings never leave your "
+               "session (save them to a file to reuse).")
+    t1, t2, t3 = st.tabs(["📥 My Rankings", "🎯 Live Draft Assistant", "🧪 Mock Draft"])
+    with t1:
+        _dk_rankings_ui()
+    with t2:
+        _dk_assistant_ui()
+    with t3:
+        _dk_mock_ui()
 
 
 def render_home() -> None:
@@ -1485,6 +1730,7 @@ SECTIONS = [
     ("trades", "Trades"),
     ("league", "League"),
     ("players", "Players"),
+    ("kit", "🔒 Draft Kit"),
 ]
 _VALID = {k for k, _ in SECTIONS}
 page = st.query_params.get("p", "home")
@@ -1554,3 +1800,5 @@ elif page == "players":
         render_rookies()
     with t2:
         render_adp()
+elif page == "kit":
+    render_draft_kit()
