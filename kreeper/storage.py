@@ -257,6 +257,72 @@ def load_log(season: int | None = None) -> List[Dict[str, Any]]:
         return []
 
 
+# ------------------------------------------------------------ personal rankings
+def _ranks_gh_path(season: int) -> str:
+    return f"data/rankings_{season}.json"
+
+
+def _ranks_local_path(season: int) -> Path:
+    base = Path(os.environ.get("KREEPER_DATA", config.DATA_DIR))
+    base.mkdir(parents=True, exist_ok=True)
+    return base / f"rankings_{season}.json"
+
+
+def _gh_overwrite_json(path: str, obj, message: str) -> None:
+    tok, repo, branch = _gh_config()
+    _ensure_branch(repo, branch, tok)
+    for _ in range(3):
+        _, sha = _gh_read_list(path)  # ([], None) when the file doesn't exist yet
+        body = {
+            "message": message,
+            "content": base64.b64encode(json.dumps(obj, indent=2).encode()).decode(),
+            "branch": branch,
+        }
+        if sha:
+            body["sha"] = sha
+        r = requests.put(f"{_API}/repos/{repo}/contents/{path}",
+                         headers=_headers(tok), json=body, timeout=20)
+        if r.status_code in (200, 201):
+            return
+        if r.status_code != 409:
+            r.raise_for_status()
+    raise RuntimeError("GitHub rankings save failed after retries")
+
+
+def save_rankings(rankings: List[Dict[str, Any]], season: int | None = None) -> None:
+    """Persist a personal rankings list (repo-backed when configured, else local)."""
+    season = season or config.current_season()
+    try:
+        if _use_remote(season):
+            _gh_overwrite_json(_ranks_gh_path(season), rankings, f"rankings ({season})")
+            return
+    except Exception:  # noqa: BLE001
+        return
+    try:
+        with _LOCK:
+            _ranks_local_path(season).write_text(json.dumps(rankings, indent=2))
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def load_rankings(season: int | None = None) -> List[Dict[str, Any]]:
+    season = season or config.current_season()
+    if _use_remote(season):
+        try:
+            data, _ = _gh_read_list(_ranks_gh_path(season))
+            return data
+        except Exception:  # noqa: BLE001
+            return []
+    p = _ranks_local_path(season)
+    if not p.exists():
+        return []
+    try:
+        with _LOCK:
+            return json.loads(p.read_text())
+    except Exception:  # noqa: BLE001
+        return []
+
+
 def prior_rookie_seasons(
     owner_id: str, player_id: str, current_season: int, lookback: int = 6
 ) -> List[int]:

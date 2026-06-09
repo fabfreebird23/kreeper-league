@@ -650,6 +650,67 @@ def _dk_parse_rankings(text: str) -> list:
     return rows
 
 
+def _dk_parse_csv(text: str) -> list:
+    """Parse a CSV export (e.g. a UDK / Google-Sheets rankings export): auto-detect
+    the player-name column (the one matching the most players) and a tier column."""
+    import csv
+    import io
+    rows = [r for r in csv.reader(io.StringIO(text)) if any(c.strip() for c in r)]
+    if len(rows) < 2:
+        return []
+    idx = get_name_index()
+    body = rows[1:]
+    ncols = max(len(r) for r in rows)
+    name_col, best = 0, -1
+    for c in range(ncols):
+        hits = sum(1 for r in body if len(r) > c and idx.get(normalize_name(r[c])))
+        if hits > best:
+            best, name_col = hits, c
+    if best <= 0:
+        return []
+    header = [h.lower() for h in rows[0]]
+    tier_col = next((i for i, h in enumerate(header) if "tier" in h), None)
+    out, rank = [], 0
+    for r in body:
+        if len(r) <= name_col:
+            continue
+        nm = re.sub(r"\([^)]*\)", "", r[name_col]).strip()
+        if not nm:
+            continue
+        tier = 1
+        if tier_col is not None and len(r) > tier_col:
+            tm = re.search(r"\d+", r[tier_col])
+            tier = int(tm.group()) if tm else 1
+        rank += 1
+        out.append({"rank": rank, "name": nm, "tier": tier, "pid": idx.get(normalize_name(nm))})
+    return out
+
+
+def _dk_smart_parse(text: str) -> list:
+    """Parse from a CSV export or a plain ranked list — whichever matches more."""
+    line = _dk_parse_rankings(text)
+    if "," in text or "\t" in text:
+        csvp = _dk_parse_csv(text)
+        if sum(1 for r in csvp if r.get("pid")) > sum(1 for r in line if r.get("pid")):
+            return csvp
+    return line
+
+
+def _dk_fetch_url(url: str) -> str:
+    """Fetch ranking text from a CSV / published-Google-Sheet URL."""
+    import requests
+    u = url.strip()
+    m = re.search(r"docs\.google\.com/spreadsheets/d/([\w-]+)", u)
+    if m and "output=csv" not in u and "format=csv" not in u:
+        gid = re.search(r"[#&?]gid=(\d+)", u)
+        u = f"https://docs.google.com/spreadsheets/d/{m.group(1)}/export?format=csv"
+        if gid:
+            u += f"&gid={gid.group(1)}"
+    r = requests.get(u, timeout=15, headers={"User-Agent": "kreeper-draftkit/1.0"})
+    r.raise_for_status()
+    return r.text
+
+
 @st.cache_data(ttl=86400, show_spinner=False)
 def _dk_adp_pool():
     """ADP-ordered draftable players (pid, name, pos, adp) for AI mock picks."""
@@ -694,22 +755,48 @@ def _dk_board_html(rows, drafted, limit=60):
             + "".join(body) + '</tbody></table></div>')
 
 
+def _dk_set_rankings(rankings):
+    st.session_state.dk_rankings = rankings
+    storage.save_rankings(rankings, SEASON)   # persist (repo-backed) for next time
+
+
 def _dk_rankings_ui():
-    st.caption("Paste your UDK (or any) rankings — one player per line, top to "
-               "bottom. A line like **Tier 3** sets the tier for players below it. "
-               "Leading rank numbers, positions and teams are ignored. Or upload a "
-               "file you saved here before.")
-    up = st.file_uploader("Upload saved rankings (.json)", type="json", key="dk_up")
-    if up is not None:
-        try:
-            st.session_state.dk_rankings = json.load(up)
-            st.success(f"Loaded {len(st.session_state.dk_rankings)} ranked players.")
-        except Exception:  # noqa: BLE001
-            st.error("Couldn't read that file.")
-    text = st.text_area("Paste rankings", height=220, key="dk_text",
-                        placeholder="Tier 1\nJa'Marr Chase\nBijan Robinson\nJustin Jefferson\nTier 2\n...")
-    if st.button("Parse rankings", type="primary"):
-        st.session_state.dk_rankings = _dk_parse_rankings(text)
+    # Load the saved set once per session so rankings persist across visits/devices.
+    if "dk_rankings" not in st.session_state:
+        st.session_state.dk_rankings = storage.load_rankings(SEASON)
+
+    st.caption("Import your UDK rankings three ways: paste the list, upload a CSV, "
+               "or point to a published CSV / Google-Sheet URL (in the UDK sheet: "
+               "File → Share → Publish to web → CSV). Tiers, rank numbers, positions "
+               "and teams are all handled. Saved automatically for next time.")
+
+    src = st.radio("Source", ["Paste", "CSV / Sheet URL", "Upload file"],
+                   horizontal=True, key="dk_src")
+    if src == "Paste":
+        text = st.text_area("Paste rankings (or CSV)", height=220, key="dk_text",
+                            placeholder="Tier 1\nJa'Marr Chase\nBijan Robinson\nTier 2\n...")
+        if st.button("Parse & save", type="primary"):
+            _dk_set_rankings(_dk_smart_parse(text))
+    elif src == "CSV / Sheet URL":
+        url = st.text_input("CSV or published Google-Sheet URL", key="dk_url")
+        if st.button("Fetch & save", type="primary") and url:
+            try:
+                _dk_set_rankings(_dk_smart_parse(_dk_fetch_url(url)))
+                st.success("Fetched from URL.")
+            except Exception as e:  # noqa: BLE001
+                st.error(f"Couldn't fetch that URL ({type(e).__name__}). Make sure it's "
+                         "public / published to the web as CSV.")
+    else:
+        up = st.file_uploader("Upload rankings (.csv or .json)", type=["csv", "json"], key="dk_up")
+        if up is not None:
+            try:
+                raw = up.getvalue().decode("utf-8", "ignore")
+                parsed = json.loads(raw) if up.name.endswith(".json") else _dk_smart_parse(raw)
+                _dk_set_rankings(parsed)
+                st.success(f"Loaded {len(parsed)} players.")
+            except Exception:  # noqa: BLE001
+                st.error("Couldn't read that file.")
+
     ranks = st.session_state.get("dk_rankings")
     if not ranks:
         return
@@ -856,8 +943,8 @@ def render_draft_kit():
                 else:
                     st.error("Wrong password.")
         return
-    st.caption("Your private draft command center — your rankings never leave your "
-               "session (save them to a file to reuse).")
+    st.caption("Your private draft command center. Rankings are saved automatically "
+               "and reload here every time — on any device.")
     t1, t2, t3 = st.tabs(["📥 My Rankings", "🎯 Live Draft Assistant", "🧪 Mock Draft"])
     with t1:
         _dk_rankings_ui()
