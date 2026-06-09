@@ -625,6 +625,25 @@ def render_team_boxes() -> None:
 
 
 # ===================== My Draft Kit (private, password-gated) =================
+# One-click UDK grabber: paste this as a browser bookmark's URL, then click it on
+# the UDK Position Rankings page. It cycles QB/RB/WR/TE, sorts by ADP, and
+# downloads udk_rankings.csv (Player,Tier) to upload here.
+_DK_BOOKMARKLET = (
+    "javascript:(async()=>{const w=m=>new Promise(r=>setTimeout(r,m));"
+    "const P=['QB','RB','WR','TE'],A=[];for(const p of P){const b=[...document."
+    "querySelectorAll('button')].find(x=>x.textContent.trim()===p);if(b)b.click();"
+    "await w(2600);for(const tr of document.querySelectorAll('table tr')){const c="
+    "[...tr.querySelectorAll('td')].map(x=>x.innerText.replace(/\\s+/g,' ').trim());"
+    "if(c.length<7||!/^\\d+$/.test(c[1]))continue;A.push({n:c[0].replace("
+    "/\\s+[A-Z]{2,4}\\s*\\(\\d+\\)\\s*$/,'').trim(),a:parseFloat(c[5]),t:c[6]});}}"
+    "A.sort((x,y)=>x.a-y.a);const csv='Player,Tier\\n'+A.map(r=>'\"'+r.n+'\",'+r.t)"
+    ".join('\\n');const u=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));"
+    "const e=document.createElement('a');e.href=u;e.download='udk_rankings.csv';"
+    "document.body.appendChild(e);e.click();e.remove();alert('UDK exported: '+"
+    "A.length+' players. Now upload udk_rankings.csv in your Draft Kit.');})();"
+)
+
+
 def _dk_parse_rankings(text: str) -> list:
     """Parse pasted rankings: one player per line (any leading rank number / pos /
     team is stripped); a line like 'Tier 3' sets the tier for players below it."""
@@ -765,10 +784,24 @@ def _dk_rankings_ui():
     if "dk_rankings" not in st.session_state:
         st.session_state.dk_rankings = storage.load_rankings(SEASON)
 
-    st.caption("Import your UDK rankings three ways: paste the list, upload a CSV, "
-               "or point to a published CSV / Google-Sheet URL (in the UDK sheet: "
-               "File → Share → Publish to web → CSV). Tiers, rank numbers, positions "
-               "and teams are all handled. Saved automatically for next time.")
+    st.caption("Import your UDK rankings: use the one-click UDK grabber below, or "
+               "paste / upload / link a CSV. Tiers, rank numbers, positions and "
+               "teams are all handled, and it's saved automatically for next time.")
+
+    with st.expander("🔄 One-click refresh from the UDK (bookmarklet)"):
+        st.markdown(
+            "This app can't log into the UDK for you, so the grab runs **in your "
+            "browser** (where you're already logged in). One-time setup, then it's a "
+            "single click whenever the UDK updates:\n\n"
+            "1. **Make a bookmark** — bookmark this page, edit it, name it "
+            "*Grab UDK*, and replace its **URL** with the code below.\n"
+            "2. Open your **UDK → Position Rankings** page (any position).\n"
+            "3. Click the **Grab UDK** bookmark. It cycles QB/RB/WR/TE and downloads "
+            "`udk_rankings.csv` (~10 sec).\n"
+            "4. Back here, pick **Upload file** and choose that CSV. Done — it "
+            "re-matches everyone and saves.")
+        st.code(_DK_BOOKMARKLET, language="text")
+        st.caption("Or just tell me \"refresh my UDK rankings\" and I'll pull them for you.")
 
     src = st.radio("Source", ["Paste", "CSV / Sheet URL", "Upload file"],
                    horizontal=True, key="dk_src")
