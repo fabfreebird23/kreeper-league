@@ -178,6 +178,44 @@ table.dboard td.dbcell{ padding:3px 4px; }
 .navlink:hover{ border-color:var(--pink); color:var(--pink) !important; }
 .navlink.active{ background:var(--pink); color:#fff !important; border-color:var(--pink); }
 
+/* ---------- Draft Kit "war room" (FantasyPros-style) ---------- */
+.dr-status{ display:flex; align-items:center; gap:18px; flex-wrap:wrap;
+  background:linear-gradient(90deg,#241544,#3a1d63); color:#fff; border-radius:12px;
+  padding:12px 20px; margin-bottom:14px; box-shadow:0 4px 16px rgba(80,40,120,.25); }
+.dr-status .rd{ font-family:'Anton'; font-size:24px; line-height:1; color:#ff7ab8; }
+.dr-status .rd small{ display:block; font-size:10px; letter-spacing:2px; color:#cdbff0; }
+.dr-status .clk{ font-family:'Oswald'; font-weight:600; letter-spacing:.5px; font-size:15px; }
+.dr-status .clk b{ color:#7be0d3; }
+.dr-status .yours{ background:#16b8a6; color:#fff; padding:5px 14px; border-radius:8px;
+  font-family:'Anton'; letter-spacing:1px; animation:drpulse 1.4s ease-in-out infinite; }
+@keyframes drpulse{ 0%,100%{box-shadow:0 0 0 0 rgba(22,184,166,.5);} 50%{box-shadow:0 0 0 7px rgba(22,184,166,0);} }
+.dr-h{ font-family:'Anton'; text-transform:uppercase; letter-spacing:1px; font-size:14px;
+  color:var(--purple); margin:2px 0 6px; }
+.dr-lineup .slot{ display:flex; align-items:center; gap:8px; background:#fff;
+  border:1.5px solid var(--line); border-radius:9px; padding:7px 10px; margin-bottom:5px; }
+.dr-lineup .slot .pos{ font-family:'Anton'; color:#fff; background:var(--purple); border-radius:6px;
+  font-size:11px; padding:2px 7px; min-width:42px; text-align:center; }
+.dr-lineup .slot .pos.FLEX{ background:#d98a00; } .dr-lineup .slot .pos.BN{ background:#9089ab; }
+.dr-lineup .slot .nm{ font-size:13px; font-weight:600; }
+.dr-lineup .slot.empty .nm{ opacity:.45; font-style:italic; font-weight:400; }
+table.dr-avail{ width:100%; border-collapse:collapse; font-family:'Oswald'; }
+table.dr-avail td{ padding:6px 9px; border-bottom:1px solid #efeaf8; font-size:13px; }
+table.dr-avail td.r{ color:#b6aecd; width:26px; }
+table.dr-avail td.a{ text-align:right; color:#8b86a0; white-space:nowrap; }
+.dr-avail .tierband td{ background:#f1ebfb; font-family:'Anton'; font-size:10px; letter-spacing:2px;
+  color:#7b5cff; padding:3px 9px; }
+.dr-avail tr.rec td{ background:rgba(22,184,166,.10); box-shadow:inset 4px 0 0 #16b8a6; }
+.dr-avail .recbadge{ background:#16b8a6; color:#fff; font-size:9px; padding:1px 6px; border-radius:5px;
+  font-family:'Anton'; letter-spacing:.5px; margin-left:6px; }
+.dr-avail .pp{ font-size:10px; color:#8b86a0; }
+.dr-grid{ display:grid; gap:2px; font-family:'Oswald'; }
+.dr-cell{ font-size:8.5px; line-height:1.1; padding:3px; border-radius:4px; background:#faf7ff;
+  min-height:34px; border:1px solid #efeaf8; overflow:hidden; }
+.dr-cell .pk{ color:#b6aecd; } .dr-cell.me{ background:rgba(22,184,166,.16); }
+.dr-cell.now{ box-shadow:0 0 0 2px #ff4f9d; } .dr-cell.empty{ opacity:.5; }
+.dr-colhead{ font-family:'Anton'; font-size:8px; text-align:center; color:var(--ink);
+  text-transform:uppercase; padding:2px; }
+
 /* ---------------- mobile ---------------- */
 @media (max-width: 640px){
   .neon-logo{ font-size:40px !important; }

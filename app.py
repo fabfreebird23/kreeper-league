@@ -751,29 +751,109 @@ def _dk_adp_pool():
 _TIER_COLORS = ["#0c7a6e", "#7b5cff", "#2bb5e8", "#ff4f9d", "#d98a00", "#8b86a0"]
 
 
-def _dk_board_html(rows, drafted, limit=60):
-    """Best-available table: each row = a ranked player not yet drafted."""
-    body = []
-    shown = 0
+def _dk_starter_slots() -> list:
+    """Ordered starter lineup slots from the league's roster settings."""
+    from kreeper import sleeper
+    rp = sleeper.get_league(LEAGUE["sleeper_league_id"]).get("roster_positions", [])
+    starters = [p for p in rp if p not in ("BN", "IR", "TAXI")]
+    return starters or ["QB", "RB", "RB", "WR", "WR", "TE", "FLEX", "FLEX", "FLEX"]
+
+
+def _dk_lineup_html(pids: list, bench_cap: int = 5) -> str:
+    """My-Team panel: fill starter slots (QB/RB/WR/TE/FLEX), overflow to bench."""
+    slots = _dk_starter_slots()
+    filled = [None] * len(slots)
+    bench, flex_ok = [], {"RB", "WR", "TE"}
+    for pid in pids:
+        pos = H.player_meta(pid).position
+        placed = False
+        for i, s in enumerate(slots):
+            if filled[i] is None and s == pos:
+                filled[i] = pid
+                placed = True
+                break
+        if not placed:
+            for i, s in enumerate(slots):
+                if filled[i] is None and s == "FLEX" and pos in flex_ok:
+                    filled[i] = pid
+                    placed = True
+                    break
+        if not placed:
+            bench.append(pid)
+    rows = []
+    for s, pid in zip(slots, filled):
+        nm = H.player_meta(pid).name if pid else "—"
+        empty = "" if pid else " empty"
+        rows.append(f'<div class="slot{empty}"><span class="pos {s}">{s}</span>'
+                    f'<span class="nm">{nm}</span></div>')
+    for pid in bench[:bench_cap]:
+        rows.append(f'<div class="slot"><span class="pos BN">BN</span>'
+                    f'<span class="nm">{H.player_meta(pid).name}</span></div>')
+    return '<div class="dr-lineup">' + "".join(rows) + "</div>"
+
+
+def _dk_status_html(pick_no, n, on_clock_name, is_yours) -> str:
+    rd = (pick_no - 1) // n + 1
+    inrd = (pick_no - 1) % n + 1
+    clk = ('<span class="yours">YOUR PICK</span>' if is_yours
+           else f'<span class="clk">On the clock: <b>{on_clock_name}</b></span>')
+    return (f'<div class="dr-status"><span class="rd">{pick_no}'
+            f'<small>OVERALL</small></span>'
+            f'<span class="clk">Round <b>{rd}</b> · Pick <b>{rd}.{inrd:02d}</b></span>'
+            f'{clk}</div>')
+
+
+def _dk_avail_html(rows, drafted, limit=120, recommend=True) -> str:
+    """Tiered best-available board with a recommendation highlight on the top pick."""
+    body, shown, last_tier, first = [], 0, None, True
     for r in rows:
         if shown >= limit:
             break
         if not r.get("pid") or str(r["pid"]) in drafted:
             continue
         shown += 1
-        col = _TIER_COLORS[(r["tier"] - 1) % len(_TIER_COLORS)]
-        pos = (H.player_meta(r["pid"]).position if r.get("pid") else "")
+        if r["tier"] != last_tier:
+            body.append(f'<tr class="tierband"><td colspan="4">TIER {r["tier"]}</td></tr>')
+            last_tier = r["tier"]
+        pm = H.player_meta(r["pid"])
+        rec = ' class="rec"' if (recommend and first) else ""
+        badge = '<span class="recbadge">★ PICK</span>' if (recommend and first) else ""
+        first = False
+        adp = adp_rank_for(pm.name, pm.position)
+        adp = int(adp) if adp else "—"
         body.append(
-            f'<tr><td class="rk">{r["rank"]}</td>'
-            f'<td class="pl">{theme.img_tag(r["pid"])}{r["name"]}</td>'
-            f'<td class="pos">{pos}</td>'
-            f'<td class="num"><span style="background:{col};color:#fff;padding:1px 7px;'
-            f'border-radius:6px;font-size:11px;">T{r["tier"]}</span></td></tr>'
+            f'<tr{rec}><td class="r">{r["rank"]}</td>'
+            f'<td>{theme.img_tag(r["pid"])}<b>{r["name"]}</b>{badge}'
+            f'<div class="pp">{pm.position} · {pm.team}</div></td>'
+            f'<td class="a">ADP<br>{adp}</td></tr>'
         )
-    head = '<tr><th>Rk</th><th>Player</th><th>Pos</th><th>Tier</th></tr>'
-    return ('<div class="neonwrap" style="max-height:560px;overflow:auto;">'
-            '<table class="lb"><thead>' + head + '</thead><tbody>'
-            + "".join(body) + '</tbody></table></div>')
+    return ('<div class="neonwrap" style="max-height:600px;overflow:auto;">'
+            '<table class="dr-avail"><tbody>' + "".join(body) + '</tbody></table></div>')
+
+
+def _dk_grid_html(cell_by_pick, n, slot_names, my_slot, current_pick, rounds) -> str:
+    """Draft board grid: rounds x draft slots, snake order, picks filled in."""
+    cw = "minmax(0,1fr)"
+    head = '<div class="dr-colhead"></div>' + "".join(
+        f'<div class="dr-colhead">{s.split()[0][:6]}</div>' for s in slot_names)
+    cells = [head]
+    for r in range(1, rounds + 1):
+        cells.append(f'<div class="dr-colhead">{r}</div>')
+        for c in range(1, n + 1):
+            overall = (r - 1) * n + (c if r % 2 == 1 else n - c + 1)
+            info = cell_by_pick.get(overall)
+            klass = "dr-cell"
+            if (c - 1) == my_slot:
+                klass += " me"
+            if overall == current_pick:
+                klass += " now"
+            if info:
+                cells.append(f'<div class="{klass}"><span class="pk">{r}.{c:02d}</span><br>{info}</div>')
+            else:
+                cells.append(f'<div class="{klass} empty"><span class="pk">{r}.{c:02d}</span></div>')
+    grid = (f'<div class="dr-grid" style="grid-template-columns:26px repeat({n},{cw});">'
+            + "".join(cells) + "</div>")
+    return '<div class="neonwrap" style="overflow:auto;">' + grid + "</div>"
 
 
 def _dk_set_rankings(rankings):
@@ -848,53 +928,73 @@ def _dk_rankings_ui():
                  hide_index=True, use_container_width=True, height=320)
 
 
+def _dk_filter_pos(rows, pos_f):
+    if pos_f == "All":
+        return rows
+    tgt = {"RB", "WR", "TE"} if pos_f == "FLEX" else {pos_f}
+    return [r for r in rows if r.get("pid") and H.player_meta(r["pid"]).position in tgt]
+
+
+def _dk_snake(n):
+    def slot(i):
+        rd, j = i // n, i % n
+        return j if rd % 2 == 0 else n - 1 - j
+    return slot
+
+
 def _dk_assistant_ui():
     ranks = st.session_state.get("dk_rankings")
     if not ranks:
         st.info("Add your rankings on the **My Rankings** tab first.")
         return
     from kreeper import sleeper
-    names = list(NAME_TO_ID.keys())
-    default_me = names.index("Brandon Cliffton") if "Brandon Cliffton" in names else 0
-    c1, c2, c3 = st.columns([1, 1, 1])
-    me = c1.selectbox("Your team", names, index=default_me, key="dk_live_me")
-    pos_f = c2.selectbox("Position", ["All", "QB", "RB", "WR", "TE"], key="dk_live_pos")
-    with c3:
+    order = config.load().get("draft_order") or list(MANAGERS.keys())
+    slot_names = [config.manager_name(o) for o in order]
+    n = len(order)
+    default_me = slot_names.index("Brandon Cliffton") if "Brandon Cliffton" in slot_names else 0
+    top = st.columns([2, 1, 1])
+    me = top[0].selectbox("Your team", slot_names, index=default_me, key="dk_live_me")
+    pos_f = top[1].selectbox("Position", ["All", "QB", "RB", "WR", "TE", "FLEX"], key="dk_live_pos")
+    with top[2]:
         st.write("")
-        auto = st.checkbox("Auto-refresh (12s)", key="dk_live_auto")
-        st.button("🔄 Refresh now")
+        auto = st.checkbox("Auto-refresh", key="dk_live_auto")
+        st.button("🔄 Refresh")
     if auto:
         try:
             from streamlit_autorefresh import st_autorefresh
             st_autorefresh(interval=12000, key="dk_live_tick")
         except Exception:  # noqa: BLE001
-            st.caption("(auto-refresh unavailable — use the button)")
+            st.caption("(install streamlit-autorefresh for auto; use the button for now)")
 
+    my_slot = slot_names.index(me)
+    my_owner = str(order[my_slot])
     lg = sleeper.get_league(LEAGUE["sleeper_league_id"])
     draft_id = lg.get("draft_id")
     picks = sleeper.get_draft_picks_fresh(draft_id) if draft_id else []
     drafted = {str(p.get("player_id")) for p in picks if p.get("player_id")}
-    me_id = NAME_TO_ID[me]
-    my_pids = [str(p.get("player_id")) for p in picks if str(p.get("picked_by")) == str(me_id)]
+    my_pids = [str(p.get("player_id")) for p in picks if str(p.get("picked_by")) == my_owner]
 
-    m1, m2, m3 = st.columns(3)
-    m1.metric("Picks made", len(picks))
-    m2.metric("On the clock", f"#{len(picks) + 1}" if draft_id else "—")
-    m3.metric("Your players", len(my_pids))
+    pick_no = len(picks) + 1
+    on_slot = _dk_snake(n)(pick_no - 1)
+    st.markdown(_dk_status_html(pick_no, n, slot_names[on_slot], on_slot == my_slot),
+                unsafe_allow_html=True)
 
-    rows = ranks if pos_f == "All" else [
-        r for r in ranks if r.get("pid") and H.player_meta(r["pid"]).position == pos_f]
-    st.markdown("##### 🎯 Best available (your board)")
-    st.markdown(_dk_board_html(rows, drafted), unsafe_allow_html=True)
+    left, right = st.columns([1, 2])
+    with left:
+        st.markdown('<div class="dr-h">🧢 My Team</div>', unsafe_allow_html=True)
+        st.markdown(_dk_lineup_html(my_pids), unsafe_allow_html=True)
+    with right:
+        st.markdown('<div class="dr-h">🎯 Best Available — Your Board</div>', unsafe_allow_html=True)
+        st.markdown(_dk_avail_html(_dk_filter_pos(ranks, pos_f), drafted), unsafe_allow_html=True)
 
-    if my_pids:
-        from collections import Counter
-        pc = Counter(H.player_meta(p).position for p in my_pids)
-        st.markdown("##### Your roster · " + " · ".join(f"{k}:{v}" for k, v in sorted(pc.items())))
-        st.write(", ".join(H.player_meta(p).name for p in my_pids))
-    st.caption("Reads your league's live Sleeper draft — best available is ranked "
-               "by YOUR list, colored by tier, with drafted players removed. Hit "
-               "Refresh (or auto) as picks come in.")
+    with st.expander("📋 Draft Board"):
+        cell = {int(p["pick_no"]): H.player_meta(str(p["player_id"])).name.split()[-1]
+                for p in picks if p.get("pick_no") and p.get("player_id")}
+        st.markdown(_dk_grid_html(cell, n, slot_names, my_slot, pick_no, DRAFT_ROUNDS),
+                    unsafe_allow_html=True)
+    st.caption("Live from your Sleeper draft — best available is your UDK board, "
+               "tier-colored, drafted players removed, ★ = top recommendation. Toggle "
+               "auto-refresh (or hit Refresh) as picks come in.")
 
 
 def _dk_mock_ui():
@@ -904,58 +1004,76 @@ def _dk_mock_ui():
         return
     order = config.load().get("draft_order") or list(MANAGERS.keys())
     slot_names = [config.manager_name(o) for o in order]
-    default_me = slot_names.index("Brandon Cliffton") if "Brandon Cliffton" in slot_names else 0
-    me_slot = st.selectbox("Your draft slot", slot_names, index=default_me, key="dk_mock_slot")
-    my_slot = slot_names.index(me_slot)
     n = len(order)
+    default_me = slot_names.index("Brandon Cliffton") if "Brandon Cliffton" in slot_names else 0
+    top = st.columns([2, 1, 1])
+    me = top[0].selectbox("Your draft slot", slot_names, index=default_me, key="dk_mock_slot")
+    pos_f = top[1].selectbox("Position", ["All", "QB", "RB", "WR", "TE", "FLEX"], key="dk_mock_pos")
+    with top[2]:
+        st.write("")
+        if st.button("🔁 Reset mock"):
+            st.session_state.dk_mock = {"taken": list(_projected_kept_ids()), "log": []}
+            st.rerun()
 
-    if st.button("🔁 Start / reset mock"):
-        st.session_state.dk_mock = {"taken": list(_projected_kept_ids()), "log": []}
+    my_slot = slot_names.index(me)
     state = st.session_state.get("dk_mock")
     if not state:
-        st.info("Click **Start** to mock from the current board (likely keepers removed).")
-        return
-
+        state = {"taken": list(_projected_kept_ids()), "log": []}
+        st.session_state.dk_mock = state
     taken = set(state["taken"])
     adp_pool = _dk_adp_pool()
+    snake = _dk_snake(n)
+    total = n * DRAFT_ROUNDS
 
-    def snake_slot(pick_idx):  # 0-based overall pick -> 0-based slot
-        rd = pick_idx // n
-        i = pick_idx % n
-        return i if rd % 2 == 0 else (n - 1 - i)
-
-    # Auto-run AI picks until it's the user's turn (or the draft is full).
-    progressed = False
-    while len(state["log"]) < n * DRAFT_ROUNDS and snake_slot(len(state["log"])) != my_slot:
+    # Auto-run AI picks (by ADP) until it's the user's pick or the draft is full.
+    while len(state["log"]) < total and snake(len(state["log"])) != my_slot:
         nxt = next((p for p in adp_pool if p["pid"] not in taken), None)
         if not nxt:
             break
         taken.add(nxt["pid"])
-        state["log"].append({"slot": snake_slot(len(state["log"])), "pid": nxt["pid"], "by": "ADP"})
-        progressed = True
-    if progressed:
-        state["taken"] = list(taken)
+        state["log"].append({"slot": snake(len(state["log"])), "pid": nxt["pid"]})
+    state["taken"] = list(taken)
 
-    pick_no = len(state["log"]) + 1
-    rd = (pick_no - 1) // n + 1
-    st.caption(f"Pick **{pick_no}** · Round **{rd}** · you're on the clock at slot {my_slot + 1}.")
+    done = len(state["log"]) >= total
+    pick_no = min(len(state["log"]) + 1, total)
+    on_slot = snake(len(state["log"])) if not done else my_slot
+    st.markdown(_dk_status_html(pick_no, n, slot_names[on_slot], (not done) and on_slot == my_slot),
+                unsafe_allow_html=True)
 
-    cols = st.columns(4)
-    avail = [r for r in ranks if r.get("pid") and str(r["pid"]) not in taken][:8]
-    st.markdown("##### Your pick — top of your board")
-    for i, r in enumerate(avail):
-        if cols[i % 4].button(f'{r["name"]}', key=f"dk_pick_{len(state['log'])}_{r['pid']}"):
-            taken.add(str(r["pid"]))
-            state["taken"] = list(taken)
-            state["log"].append({"slot": my_slot, "pid": str(r["pid"]), "by": "you"})
-            st.rerun()
+    my_pids = [p["pid"] for p in state["log"] if p["slot"] == my_slot]
+    left, right = st.columns([1, 2])
+    with left:
+        st.markdown('<div class="dr-h">🧢 My Team</div>', unsafe_allow_html=True)
+        st.markdown(_dk_lineup_html(my_pids), unsafe_allow_html=True)
+    with right:
+        if done:
+            st.success("✅ Mock complete — your team is on the left. Reset to run another.")
+        else:
+            st.markdown('<div class="dr-h">⏰ On the Clock — Make Your Pick</div>',
+                        unsafe_allow_html=True)
+            avail = [r for r in _dk_filter_pos(ranks, pos_f)
+                     if r.get("pid") and str(r["pid"]) not in taken]
+            bcols = st.columns(3)
+            for i, r in enumerate(avail[:6]):
+                pm = H.player_meta(r["pid"])
+                if bcols[i % 3].button(f'➕ {r["name"]} · {pm.position} T{r["tier"]}',
+                                       key=f'dk_pk_{len(state["log"])}_{r["pid"]}',
+                                       use_container_width=True):
+                    taken.add(str(r["pid"]))
+                    state["taken"] = list(taken)
+                    state["log"].append({"slot": my_slot, "pid": str(r["pid"])})
+                    st.rerun()
+        st.markdown('<div class="dr-h" style="margin-top:10px;">🎯 Best Available — Your Board</div>',
+                    unsafe_allow_html=True)
+        st.markdown(_dk_avail_html(_dk_filter_pos(ranks, pos_f), taken), unsafe_allow_html=True)
 
-    mine = [p["pid"] for p in state["log"] if p["slot"] == my_slot]
-    if mine:
-        st.markdown("##### Your team")
-        st.write(", ".join(H.player_meta(p).name for p in mine))
-    st.caption("Practice mock: other teams auto-pick by consensus ADP; you pick off "
-               "your own board. Keepers are pre-removed.")
+    with st.expander("📋 Draft Board"):
+        cell = {i: H.player_meta(p["pid"]).name.split()[-1]
+                for i, p in enumerate(state["log"], 1)}
+        st.markdown(_dk_grid_html(cell, n, slot_names, my_slot, len(state["log"]) + 1, DRAFT_ROUNDS),
+                    unsafe_allow_html=True)
+    st.caption("Practice mock — other teams auto-pick by consensus ADP; you draft off "
+               "your UDK board (top 6 as quick buttons, ★ = top pick). Keepers are pre-removed.")
 
 
 def render_draft_kit():
