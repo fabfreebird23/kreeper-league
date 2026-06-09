@@ -646,6 +646,86 @@ def render_home() -> None:
         st.markdown("\n".join(lines))
 
 
+def _pick_value(rnd: int) -> int:
+    """Rough draft-capital points for a pick in a given round (earlier = more)."""
+    return max(1, round(100 * (0.72 ** (rnd - 1))))
+
+
+def render_trade_analyzer() -> None:
+    st.markdown(f'<h2>{theme.crt("draft")}Trade Analyzer</h2>', unsafe_allow_html=True)
+    st.caption("Build a deal and grade it by keeper value (draft rounds the players "
+               "save) plus pick capital. The keeper round carries over on a trade, "
+               "so a player's value is what they'd cost to keep.")
+
+    tt = build_trade_targets()
+    kv = {str(r["_pid"]): int(r["Value"]) for _, r in tt.iterrows()}  # natural keeper value
+
+    names = list(NAME_TO_ID.keys())
+    c1, c2 = st.columns(2)
+    with c1:
+        a = st.selectbox("Team A", names, index=0, key="ta_a")
+    with c2:
+        b = st.selectbox("Team B", [n for n in names if n != a], index=0, key="ta_b")
+    oa, ob = NAME_TO_ID[a], NAME_TO_ID[b]
+
+    def roster_opts(oid):
+        out = {}
+        for pid in CANDS.get(oid, []):
+            pm = H.player_meta(pid)
+            if pm.position in ("QB", "RB", "WR", "TE"):
+                out[f"{pm.name} ({pm.position})"] = str(pid)
+        return out
+
+    def pick_opts(oid):
+        owned = get_owned().get(oid) or {}
+        opts = []
+        for r in range(1, DRAFT_ROUNDS + 1):
+            for i in range(owned.get(r, 0)):
+                opts.append(f"Round {r}" + (f" (#{i+1})" if owned.get(r, 0) > 1 else ""))
+        return opts
+
+    ra, rb = roster_opts(oa), roster_opts(ob)
+    with c1:
+        a_pl = st.multiselect(f"{a} sends — players", list(ra.keys()), key="ta_apl")
+        a_pk = st.multiselect(f"{a} sends — picks", pick_opts(oa), key="ta_apk")
+    with c2:
+        b_pl = st.multiselect(f"{b} sends — players", list(rb.keys()), key="ta_bpl")
+        b_pk = st.multiselect(f"{b} sends — picks", pick_opts(ob), key="ta_bpk")
+
+    def side_value(players, ropts, picks):
+        kvr = sum(max(0, kv.get(ropts[p], 0)) for p in players)  # keeper value (rounds)
+        pcap = sum(_pick_value(int(p.split()[1])) for p in picks)
+        return kvr, pcap
+
+    # What each team RECEIVES (the other side's outgoing assets).
+    a_kv, a_pc = side_value(b_pl, rb, b_pk)   # A receives B's stuff
+    b_kv, b_pc = side_value(a_pl, ra, a_pk)   # B receives A's stuff
+
+    if not (a_pl or a_pk or b_pl or b_pk):
+        st.info("Pick players and/or picks for each side to grade the deal.")
+        return
+
+    # Combined score: keeper rounds scaled to pick-capital points (1 round ~ 15 pts).
+    a_score = a_kv * 15 + a_pc
+    b_score = b_kv * 15 + b_pc
+    col1, col2 = st.columns(2)
+    for col, who, kvr, pc, score in ((col1, a, a_kv, a_pc, a_score), (col2, b, b_kv, b_pc, b_score)):
+        col.markdown(f"#### {who} receives")
+        col.metric("Keeper value", f"+{kvr} rd", help="Draft rounds saved by keeping the players received")
+        col.metric("Pick capital", f"{pc} pts")
+        col.caption(f"Total score: **{score}**")
+
+    diff = a_score - b_score
+    if abs(diff) <= max(8, 0.08 * max(a_score, b_score, 1)):
+        st.success("⚖️ Even deal — both sides come out roughly equal.")
+    else:
+        winner, margin = (a, diff) if diff > 0 else (b, -diff)
+        st.success(f"📈 Edge to **{winner}** by ~{round(margin)} pts.")
+    st.caption("Heuristic only — keeper value (cost round vs ADP) + a pick-value "
+               "curve, blended at ~15 pts per keeper round. Doesn't model raw talent "
+               "beyond keeper value or roster need.")
+
+
 def render_keeper_landscape() -> None:
     st.markdown(f'<h2>{theme.crt("board")}Keeper Landscape</h2>', unsafe_allow_html=True)
     st.caption("Positional scarcity: of the top players at each position, who's "
@@ -1240,8 +1320,8 @@ with st.sidebar:
                f"{DRAFT_ROUNDS} rds · {LEAGUE.get('scoring','ppr').upper()}")
     page = st.radio("Navigate",
                     ["Home", "Title Odds", "Draft Board", "Projected Draft",
-                     "Set My Keepers", "Trade Market", "Keeper Landscape",
-                     "Rookies", "Consensus ADP"],
+                     "Set My Keepers", "Trade Market", "Trade Analyzer",
+                     "Keeper Landscape", "Rookies", "Consensus ADP"],
                     label_visibility="collapsed")
     st.divider()
     st.subheader("ADP freshness")
@@ -1272,6 +1352,8 @@ elif page == "Set My Keepers":
     render_my_keepers()
 elif page == "Trade Market":
     render_trade_targets()
+elif page == "Trade Analyzer":
+    render_trade_analyzer()
 elif page == "Keeper Landscape":
     render_keeper_landscape()
 else:
