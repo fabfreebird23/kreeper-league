@@ -646,6 +646,56 @@ def render_home() -> None:
         st.markdown("\n".join(lines))
 
 
+def render_keeper_landscape() -> None:
+    st.markdown(f'<h2>{theme.crt("board")}Keeper Landscape</h2>', unsafe_allow_html=True)
+    st.caption("Positional scarcity: of the top players at each position, who's "
+               "likely kept (and by whom) vs. left in the draft pool. Thin pools "
+               "= positions to target early; deep pools = wait.")
+    kept = _projected_kept_ids()
+    pid_owner = {}
+    for o, pids in CANDS.items():
+        for pid in pids:
+            pid_owner[str(pid)] = config.manager_name(o)
+    name_idx = get_name_index()
+    by_pos = {p: [] for p in ("RB", "WR", "QB", "TE")}
+    seen = set()
+    for _, ar in ADP_DF.iterrows():
+        pos, rank = ar.get("position"), ar.get("consensus_rank")
+        if pos not in by_pos or pd.isna(rank):
+            continue
+        pid = name_idx.get(normalize_name(ar["name"]), "")
+        if not pid or str(pid) in seen:
+            continue
+        seen.add(str(pid))
+        owner = pid_owner.get(str(pid)) if str(pid) in kept else None
+        by_pos[pos].append((int(rank), ar["name"], str(pid), owner))
+
+    tabs = st.tabs(["RB", "WR", "QB", "TE"])
+    for tab, pos in zip(tabs, ["RB", "WR", "QB", "TE"]):
+        with tab:
+            players = sorted(by_pos[pos], key=lambda x: x[0])[:18]
+            kept_n = sum(1 for *_, o in players if o)
+            avail_n = len(players) - kept_n
+            tone = "🔴 thin" if avail_n <= len(players) * 0.35 else ("🟡 moderate" if avail_n <= len(players) * 0.6 else "🟢 deep")
+            st.caption(f"Top {len(players)} {pos}s — **{kept_n} likely kept**, "
+                       f"**{avail_n} available**. Draft pool: {tone}.")
+            rows = []
+            for rank, nm, pid, owner in players:
+                if owner:
+                    status = f'<span style="color:#b3232a;">kept · {owner}</span>'
+                else:
+                    status = '<span class="kept-badge">AVAILABLE</span>'
+                rows.append(
+                    f'<tr><td class="rk">{rank}</td>'
+                    f'<td class="pl">{theme.img_tag(pid)}{nm}</td>'
+                    f'<td>{status}</td></tr>'
+                )
+            head = '<tr><th>ADP</th><th>Player</th><th>Status</th></tr>'
+            st.markdown('<div class="neonwrap"><table class="lb"><thead>' + head
+                        + '</thead><tbody>' + "".join(rows) + '</tbody></table></div>',
+                        unsafe_allow_html=True)
+
+
 def render_mock_draft() -> None:
     st.markdown(f'<h2>{theme.crt("draft")}Projected Draft</h2>', unsafe_allow_html=True)
     st.caption("Who'd actually be drafted once keepers come off the board. Likely "
@@ -1190,7 +1240,8 @@ with st.sidebar:
                f"{DRAFT_ROUNDS} rds · {LEAGUE.get('scoring','ppr').upper()}")
     page = st.radio("Navigate",
                     ["Home", "Title Odds", "Draft Board", "Projected Draft",
-                     "Set My Keepers", "Trade Market", "Rookies", "Consensus ADP"],
+                     "Set My Keepers", "Trade Market", "Keeper Landscape",
+                     "Rookies", "Consensus ADP"],
                     label_visibility="collapsed")
     st.divider()
     st.subheader("ADP freshness")
@@ -1221,5 +1272,7 @@ elif page == "Set My Keepers":
     render_my_keepers()
 elif page == "Trade Market":
     render_trade_targets()
+elif page == "Keeper Landscape":
+    render_keeper_landscape()
 else:
     render_adp()
