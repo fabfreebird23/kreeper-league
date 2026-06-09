@@ -587,11 +587,24 @@ def render_home() -> None:
     st.caption("Best keeper bargains across every roster — draft value gained by keeping a "
                "player (cost round vs. consensus ADP round). Green = declared keeper · "
                "purple RK = rookie keeper · cyan = free agent. Real NFL rookies are on the Rookies tab.")
-    hide_rk = st.toggle("Hide rookie keepers", value=False,
-                        help="Filter out players currently in rookie-keeper status.")
-    lb = build_value_leaderboard(50, hide_rookie_keepers=hide_rk)
+    fc1, fc2, fc3 = st.columns([1, 1, 1])
+    with fc1:
+        pos_f = st.selectbox("Position", ["All", "QB", "RB", "WR", "TE"], key="lb_pos")
+    with fc2:
+        team_f = st.selectbox("Team", ["All teams"] + [m["name"] for m in MANAGERS.values()] + ["Free Agent"], key="lb_team")
+    with fc3:
+        hide_rk = st.toggle("Hide rookie keepers", value=False,
+                            help="Filter out players currently in rookie-keeper status.")
+    lb = build_value_leaderboard(400, hide_rookie_keepers=hide_rk)
+    if not lb.empty:
+        if pos_f != "All":
+            lb = lb[lb["Pos"] == pos_f]
+        if team_f != "All teams":
+            lb = lb[lb["Team"] == team_f]
+        lb = lb.head(50).reset_index(drop=True)
+        lb["#"] = range(1, len(lb) + 1)
     if lb.empty:
-        st.info("No ADP data yet — run `python scripts/refresh_adp.py` to populate the board.")
+        st.info("No players match those filters (or no ADP data yet).")
     else:
         st.markdown(_leaderboard_html(lb), unsafe_allow_html=True)
     st.markdown(f'<h2>{theme.crt("board")}Submitted Keepers by Team</h2>', unsafe_allow_html=True)
@@ -684,15 +697,19 @@ def render_trade_targets() -> None:
         st.info("No keeper data yet — run `python scripts/refresh_adp.py` to populate ADP.")
         return
 
-    c1, c2 = st.columns([1, 1])
+    c1, c2, c3 = st.columns([1, 1, 1])
     with c1:
         rnd = st.selectbox("Keeper cost round", list(range(1, DRAFT_ROUNDS + 1)),
                            index=1, help="The round a keeper would cost on your roster.")
     with c2:
+        pos_f = st.selectbox("Position", ["All", "QB", "RB", "WR", "TE"], key="tm_pos")
+    with c3:
         me = st.selectbox("Hide my own players (optional)",
                           ["— show everyone —"] + list(NAME_TO_ID.keys()), index=0)
 
     view = df[df["Cost Rd"] == rnd].copy()
+    if pos_f != "All":
+        view = view[view["Pos"] == pos_f]
     owned_note = ""
     if me in NAME_TO_ID:
         view = view[view["Owner"] != me]
