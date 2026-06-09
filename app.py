@@ -646,6 +646,100 @@ def render_home() -> None:
         st.markdown("\n".join(lines))
 
 
+@st.cache_data(ttl=3600, show_spinner="Opening the record book…")
+def build_record_book():
+    from kreeper import sleeper
+    chain = sleeper.league_chain(LEAGUE["sleeper_league_id"])
+    seasons = []  # newest first: {season, standings:[...], champ, runner}
+    agg = {o: {"w": 0, "l": 0, "pf": 0.0, "titles": 0, "runner": 0, "seasons": 0, "best": ""}
+           for o in MANAGERS}
+    for c in chain:
+        if c["season"] == SEASON:
+            continue
+        rosters = sleeper.get_rosters(c["league_id"])
+        r2o = {int(r["roster_id"]): str(r.get("owner_id")) for r in rosters}
+        champ = runner = None
+        try:
+            for m in sleeper.get_winners_bracket(c["league_id"]):
+                if m.get("p") == 1:
+                    champ, runner = r2o.get(m.get("w")), r2o.get(m.get("l"))
+        except Exception:  # noqa: BLE001
+            pass
+        standings = []
+        for r in rosters:
+            o = str(r.get("owner_id"))
+            s = r.get("settings", {}) or {}
+            w, l = s.get("wins", 0) or 0, s.get("losses", 0) or 0
+            pf = s.get("fpts", 0) + s.get("fpts_decimal", 0) / 100
+            standings.append({"owner": o, "name": config.manager_name(o), "w": w, "l": l, "pf": round(pf, 1)})
+            if o in agg:
+                agg[o]["w"] += w; agg[o]["l"] += l; agg[o]["pf"] += pf; agg[o]["seasons"] += 1
+                if o == champ:
+                    agg[o]["titles"] += 1
+                if o == runner:
+                    agg[o]["runner"] += 1
+        standings.sort(key=lambda x: (-x["w"], -x["pf"]))
+        seasons.append({"season": c["season"], "standings": standings,
+                        "champ": config.manager_name(champ) if champ else None,
+                        "runner": config.manager_name(runner) if runner else None})
+    return seasons, agg
+
+
+def render_record_book() -> None:
+    st.markdown(f'<h2>{theme.crt("top")}League Record Book</h2>', unsafe_allow_html=True)
+    seasons, agg = build_record_book()
+    if not seasons:
+        st.info("No completed seasons on record yet.")
+        return
+
+    st.markdown("##### 🏆 Champions")
+    champ_rows = "".join(
+        f'<tr><td class="rk">{s["season"]}</td>'
+        f'<td class="pl">🏆 {s["champ"] or "—"}</td>'
+        f'<td>runner-up: {s["runner"] or "—"}</td></tr>'
+        for s in seasons)
+    st.markdown('<div class="neonwrap"><table class="lb"><thead>'
+                '<tr><th>Season</th><th>Champion</th><th></th></tr></thead><tbody>'
+                + champ_rows + '</tbody></table></div>', unsafe_allow_html=True)
+
+    st.markdown("##### All-Time Standings")
+    rows = []
+    order = sorted(agg.items(),
+                   key=lambda kv: (kv[1]["titles"], kv[1]["w"] / max(1, kv[1]["w"] + kv[1]["l"])),
+                   reverse=True)
+    for i, (o, a) in enumerate(order, 1):
+        if a["seasons"] == 0:
+            continue
+        wp = a["w"] / max(1, a["w"] + a["l"])
+        rings = "🏆" * a["titles"]
+        rows.append(
+            f'<tr><td class="rk">{i}</td>'
+            f'<td class="pl">{config.manager_name(o)} {rings}</td>'
+            f'<td class="num">{a["w"]}-{a["l"]}</td>'
+            f'<td class="num">{wp:.3f}</td>'
+            f'<td class="num">{int(a["pf"])}</td>'
+            f'<td class="num">{a["titles"]}</td>'
+            f'<td class="num">{a["runner"]}</td></tr>'
+        )
+    head = ('<tr><th>#</th><th>Manager</th><th>All-Time</th><th>Win%</th>'
+            '<th>Points</th><th>Titles</th><th>Finals</th></tr>')
+    st.markdown('<div class="neonwrap"><table class="lb lb-record"><thead>' + head
+                + '</thead><tbody>' + "".join(rows) + '</tbody></table></div>',
+                unsafe_allow_html=True)
+
+    st.markdown("##### Season by Season")
+    for s in seasons:
+        title = f"{s['season']} — 🏆 {s['champ'] or '—'}"
+        with st.expander(title):
+            body = "".join(
+                f'<tr><td class="rk">{i}</td><td class="pl">{r["name"]}</td>'
+                f'<td class="num">{r["w"]}-{r["l"]}</td><td class="num">{r["pf"]}</td></tr>'
+                for i, r in enumerate(s["standings"], 1))
+            st.markdown('<table class="lb"><thead><tr><th>#</th><th>Team</th>'
+                        '<th>Record</th><th>Points</th></tr></thead><tbody>'
+                        + body + '</tbody></table>', unsafe_allow_html=True)
+
+
 def _pick_value(rnd: int) -> int:
     """Rough draft-capital points for a pick in a given round (earlier = more)."""
     return max(1, round(100 * (0.72 ** (rnd - 1))))
@@ -1321,7 +1415,7 @@ with st.sidebar:
     page = st.radio("Navigate",
                     ["Home", "Title Odds", "Draft Board", "Projected Draft",
                      "Set My Keepers", "Trade Market", "Trade Analyzer",
-                     "Keeper Landscape", "Rookies", "Consensus ADP"],
+                     "Keeper Landscape", "Record Book", "Rookies", "Consensus ADP"],
                     label_visibility="collapsed")
     st.divider()
     st.subheader("ADP freshness")
@@ -1356,5 +1450,7 @@ elif page == "Trade Analyzer":
     render_trade_analyzer()
 elif page == "Keeper Landscape":
     render_keeper_landscape()
+elif page == "Record Book":
+    render_record_book()
 else:
     render_adp()
