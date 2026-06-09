@@ -166,10 +166,25 @@ table.dboard td.dbcell{ padding:3px 4px; }
   filter:drop-shadow(2px 4px 4px rgba(80,40,70,.32)); }
 .lb .pos{ white-space:nowrap; }
 
+/* top navigation bar */
+.kbar{ display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+  padding-bottom:8px; margin-bottom:10px; border-bottom:1.5px solid var(--line); }
+.khome{ text-decoration:none !important; line-height:1; }
+.khome .neon-logo{ font-size:30px; margin:0; }
+.topnav{ display:flex; gap:6px; flex-wrap:wrap; }
+.navlink{ font-family:'Anton'; text-transform:uppercase; letter-spacing:1px; font-size:13px;
+  color:var(--ink) !important; text-decoration:none !important; padding:6px 13px; border-radius:9px;
+  border:1.5px solid var(--line); background:#fff; transition:.15s; white-space:nowrap; }
+.navlink:hover{ border-color:var(--pink); color:var(--pink) !important; }
+.navlink.active{ background:var(--pink); color:#fff !important; border-color:var(--pink); }
+
 /* ---------------- mobile ---------------- */
 @media (max-width: 640px){
   .neon-logo{ font-size:40px !important; }
   .neon-tag{ font-size:8px; letter-spacing:3px; }
+  .kbar{ gap:8px; }
+  .khome .neon-logo{ font-size:24px !important; }
+  .navlink{ font-size:11px; padding:5px 9px; letter-spacing:.5px; }
   h1{ font-size:1.5rem !important; }
   h2{ font-size:1.25rem !important; }
   h3{ font-size:1.15rem !important; }

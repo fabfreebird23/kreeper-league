@@ -587,7 +587,6 @@ def render_team_boxes() -> None:
 
 
 def render_home() -> None:
-    st.markdown(theme.logo_html(60, "The Keeper Hub · 2026"), unsafe_allow_html=True)
     render_countdown()
     st.markdown(f'<h2>{theme.crt("top")}Top 50 Keeper Values</h2>', unsafe_allow_html=True)
     st.caption("Best keeper bargains across every roster — draft value gained by keeping a "
@@ -842,8 +841,8 @@ def render_trade_analyzer() -> None:
     if abs(diff) <= max(10, 0.08 * max(a_score, b_score, 1)):
         st.success("⚖️ Even deal — both sides come out roughly equal.")
     else:
-        winner, margin = (a, diff) if diff > 0 else (b, -diff)
-        st.success(f"📈 Edge to **{winner}** by ~{round(margin)} pts.")
+        winner = a if diff > 0 else b
+        st.success(f"📈 Edge to **{winner}** by ~{abs(round(diff))} pts.")
     st.caption("Heuristic only — player value = a draft-value curve at their ADP "
                "plus a bonus for any keeper discount; picks use the same curve at a "
                "mid-round slot. Future picks (next two years) are discounted ~20% "
@@ -1438,15 +1437,38 @@ def render_adp() -> None:
 
 
 # ---------------------------------------------------------------- sidebar + nav
+# ----------------------------------------------------------------- navigation
+# Consolidated sections; each groups related pages under sub-tabs. Routing via a
+# `?p=` query param so the nav links are real, shareable, static links.
+SECTIONS = [
+    ("home", "Home"),
+    ("keepers", "Keepers"),
+    ("draft", "Draft"),
+    ("trades", "Trades"),
+    ("league", "League"),
+    ("players", "Players"),
+]
+_VALID = {k for k, _ in SECTIONS}
+page = st.query_params.get("p", "home")
+if page not in _VALID:
+    page = "home"
+
+# Top bar on every page: clickable KREEPER logo (-> Home) + section links.
+navlinks = "".join(
+    f'<a class="navlink{" active" if k == page else ""}" href="?p={k}" target="_self">{label}</a>'
+    for k, label in SECTIONS
+)
+st.markdown(
+    f'<div class="kbar">'
+    f'<a class="khome" href="?p=home" target="_self">{theme.logo_html(40, None)}</a>'
+    f'<div class="topnav">{navlinks}</div></div>',
+    unsafe_allow_html=True,
+)
+
+# Sidebar keeps the league info + ADP freshness (secondary).
 with st.sidebar:
-    st.markdown(theme.logo_html(40, None), unsafe_allow_html=True)
     st.caption(f"**{LEAGUE['name']}** · season **{SEASON}** · {NT} teams · "
                f"{DRAFT_ROUNDS} rds · {LEAGUE.get('scoring','ppr').upper()}")
-    page = st.radio("Navigate",
-                    ["Home", "Title Odds", "Draft Board", "Projected Draft",
-                     "Set My Keepers", "Trade Market", "Trade Analyzer",
-                     "Keeper Landscape", "Record Book", "Rookies", "Consensus ADP"],
-                    label_visibility="collapsed")
     st.divider()
     st.subheader("ADP freshness")
     if ADP_META:
@@ -1462,25 +1484,35 @@ with st.sidebar:
                "Yr3 ADP · rookies kept for their career at your last rounds · "
                "trades carry the keeper round over.")
 
-if page == "Home":
+if page == "home":
     render_home()
-elif page == "Title Odds":
-    render_odds()
-elif page == "Rookies":
-    render_rookies()
-elif page == "Draft Board":
-    render_draft_board()
-elif page == "Projected Draft":
-    render_mock_draft()
-elif page == "Set My Keepers":
-    render_my_keepers()
-elif page == "Trade Market":
-    render_trade_targets()
-elif page == "Trade Analyzer":
-    render_trade_analyzer()
-elif page == "Keeper Landscape":
-    render_keeper_landscape()
-elif page == "Record Book":
-    render_record_book()
-else:
-    render_adp()
+elif page == "keepers":
+    t1, t2 = st.tabs(["📋 Set My Keepers", "🗺️ Keeper Landscape"])
+    with t1:
+        render_my_keepers()
+    with t2:
+        render_keeper_landscape()
+elif page == "draft":
+    t1, t2 = st.tabs(["🃏 Draft Board", "🔮 Projected Draft"])
+    with t1:
+        render_draft_board()
+    with t2:
+        render_mock_draft()
+elif page == "trades":
+    t1, t2 = st.tabs(["🔁 Trade Market", "⚖️ Trade Analyzer"])
+    with t1:
+        render_trade_targets()
+    with t2:
+        render_trade_analyzer()
+elif page == "league":
+    t1, t2 = st.tabs(["🎲 Title Odds", "🏆 Record Book"])
+    with t1:
+        render_odds()
+    with t2:
+        render_record_book()
+elif page == "players":
+    t1, t2 = st.tabs(["🆕 Rookies", "📊 Consensus ADP"])
+    with t1:
+        render_rookies()
+    with t2:
+        render_adp()
