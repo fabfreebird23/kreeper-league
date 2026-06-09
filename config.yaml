@@ -40,6 +40,11 @@ rules:
   rookie_keeper_cost: last_rounds
   rookie_fixed_round: 14
 
+# Mock draft: how much our league overvalues rookies vs their consensus ADP.
+# A rookie's effective draft rank = ADP rank × this factor (lower = rookies go
+# higher). 1.0 = no premium; 0.4 = treat a rookie like ~2.5× their ADP.
+mock_draft_rookie_factor: 0.4
+
 # Managers — Sleeper user_id -> display info. `name` is the friendly name shown in the app.
 managers:
   "980679503968018432": { handle: tprib,        name: "Tanner Prible",    team: "Wee Little Ladds" }

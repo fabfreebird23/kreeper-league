@@ -445,6 +445,61 @@ def build_trade_targets() -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+@st.cache_data(ttl=300, show_spinner=False)
+def _projected_kept_ids() -> set:
+    """player_ids likely off the draft board: everyone declared as a keeper, plus
+    each team's most valuable eligible keepers up to the league caps."""
+    kept = set()
+    for picks in storage.load(SEASON).values():
+        for s in picks:
+            if s.get("player_id"):
+                kept.add(str(s["player_id"]))
+    lb = build_value_leaderboard(400)
+    cap = MAX_REG + MAX_ROOKIE
+    for o in MANAGERS:
+        tl = lb[lb["Team"] == config.manager_name(o)].sort_values("Value", ascending=False).head(cap)
+        kept.update(str(p) for p in tl["_pid"])
+    return kept
+
+
+def build_mock_draft(rookie_factor: float | None = None) -> pd.DataFrame:
+    """Projected draft order of the players who'd actually be available — everyone
+    minus likely keepers — ranked by ADP with our league's rookie premium applied."""
+    if rookie_factor is None:
+        rookie_factor = config.mock_draft_rookie_factor()
+    kept = _projected_kept_ids()
+    name_idx = get_name_index()
+    rows = []
+    seen = set()
+    for _, ar in ADP_DF.iterrows():
+        pos, rank = ar.get("position"), ar.get("consensus_rank")
+        if pos not in ("QB", "RB", "WR", "TE") or pd.isna(rank):
+            continue
+        pid = name_idx.get(normalize_name(ar["name"]), "")
+        if not pid or str(pid) in kept or str(pid) in seen:
+            continue
+        seen.add(str(pid))
+        rookie = _years_exp(pid) == 0
+        adj = float(rank) * (rookie_factor if rookie else 1.0)
+        rows.append({"_pid": str(pid), "Player": ar["name"], "Pos": pos,
+                     "ADP": int(rank), "Rookie": rookie, "_adj": adj})
+    df = pd.DataFrame(rows)
+    if df.empty:
+        return df
+    df = df.sort_values("_adj").reset_index(drop=True)
+    df.insert(0, "Pick", range(1, len(df) + 1))
+    df["Round"] = ((df["Pick"] - 1) // NT) + 1
+    # snake slot within the round -> which team is on the clock
+    order = config.load().get("draft_order") or list(MANAGERS.keys())
+    def team_for(pick):
+        rd = (pick - 1) // NT
+        idx = (pick - 1) % NT
+        slot = idx if rd % 2 == 0 else (NT - 1 - idx)  # snake
+        return config.manager_name(order[slot]) if slot < len(order) else "—"
+    df["Team"] = df["Pick"].map(team_for)
+    return df
+
+
 def build_rookies_table(top_n: int = 40) -> pd.DataFrame:
     """This year's NFL rookies (years_exp == 0) ranked by consensus ADP."""
     name_idx = get_name_index()
@@ -576,6 +631,46 @@ def render_home() -> None:
             who = e.get("name") or config.manager_name(e.get("owner", ""))
             lines.append(f"- **{who}** → {n} keeper{'' if n == 1 else 's'} · {_fmt_ts(e.get('ts', ''))}")
         st.markdown("\n".join(lines))
+
+
+def render_mock_draft() -> None:
+    st.markdown(f'<h2>{theme.crt("draft")}Projected Draft</h2>', unsafe_allow_html=True)
+    st.caption("Who'd actually be drafted once keepers come off the board. Likely "
+               "keepers (declared + each team's best by value) are removed, then the "
+               "rest are ranked by consensus ADP with our league's rookie premium "
+               "applied — so the studs everyone keeps clear the way for the rookies.")
+    rf = config.mock_draft_rookie_factor()
+    c1, c2 = st.columns([2, 1])
+    with c1:
+        rf = st.slider("Rookie premium (lower = rookies go higher)", 0.15, 1.0,
+                       value=float(rf), step=0.05,
+                       help="A rookie's draft rank = ADP rank × this. 1.0 = no premium.")
+    df = build_mock_draft(rf)
+    if df.empty:
+        st.info("No ADP data yet — run `python scripts/refresh_adp.py`.")
+        return
+    only_rd = c2.selectbox("Show round", ["First 3 rounds"] + [f"Round {r}" for r in range(1, DRAFT_ROUNDS + 1)])
+    if only_rd == "First 3 rounds":
+        view = df[df["Round"] <= 3]
+    else:
+        view = df[df["Round"] == int(only_rd.split()[1])]
+    rows = []
+    for _, r in view.iterrows():
+        rk = ' <span class="rk-badge">RK</span>' if r["Rookie"] else ""
+        rows.append(
+            f'<tr><td class="rk">{r["Round"]}.{((r["Pick"]-1)%NT)+1:02d}</td>'
+            f'<td class="pl">{theme.img_tag(r["_pid"])}{r["Player"]}{rk}</td>'
+            f'<td class="pos"><span class="posdot p-{r["Pos"]}"></span>{r["Pos"]}</td>'
+            f'<td>{r["Team"]}</td>'
+            f'<td class="num">{r["ADP"]}</td></tr>'
+        )
+    head = '<tr><th>Pick</th><th>Player</th><th>Pos</th><th>On the clock</th><th>ADP</th></tr>'
+    st.markdown('<div class="neonwrap"><table class="lb lb-mock"><thead>' + head
+                + '</thead><tbody>' + "".join(rows) + '</tbody></table></div>',
+                unsafe_allow_html=True)
+    st.caption("Projection only — assumes snake order and that managers draft by "
+               "ADP. **RK** = rookie. Tune the rookie premium above to match how "
+               "your league really values rookies.")
 
 
 def render_trade_targets() -> None:
@@ -1077,8 +1172,8 @@ with st.sidebar:
     st.caption(f"**{LEAGUE['name']}** · season **{SEASON}** · {NT} teams · "
                f"{DRAFT_ROUNDS} rds · {LEAGUE.get('scoring','ppr').upper()}")
     page = st.radio("Navigate",
-                    ["Home", "Title Odds", "Draft Board", "Set My Keepers",
-                     "Trade Market", "Rookies", "Consensus ADP"],
+                    ["Home", "Title Odds", "Draft Board", "Projected Draft",
+                     "Set My Keepers", "Trade Market", "Rookies", "Consensus ADP"],
                     label_visibility="collapsed")
     st.divider()
     st.subheader("ADP freshness")
@@ -1103,6 +1198,8 @@ elif page == "Rookies":
     render_rookies()
 elif page == "Draft Board":
     render_draft_board()
+elif page == "Projected Draft":
+    render_mock_draft()
 elif page == "Set My Keepers":
     render_my_keepers()
 elif page == "Trade Market":

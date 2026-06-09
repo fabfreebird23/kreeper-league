@@ -51,6 +51,13 @@ def current_season() -> int:
     return int(league()["current_season"])
 
 
+def mock_draft_rookie_factor() -> float:
+    try:
+        return float(load().get("mock_draft_rookie_factor", 0.4))
+    except (ValueError, TypeError):
+        return 0.4
+
+
 def keeper_timezone_name() -> str:
     return str(league().get("keeper_timezone") or "America/Indiana/Indianapolis")
 
