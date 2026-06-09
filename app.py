@@ -740,19 +740,26 @@ def render_record_book() -> None:
                         + body + '</tbody></table>', unsafe_allow_html=True)
 
 
+def _draft_value(pos: int) -> int:
+    """Trade-value points for an asset at overall draft position `pos` (a standard
+    decaying draft-value curve; pick #1 ≈ 100)."""
+    return max(1, round(100 * (0.965 ** (max(1, pos) - 1))))
+
+
 def _pick_value(rnd: int) -> int:
-    """Rough draft-capital points for a pick in a given round (earlier = more)."""
-    return max(1, round(100 * (0.72 ** (rnd - 1))))
+    """Points for a draft pick in a given round (valued at a mid-round slot)."""
+    return _draft_value((rnd - 1) * NT + NT // 2)
 
 
 def render_trade_analyzer() -> None:
     st.markdown(f'<h2>{theme.crt("draft")}Trade Analyzer</h2>', unsafe_allow_html=True)
-    st.caption("Build a deal and grade it by keeper value (draft rounds the players "
-               "save) plus pick capital. The keeper round carries over on a trade, "
-               "so a player's value is what they'd cost to keep.")
+    st.caption("Build a deal and grade it. Each player is valued by their talent "
+               "(ADP draft position) plus any keeper bargain on top; picks by a "
+               "draft-value curve. Higher total wins.")
 
     tt = build_trade_targets()
-    kv = {str(r["_pid"]): int(r["Value"]) for _, r in tt.iterrows()}  # natural keeper value
+    kv = {str(r["_pid"]): int(r["Value"]) for _, r in tt.iterrows()}     # keeper bargain (rounds)
+    adp = {str(r["_pid"]): int(r["ADP"]) for _, r in tt.iterrows()}      # ADP rank
 
     names = list(NAME_TO_ID.keys())
     c1, c2 = st.columns(2)
@@ -786,38 +793,44 @@ def render_trade_analyzer() -> None:
         b_pl = st.multiselect(f"{b} sends — players", list(rb.keys()), key="ta_bpl")
         b_pk = st.multiselect(f"{b} sends — picks", pick_opts(ob), key="ta_bpk")
 
+    def player_value(pid):
+        """Talent (by ADP draft position) + a bonus for any keeper bargain."""
+        pid = str(pid)
+        a = adp.get(pid) or adp_rank_for(H.player_meta(pid).name, H.player_meta(pid).position)
+        talent = _draft_value(int(a)) if a else 4
+        bonus = max(0, kv.get(pid, 0)) * 6   # cheap-keeper edge, on top of talent
+        return talent + bonus
+
     def side_value(players, ropts, picks):
-        kvr = sum(max(0, kv.get(ropts[p], 0)) for p in players)  # keeper value (rounds)
-        pcap = sum(_pick_value(int(p.split()[1])) for p in picks)
-        return kvr, pcap
+        pv = sum(player_value(ropts[p]) for p in players)
+        pc = sum(_pick_value(int(p.split()[1])) for p in picks)
+        return pv, pc
 
     # What each team RECEIVES (the other side's outgoing assets).
-    a_kv, a_pc = side_value(b_pl, rb, b_pk)   # A receives B's stuff
-    b_kv, b_pc = side_value(a_pl, ra, a_pk)   # B receives A's stuff
+    a_pv, a_pc = side_value(b_pl, rb, b_pk)   # A receives B's stuff
+    b_pv, b_pc = side_value(a_pl, ra, a_pk)   # B receives A's stuff
 
     if not (a_pl or a_pk or b_pl or b_pk):
         st.info("Pick players and/or picks for each side to grade the deal.")
         return
 
-    # Combined score: keeper rounds scaled to pick-capital points (1 round ~ 15 pts).
-    a_score = a_kv * 15 + a_pc
-    b_score = b_kv * 15 + b_pc
+    a_score, b_score = a_pv + a_pc, b_pv + b_pc
     col1, col2 = st.columns(2)
-    for col, who, kvr, pc, score in ((col1, a, a_kv, a_pc, a_score), (col2, b, b_kv, b_pc, b_score)):
+    for col, who, pv, pc, score in ((col1, a, a_pv, a_pc, a_score), (col2, b, b_pv, b_pc, b_score)):
         col.markdown(f"#### {who} receives")
-        col.metric("Keeper value", f"+{kvr} rd", help="Draft rounds saved by keeping the players received")
-        col.metric("Pick capital", f"{pc} pts")
-        col.caption(f"Total score: **{score}**")
+        col.metric("Players", f"{round(pv)} pts", help="Talent (ADP position) + keeper bargain")
+        col.metric("Picks", f"{round(pc)} pts")
+        col.caption(f"Total value: **{round(score)}**")
 
     diff = a_score - b_score
-    if abs(diff) <= max(8, 0.08 * max(a_score, b_score, 1)):
+    if abs(diff) <= max(10, 0.08 * max(a_score, b_score, 1)):
         st.success("⚖️ Even deal — both sides come out roughly equal.")
     else:
         winner, margin = (a, diff) if diff > 0 else (b, -diff)
         st.success(f"📈 Edge to **{winner}** by ~{round(margin)} pts.")
-    st.caption("Heuristic only — keeper value (cost round vs ADP) + a pick-value "
-               "curve, blended at ~15 pts per keeper round. Doesn't model raw talent "
-               "beyond keeper value or roster need.")
+    st.caption("Heuristic only — player value = a draft-value curve at their ADP "
+               "plus a bonus for any keeper discount; picks use the same curve at a "
+               "mid-round slot. Doesn't model roster need or positional scarcity.")
 
 
 def render_keeper_landscape() -> None:
