@@ -1,15 +1,22 @@
 {
   "season": 2026,
   "scoring": "ppr",
-  "updated_utc": "2026-06-08T19:37:43Z",
+  "updated_utc": "2026-06-09T18:33:46Z",
   "sources": [
+    "CBS",
+    "DraftKings",
+    "Drafters",
     "ESPN",
-    "FantasyPros"
+    "FantasyPros",
+    "FootballGuys",
+    "MFL",
+    "NFFC",
+    "Underdog"
   ],
   "status": {
     "espn": "ok (400 rows)",
-    "fantasypros": "ok (413 rows)",
-    "footballguys": "FAILED: HTTPError: 403 Client Error: Forbidden for url: https://www.footballguys.com/adp"
+    "fantasypros": "ok (412 rows)",
+    "footballguys": "ok (1809 rows)"
   },
-  "players": 501
+  "players": 507
 }
