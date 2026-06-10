@@ -10,6 +10,7 @@ from __future__ import annotations
 import datetime as dt
 import json
 import math
+import random
 import re
 
 import pandas as pd
@@ -31,6 +32,26 @@ NT = int(LEAGUE["num_teams"])
 DRAFT_ROUNDS = int(LEAGUE["draft_rounds"])
 MAX_REG = int(LEAGUE.get("max_regular_keepers", 3))
 MAX_ROOKIE = int(LEAGUE.get("max_rookie_keepers", 2))
+
+# Light league trash-talk, sprinkled around the dashboard. Strictly fantasy ribbing.
+_NED_QUIPS = [
+    "Ned traded away his draft picks again. Bold strategy.",
+    "Somewhere out there, Ned is making another terrible trade.",
+    "Ned's war chest: a participation trophy and a 14th-round pick.",
+    "Whatever you're worried about, at least you're not Ned.",
+    "Ned could not be reached for comment (he's busy losing).",
+    "Reminder: Ned can't even keep his own good players.",
+    "Power move of the offseason: not being Ned.",
+    "Ned's keeper strategy is just vibes and regret.",
+    "This dashboard runs on data, ADP, and dunking on Ned.",
+    "Ned out here rostering Kyle Monangai like it's a flex.",
+    "Ned's title odds are a rounding error, and that's generous.",
+    "If draft capital were a personality, Ned would be bankrupt.",
+]
+
+
+def ned() -> str:
+    return random.choice(_NED_QUIPS)
 
 
 def keeper_lock() -> tuple:
@@ -711,6 +732,7 @@ def render_home() -> None:
             who = e.get("name") or config.manager_name(e.get("owner", ""))
             lines.append(f"- **{who}** → {n} keeper{'' if n == 1 else 's'} · {_fmt_ts(e.get('ts', ''))}")
         st.markdown("\n".join(lines))
+    st.caption(f"💀 {ned()}")
 
 
 @st.cache_data(ttl=3600, show_spinner="Opening the record book…")
@@ -1066,6 +1088,8 @@ def render_trade_targets() -> None:
                "a pick at their cost round or earlier. **RK** = rookie keeper — kept "
                "at a last round, and on a trade they convert to a regular keeper "
                "(rookie status doesn't transfer, and the 3-year clock starts).")
+    if me in NAME_TO_ID and "Ned" in me:
+        st.caption("💀 You're Ned. The whole league is your trade partner.")
 
 
 def render_rookies() -> None:
@@ -1570,6 +1594,7 @@ def render_draft_capital() -> None:
     st.caption("After Keepers = 2026 picks you'll actually draft. 2027/2028 = total "
                "picks owned that year (14 = untouched). Lean: hoarding future picks → "
                "rebuild; sold future/early picks or thin on 2026 picks → win-now.")
+    st.caption("💀 Ned's lean: whichever one loses harder.")
 
 
 def render_roster_needs() -> None:
@@ -1723,6 +1748,8 @@ def render_superlatives() -> None:
         if riser["delta"] > 0:
             card("🚀", "Hottest ADP Riser", riser["name"], f'up {riser["delta"]} spots ({riser["pos"]})')
 
+    card("💀", "Most Likely To Be Ned", "Ned", "Runaway winner. Every year.")
+
     st.markdown('<div class="kcards">' + "".join(cards) + "</div>", unsafe_allow_html=True)
 
 
@@ -1773,6 +1800,8 @@ with st.sidebar:
     st.caption("Rules: 3-yr max per keeper · Yr1 draft round · Yr2 up 3 rounds or ADP · "
                "Yr3 ADP · rookies kept for their career at your last rounds · "
                "trades carry the keeper round over.")
+    st.divider()
+    st.caption(f"💀 {ned()}")
 
 if page == "home":
     render_home()
