@@ -81,11 +81,6 @@ def get_winners_bracket(league_id: str) -> List[Dict[str, Any]]:
     return _disk(f"bracket_{league_id}", 86400, lambda: _get(f"league/{league_id}/winners_bracket") or [])
 
 
-def get_draft_picks_fresh(draft_id: str) -> List[Dict[str, Any]]:
-    """Uncached draft picks — for a LIVE draft where freshness matters."""
-    return _get(f"draft/{draft_id}/picks") or []
-
-
 def league_chain(league_id: str) -> List[Dict[str, Any]]:
     """Walk previous_league_id back to the start.
 
