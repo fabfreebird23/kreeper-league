@@ -1639,14 +1639,27 @@ def render_roster_needs() -> None:
                "Starters Set counts FLEX filled by extra RB/WR/TE.")
 
 
+@st.cache_data(ttl=86400 * 7, show_spinner=False)
+def _season_stats(yr: int) -> dict:
+    """player_id -> season stat line (pts_ppr, pos_rank_ppr...). Self-contained so
+    it doesn't depend on a freshly-added sleeper attribute (cloud import caching)."""
+    import requests
+    try:
+        r = requests.get(f"https://api.sleeper.app/v1/stats/nfl/regular/{yr}",
+                         headers={"User-Agent": "kreeper-league/1.0"}, timeout=15)
+        r.raise_for_status()
+        return r.json() or {}
+    except Exception:  # noqa: BLE001
+        return {}
+
+
 @st.cache_data(ttl=3600, show_spinner="Grading old keeper calls…")
 def build_keeper_hitrate():
-    from kreeper import sleeper
     thresh = {"QB": 12, "RB": 24, "WR": 30, "TE": 12}
     stats = {}
     per_owner, decisions = {}, []
     for yr in range(SEASON - 3, SEASON):
-        ss = stats.get(yr) or sleeper.get_season_stats(yr)
+        ss = stats.get(yr) or _season_stats(yr)
         stats[yr] = ss
         for oid, picks in storage.load(yr).items():
             for s in picks:
