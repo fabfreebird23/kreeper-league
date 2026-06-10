@@ -140,6 +140,62 @@ def load_meta(season: int | None = None) -> dict:
     return json.loads(path.read_text())
 
 
+def _history_path(season: int):
+    return config.DATA_DIR / f"adp_history_{season}.json"
+
+
+def snapshot(season: int | None = None, day: str | None = None, keep_days: int = 90) -> int:
+    """Append today's consensus ranks to the ADP history (one entry per day).
+    Returns the number of days now stored."""
+    season = season or config.current_season()
+    df = load(season)
+    if df.empty:
+        return 0
+    if day is None:
+        day = dt.date.today().isoformat()
+    rows = {}
+    for _, r in df.iterrows():
+        rank = r.get("consensus_rank")
+        if pd.isna(rank):
+            continue
+        rows[normalize_name(str(r["name"]))] = [int(rank), str(r["name"]), str(r.get("position", ""))]
+    path = _history_path(season)
+    hist = {}
+    if path.exists():
+        try:
+            hist = json.loads(path.read_text())
+        except Exception:  # noqa: BLE001
+            hist = {}
+    hist[day] = rows
+    for old in sorted(hist)[:-keep_days]:
+        hist.pop(old, None)
+    path.write_text(json.dumps(hist))
+    return len(hist)
+
+
+def adp_movement(season: int | None = None, window_days: int = 7) -> dict:
+    """Risers/fallers vs the snapshot ~window_days ago. delta>0 = moved up."""
+    season = season or config.current_season()
+    path = _history_path(season)
+    if not path.exists():
+        return {"days": [], "moves": []}
+    hist = json.loads(path.read_text())
+    days = sorted(hist)
+    if len(days) < 2:
+        return {"days": days, "moves": []}
+    latest = days[-1]
+    cutoff = (dt.date.fromisoformat(latest) - dt.timedelta(days=window_days)).isoformat()
+    prior = next((d for d in days if d >= cutoff and d != latest), days[0])
+    cur, old = hist[latest], hist[prior]
+    moves = []
+    for nm, val in cur.items():
+        if nm in old:
+            now_r, was_r = val[0], old[nm][0]
+            moves.append({"name": val[1], "pos": val[2], "now": now_r, "was": was_r,
+                          "delta": was_r - now_r})
+    return {"latest": latest, "prior": prior, "moves": moves}
+
+
 def adp_lookup(season: int | None = None) -> Dict[str, float]:
     """normalized-name(+pos and name-only) -> consensus_adp rank for quick joins."""
     df = load(season)

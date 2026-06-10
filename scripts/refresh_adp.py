@@ -24,6 +24,9 @@ def main() -> int:
     print(f"Wrote {len(df)} players · sources: {', '.join(meta.get('sources', []))}")
     # Fail the job only if every source died.
     ok = any(v.startswith("ok") for v in meta.get("status", {}).values())
+    if ok:
+        days = consensus.snapshot(season)
+        print(f"ADP history snapshot saved ({days} day(s) on record).")
     return 0 if ok else 1
 
 

@@ -81,6 +81,12 @@ def get_winners_bracket(league_id: str) -> List[Dict[str, Any]]:
     return _disk(f"bracket_{league_id}", 86400, lambda: _get(f"league/{league_id}/winners_bracket") or [])
 
 
+def get_season_stats(season: int, scoring: str = "ppr") -> Dict[str, Any]:
+    """player_id -> season stat line (pts_ppr, pos_rank_ppr, rank_ppr, ...)."""
+    return _disk(f"stats_{season}", 86400 * 7,
+                 lambda: _get(f"stats/nfl/regular/{season}") or {})
+
+
 def league_chain(league_id: str) -> List[Dict[str, Any]]:
     """Walk previous_league_id back to the start.
 
