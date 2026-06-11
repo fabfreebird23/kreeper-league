@@ -578,7 +578,7 @@ def build_mock_draft(rookie_factor: float | None = None) -> pd.DataFrame:
             spot = next((pn for cr in cand for pn in owned.get(cr, []) if pn not in used), None)
             if spot is not None:
                 used.add(spot)
-                keeper_at[spot] = {"player": k["Player"], "pos": k["Pos"],
+                keeper_at[spot] = {"player": k["Player"], "pos": k["Pos"], "pid": str(k["_pid"]),
                                    "adp": k.get("ADP"), "owner": config.manager_name(o)}
 
     # 2) Available pool: ADP-ranked, keepers removed, league rookie premium applied.
@@ -603,7 +603,7 @@ def build_mock_draft(rookie_factor: float | None = None) -> pd.DataFrame:
         base = {"Pick": pn, "Round": r, "Slot": slot, "Team": c["owner_name"]}
         if pn in keeper_at:
             k = keeper_at[pn]
-            rows.append({**base, "_pid": "", "Player": k["player"], "Pos": k["pos"],
+            rows.append({**base, "_pid": k["pid"], "Player": k["player"], "Pos": k["pos"],
                          "ADP": k["adp"], "Rookie": False, "Keeper": True})
         elif pi < len(pool):
             _adj, pid, nm, pos, adp, rk = pool[pi]
