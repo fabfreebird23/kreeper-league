@@ -139,5 +139,52 @@
       "cost_choice": null,
       "cost_round": 13
     }
+  ],
+  "980679503968018432": [
+    {
+      "player_id": "4034",
+      "player_name": "Christian McCaffrey",
+      "position": "RB",
+      "is_rookie_keeper": false,
+      "keep_year": 1,
+      "cost_choice": null,
+      "cost_round": 1
+    },
+    {
+      "player_id": "8138",
+      "player_name": "James Cook",
+      "position": "RB",
+      "is_rookie_keeper": false,
+      "keep_year": 3,
+      "cost_choice": null,
+      "cost_round": 2
+    },
+    {
+      "player_id": "11604",
+      "player_name": "Brock Bowers",
+      "position": "TE",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_choice": null,
+      "cost_round": 14
+    },
+    {
+      "player_id": "10229",
+      "player_name": "Rashee Rice",
+      "position": "WR",
+      "is_rookie_keeper": false,
+      "keep_year": 1,
+      "cost_choice": null,
+      "cost_round": 8
+    },
+    {
+      "player_id": "11635",
+      "player_name": "Ladd McConkey",
+      "position": "WR",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_choice": null,
+      "cost_round": 13
+    }
   ]
 }
