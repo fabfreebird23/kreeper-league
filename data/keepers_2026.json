@@ -93,53 +93,7 @@
       "cost_round": 11
     }
   ],
-  "980547002628927488": [
-    {
-      "player_id": "8137",
-      "player_name": "George Pickens",
-      "position": "WR",
-      "is_rookie_keeper": false,
-      "keep_year": 1,
-      "cost_choice": null,
-      "cost_round": 4
-    },
-    {
-      "player_id": "8151",
-      "player_name": "Kenneth Walker",
-      "position": "RB",
-      "is_rookie_keeper": false,
-      "keep_year": 1,
-      "cost_choice": null,
-      "cost_round": 6
-    },
-    {
-      "player_id": "12529",
-      "player_name": "TreVeyon Henderson",
-      "position": "RB",
-      "is_rookie_keeper": true,
-      "keep_year": "Rookie",
-      "cost_choice": null,
-      "cost_round": 14
-    },
-    {
-      "player_id": "7021",
-      "player_name": "Rico Dowdle",
-      "position": "RB",
-      "is_rookie_keeper": false,
-      "keep_year": 1,
-      "cost_choice": null,
-      "cost_round": 12
-    },
-    {
-      "player_id": "12534",
-      "player_name": "Kyle Monangai",
-      "position": "RB",
-      "is_rookie_keeper": true,
-      "keep_year": "Rookie",
-      "cost_choice": null,
-      "cost_round": 13
-    }
-  ],
+  "980547002628927488": [],
   "980679503968018432": [
     {
       "player_id": "4034",
