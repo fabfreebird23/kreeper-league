@@ -93,9 +93,17 @@ h2{ color:var(--purple); }
 h3{ color:var(--ink); }
 
 /* graffiti wordmark — pink with teal retro offset */
-.neon-logo{ font-family:'Rubik Wet Paint', cursive; color:var(--pink); line-height:1;
-  text-shadow:0 0 6px rgba(255,79,157,.35), 3px 4px 0 rgba(43,181,232,.55);
-  transform:rotate(-3deg); display:inline-block; }
+/* ThunderCats wordmark — liquid-chrome steel letters + red-disc cat emblem */
+.tc-wrap{ display:inline-flex; align-items:center; gap:8px; }
+.tc-emblem{ flex:0 0 auto; filter:drop-shadow(1px 2px 3px rgba(8,14,30,.5)); }
+.neon-logo{ font-family:'Anton', sans-serif; line-height:1; display:inline-block;
+  letter-spacing:0px; white-space:nowrap; transform:skewX(-7deg); }
+.neon-logo .kl{ display:inline-block;
+  background:linear-gradient(180deg,#f2f8ff 0%,#aecdf0 24%,#4a6ea4 47%,#14264a 51%,
+            #3f6098 55%,#7ea4d4 76%,#e6f2ff 100%);
+  -webkit-background-clip:text; background-clip:text;
+  -webkit-text-fill-color:transparent; color:transparent;
+  text-shadow:0 1px 0 #243b66, 1px 2px 0 #16264a, 3px 4px 6px rgba(8,14,30,.55); }
 .neon-tag{ font-family:'Oswald'; letter-spacing:5px; font-weight:700; font-size:11px;
   color:var(--purple); text-transform:uppercase; }
 
@@ -248,9 +256,67 @@ def img_tag(pid: str, cls: str = "hs") -> str:
     return f'<img class="{cls}" src="{src}" loading="lazy">'
 
 
+# Three hard-hat pigs (Brandon's photo) inside the red construction badge.
+def _pig_svg(cx: float, cy: float, s: float, hat: str) -> str:
+    r = 15 * s
+    skin, edge, snout, dark = "#f7b8c6", "#c97b8c", "#f29bb0", "#7a3a4a"
+    hy = cy - r * 0.72                       # hat seam height
+    lx, rx, ly = cx - r * 0.9, cx + r * 0.9, hy + r * 0.12
+    return (
+        # ears (behind head)
+        f'<path d="M{cx-r*0.72:.1f} {cy-r*0.55:.1f} l{-5*s:.1f} {-11*s:.1f} '
+        f'l{11*s:.1f} {3*s:.1f} z" fill="{skin}" stroke="{edge}" stroke-width="{1.1*s:.2f}"/>'
+        f'<path d="M{cx+r*0.72:.1f} {cy-r*0.55:.1f} l{5*s:.1f} {-11*s:.1f} '
+        f'l{-11*s:.1f} {3*s:.1f} z" fill="{skin}" stroke="{edge}" stroke-width="{1.1*s:.2f}"/>'
+        # head
+        f'<ellipse cx="{cx:.1f}" cy="{cy:.1f}" rx="{r:.1f}" ry="{r*0.92:.1f}" '
+        f'fill="{skin}" stroke="{edge}" stroke-width="{1.2*s:.2f}"/>'
+        # snout + nostrils
+        f'<ellipse cx="{cx:.1f}" cy="{cy+r*0.34:.1f}" rx="{r*0.52:.1f}" ry="{r*0.38:.1f}" '
+        f'fill="{snout}" stroke="{edge}" stroke-width="{1*s:.2f}"/>'
+        f'<ellipse cx="{cx-r*0.17:.1f}" cy="{cy+r*0.34:.1f}" rx="{r*0.08:.1f}" ry="{r*0.11:.1f}" fill="{dark}"/>'
+        f'<ellipse cx="{cx+r*0.17:.1f}" cy="{cy+r*0.34:.1f}" rx="{r*0.08:.1f}" ry="{r*0.11:.1f}" fill="{dark}"/>'
+        # eyes
+        f'<circle cx="{cx-r*0.38:.1f}" cy="{cy-r*0.12:.1f}" r="{r*0.1:.2f}" fill="#3a2226"/>'
+        f'<circle cx="{cx+r*0.38:.1f}" cy="{cy-r*0.12:.1f}" r="{r*0.1:.2f}" fill="#3a2226"/>'
+        # hard hat: dome, brim, ridge
+        f'<path d="M{lx:.1f} {ly:.1f} C {lx:.1f} {hy-r*0.78:.1f} {rx:.1f} {hy-r*0.78:.1f} '
+        f'{rx:.1f} {ly:.1f} Z" fill="{hat}" stroke="#0d1830" stroke-width="{1.1*s:.2f}"/>'
+        f'<ellipse cx="{cx:.1f}" cy="{ly:.1f}" rx="{r*1.12:.1f}" ry="{r*0.22:.1f}" '
+        f'fill="{hat}" stroke="#0d1830" stroke-width="{1.1*s:.2f}"/>'
+        f'<path d="M{cx:.1f} {hy-r*0.62:.1f} L{cx:.1f} {ly:.1f}" stroke="#0d1830" '
+        f'stroke-width="{0.8*s:.2f}" opacity="0.45"/>'
+    )
+
+
+_HAT_Y, _HAT_B = "#f4c20d", "#2f80d8"
+_TC_EMBLEM = (
+    '<svg class="tc-emblem" viewBox="0 0 120 120" style="width:{w}px;height:{w}px;" '
+    'aria-hidden="true">'
+    '<defs>'
+    '<radialGradient id="tcDisc" cx="0.5" cy="0.4" r="0.75">'
+    '<stop offset="0" stop-color="#ff4438"/><stop offset=".7" stop-color="#c1121f"/>'
+    '<stop offset="1" stop-color="#5e0a10"/></radialGradient>'
+    '<clipPath id="tcInner"><circle cx="60" cy="60" r="46"/></clipPath>'
+    '</defs>'
+    '<circle cx="60" cy="60" r="56" fill="url(#tcDisc)" stroke="#3a0608" stroke-width="3"/>'
+    '<g clip-path="url(#tcInner)">'
+    '<rect x="12" y="12" width="96" height="96" fill="#cfe8f5"/>'   # sky
+    '<rect x="12" y="82" width="96" height="30" fill="#c69a5e"/>'   # dirt ground
+    + _pig_svg(38, 70, 0.86, _HAT_Y)      # left pig — yellow hat
+    + _pig_svg(82, 70, 0.86, _HAT_B)      # right pig — blue hat
+    + _pig_svg(60, 76, 1.02, _HAT_Y)      # middle pig — yellow hat (front)
+    + '</g></svg>'
+)
+
+
 def logo_html(size: int = 52, tag: str | None = "The Keeper Hub") -> str:
     t = f'<div class="neon-tag">{tag}</div>' if tag else ""
-    return (f'<div class="neon-logo" style="font-size:{size}px;">KREEPER</div>{t}')
+    letters = "".join(f'<span class="kl">{ch}</span>' for ch in "KREEPER")
+    em = int(round(size * 1.5))
+    emblem = _TC_EMBLEM.format(w=em)
+    return (f'<div class="tc-wrap">{emblem}'
+            f'<div class="neon-logo" style="font-size:{size}px;">{letters}</div></div>{t}')
 
 
 def inject(st) -> None:
