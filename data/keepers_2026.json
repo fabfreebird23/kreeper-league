@@ -57,6 +57,15 @@
       "cost_round": 14
     },
     {
+      "player_id": "9493",
+      "player_name": "Puka Nacua",
+      "position": "WR",
+      "is_rookie_keeper": false,
+      "keep_year": 3,
+      "cost_choice": null,
+      "cost_round": 1
+    },
+    {
       "player_id": "9226",
       "player_name": "De'Von Achane",
       "position": "RB",
@@ -66,6 +75,15 @@
       "cost_round": 13
     },
     {
+      "player_id": "8130",
+      "player_name": "Trey McBride",
+      "position": "TE",
+      "is_rookie_keeper": false,
+      "keep_year": 3,
+      "cost_choice": null,
+      "cost_round": 3
+    },
+    {
       "player_id": "8155",
       "player_name": "Breece Hall",
       "position": "RB",
@@ -73,24 +91,6 @@
       "keep_year": 2,
       "cost_choice": "Round 10",
       "cost_round": 10
-    },
-    {
-      "player_id": "12506",
-      "player_name": "Harold Fannin",
-      "position": "TE",
-      "is_rookie_keeper": false,
-      "keep_year": 1,
-      "cost_choice": null,
-      "cost_round": 12
-    },
-    {
-      "player_id": "10232",
-      "player_name": "Michael Wilson",
-      "position": "WR",
-      "is_rookie_keeper": false,
-      "keep_year": 1,
-      "cost_choice": null,
-      "cost_round": 11
     }
   ],
   "980547002628927488": [],
