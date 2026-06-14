@@ -7,7 +7,7 @@
       "is_rookie_keeper": false,
       "keep_year": 2,
       "cost_choice": "Round 7",
-      "cost_round": 6
+      "cost_round": 7
     },
     {
       "player_id": "9224",
@@ -37,13 +37,13 @@
       "cost_round": 14
     },
     {
-      "player_id": "11584",
-      "player_name": "Bucky Irving",
+      "player_id": "12490",
+      "player_name": "Bhayshul Tuten",
       "position": "RB",
       "is_rookie_keeper": false,
-      "keep_year": 2,
-      "cost_choice": "Round 9",
-      "cost_round": 9
+      "keep_year": 1,
+      "cost_choice": null,
+      "cost_round": 13
     }
   ],
   "980552553920274432": [
