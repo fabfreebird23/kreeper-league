@@ -32,6 +32,9 @@ NT = int(LEAGUE["num_teams"])
 DRAFT_ROUNDS = int(LEAGUE["draft_rounds"])
 MAX_REG = int(LEAGUE.get("max_regular_keepers", 3))
 MAX_ROOKIE = int(LEAGUE.get("max_rookie_keepers", 2))
+# Realistic draft pool: every pick in the draft (teams x rounds). ADP risers /
+# fallers are scoped to this so we only see players we'd actually draft.
+DRAFT_SCOPE_RANK = NT * DRAFT_ROUNDS
 
 # Light league trash-talk, sprinkled around the dashboard. Strictly fantasy ribbing.
 _NED_QUIPS = [
@@ -1552,24 +1555,43 @@ def render_draft_board() -> None:
 def render_adp() -> None:
     st.markdown(f'<h3>{theme.crt("adp")}{SEASON} Consensus ADP</h3>', unsafe_allow_html=True)
     st.caption("One consensus number per player, averaged across all sources: "
-               + ", ".join(ADP_META.get("sources", [])) + ".")
+               + ", ".join(ADP_META.get("sources", [])) + ". The **Move** column shows each "
+               "player's consensus-rank change over the selected window (▲ = drafted earlier).")
     if ADP_DF.empty:
         st.info("No ADP data yet. Run `python scripts/refresh_adp.py`.")
         return
-    c1, c2 = st.columns([2, 1])
+    c1, c2, c3 = st.columns([2, 1, 1])
     with c1:
         q = st.text_input("Search player", "")
     with c2:
         pos = st.multiselect("Position", ["QB", "RB", "WR", "TE"], default=[])
+    with c3:
+        win = st.selectbox("Move window", [7, 14, 30], index=2,
+                           format_func=lambda d: f"Last {d} days", key="cadp_win")
+
+    mv = adp_consensus.adp_movement(SEASON, window_days=win)
+    move_map = {normalize_name(m["name"]): m["delta"] for m in mv.get("moves", [])}
+
+    def _fmt_move(d):
+        if d is None or (isinstance(d, float) and pd.isna(d)):
+            return ""
+        d = int(d)
+        return f"▲ {d}" if d > 0 else (f"▼ {abs(d)}" if d < 0 else "—")
+
     view = ADP_DF.copy()
     if q:
         view = view[view["name"].str.contains(q, case=False, na=False)]
     if pos:
         view = view[view["position"].isin(pos)]
-    view = view[["consensus_rank", "name", "position", "consensus_adp"]].rename(
+    movecol = f"Move ({win}d)"
+    view[movecol] = view["name_key"].map(move_map).map(_fmt_move)
+    view = view[["consensus_rank", "name", "position", "consensus_adp", movecol]].rename(
         columns={"consensus_rank": "Rank", "name": "Player",
                  "position": "Pos", "consensus_adp": "Consensus ADP"})
     st.dataframe(view, hide_index=True, use_container_width=True, height=600)
+    if not mv.get("moves"):
+        st.caption("📈 ADP movement appears once two daily snapshots exist — check back after "
+                   "the next daily refresh.")
 
 
 def render_adp_trends() -> None:
@@ -1581,11 +1603,16 @@ def render_adp_trends() -> None:
                 "two daily snapshots. A snapshot is saved with each daily ADP refresh, "
                 "so check back tomorrow.")
         return
-    st.caption(f"Consensus-ADP movement **{mv['prior']} → {mv['latest']}**. "
+    st.caption(f"Consensus-ADP movement **{mv['prior']} → {mv['latest']}**, limited to the "
+               f"top {DRAFT_SCOPE_RANK} by current consensus ADP (the realistic draft pool). "
                "▲ = climbing draft boards (being drafted earlier).")
-    moves = [m for m in mv["moves"] if abs(m["delta"]) >= 1]
+    # Only players currently inside the draft pool — deep-waiver churn isn't useful.
+    moves = [m for m in mv["moves"] if abs(m["delta"]) >= 1 and m["now"] <= DRAFT_SCOPE_RANK]
     risers = sorted(moves, key=lambda x: -x["delta"])[:15]
     fallers = sorted(moves, key=lambda x: x["delta"])[:15]
+    if not moves:
+        st.info(f"No top-{DRAFT_SCOPE_RANK} players moved over this window yet.")
+        return
 
     def _tbl(data):
         body = []
@@ -1804,8 +1831,9 @@ def render_superlatives() -> None:
          f'{best_rec[1]["w"]}-{best_rec[1]["l"]}')
 
     mv = adp_consensus.adp_movement(SEASON, window_days=14)
-    if mv.get("moves"):
-        riser = max(mv["moves"], key=lambda m: m["delta"])
+    pool_moves = [m for m in mv.get("moves", []) if m["now"] <= DRAFT_SCOPE_RANK]
+    if pool_moves:
+        riser = max(pool_moves, key=lambda m: m["delta"])
         if riser["delta"] > 0:
             card("🚀", "Hottest ADP Riser", riser["name"], f'up {riser["delta"]} spots ({riser["pos"]})')
 
