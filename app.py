@@ -1608,11 +1608,13 @@ def render_adp_trends() -> None:
                "▲ = climbing draft boards (being drafted earlier).")
     # Only players currently inside the draft pool — deep-waiver churn isn't useful.
     moves = [m for m in mv["moves"] if abs(m["delta"]) >= 1 and m["now"] <= DRAFT_SCOPE_RANK]
-    risers = sorted(moves, key=lambda x: -x["delta"])[:15]
-    fallers = sorted(moves, key=lambda x: x["delta"])[:15]
     if not moves:
         st.info(f"No top-{DRAFT_SCOPE_RANK} players moved over this window yet.")
         return
+    # Split by direction so a faller never lands in the risers column (and vice
+    # versa) when there are fewer than 15 of one kind.
+    risers = sorted([m for m in moves if m["delta"] > 0], key=lambda x: -x["delta"])[:15]
+    fallers = sorted([m for m in moves if m["delta"] < 0], key=lambda x: x["delta"])[:15]
 
     def _tbl(data):
         body = []
