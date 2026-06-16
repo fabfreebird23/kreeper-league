@@ -15,13 +15,14 @@ import pandas as pd
 from .. import config
 from ..names import normalize_name
 from .base import AdpRow
-from . import espn, fantasypros, footballguys
+from . import espn, fantasypros, footballguys, draftsharks
 
 # Providers keyed by their config toggle name.
 PROVIDERS: Dict[str, Callable[[int, str], List[AdpRow]]] = {
     "espn": espn.fetch,
     "fantasypros": fantasypros.fetch,
     "footballguys": footballguys.fetch,
+    "sleeper": draftsharks.fetch,   # Sleeper ADP via DraftSharks (PPR/Sleeper/12)
 }
 
 # Aggregator columns: displayed, but excluded from the consensus mean so we don't
