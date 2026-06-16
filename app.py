@@ -373,10 +373,20 @@ def build_value_leaderboard(top_n: int = 50, hide_rookie_keepers: bool = False) 
                 continue
             prof = H.keeper_profile(owner_id, pid, SEASON)
             cost = engine.compute(prof, adp_rank=rank, is_rookie_keeper=False)
-            from_rookie = (owner_id, str(pid)) in rookie_hist
-            if from_rookie and hide_rookie_keepers:
+            # Is this a CURRENT rookie keeper? A player counts as a rookie keeper
+            # this year only if he's still rookie-eligible (drafted by this team in
+            # his rookie season, held since, and not yet converted to a regular).
+            # This is what drives the Rookie TYPE and the rookie-slot cap — so a
+            # genuine first-time rookie keeper (e.g. a 2nd-year stud) is included
+            # instead of being mis-costed as a regular keeper and dropped.
+            is_rookie_kp = rookie_keeper_eligible(owner_id, str(pid))
+            # A player kept as a rookie keeper in a PRIOR season but no longer
+            # eligible has converted to a REGULAR keeper — still kept at a last
+            # round under our rules, but no longer a "rookie" for type/slot purposes.
+            was_rookie = (owner_id, str(pid)) in rookie_hist
+            if is_rookie_kp and hide_rookie_keepers:
                 continue
-            if from_rookie:
+            if is_rookie_kp or was_rookie:
                 # rookie keeper / rookie->regular conversion = a last-round pick
                 cost_round, keep_yr = DRAFT_ROUNDS, 1
             else:
@@ -400,7 +410,7 @@ def build_value_leaderboard(top_n: int = 50, hide_rookie_keepers: bool = False) 
                 {
                     "_pid": str(pid),
                     "Player": pm.name, "Pos": pm.position, "Team": mgr,
-                    "Kept": is_kept, "Rookie": from_rookie, "FA": False,
+                    "Kept": is_kept, "Rookie": is_rookie_kp, "FA": False,
                     "Keep Yr": keep_yr, "Cost Rd": cost_round,
                     "ADP": int(rank), "ADP Rd": adp_round,
                     "Value": cost_round - adp_round,
@@ -512,20 +522,38 @@ def position_keeper_caps() -> dict:
             "TE": c.get("TE", 0) or 1}
 
 
-def _select_keepers(team_lb, cap, pos_cap, seed_positions=None):
-    """Pick a team's realistic keeper set: top by value, but no more than the
-    positional cap at QB/TE. Returns a list of leaderboard rows."""
+def _select_keepers(team_lb, cap, pos_cap, seed_positions=None,
+                    max_rookie=None, max_reg=None):
+    """Pick a team's realistic keeper set: top by value, but respecting the
+    league's keeper rules — at most `max_rookie` ROOKIE keepers and `max_reg`
+    REGULAR keepers (defaults to the league's MAX_ROOKIE / MAX_REG), and no more
+    than the positional cap at QB/TE. A rookie keeper is cheap (last-round cost),
+    so without the separate rookie cap a team would over-fill rookie slots and
+    starve its regular keepers. Returns a list of leaderboard rows."""
     from collections import Counter
+    if max_rookie is None:
+        max_rookie = MAX_ROOKIE
+    if max_reg is None:
+        max_reg = MAX_REG
     pcount = Counter(seed_positions or [])
-    chosen = []
+    chosen, n_rook, n_reg = [], 0, 0
     for _, r in team_lb.sort_values("Value", ascending=False).iterrows():
         if len(chosen) >= cap:
             break
+        is_rk = bool(r.get("Rookie"))
+        if is_rk and n_rook >= max_rookie:
+            continue  # rookie-keeper slots full
+        if not is_rk and n_reg >= max_reg:
+            continue  # regular-keeper slots full
         limit = pos_cap.get(r["Pos"])
         if limit is not None and pcount[r["Pos"]] >= limit:
             continue  # already keeping the max QBs/TEs
         chosen.append(r)
         pcount[r["Pos"]] += 1
+        if is_rk:
+            n_rook += 1
+        else:
+            n_reg += 1
     return chosen
 
 
@@ -567,11 +595,22 @@ def team_keeper_rows(owner_id) -> list:
     declared = [s for s in current_keepers().get(str(owner_id), []) if s.get("player_id")]
     seeded = [s.get("position") for s in declared]
     declared_ids = {str(s["player_id"]) for s in declared}
+    dec_rk = sum(1 for s in declared if s.get("is_rookie_keeper"))
+    dec_reg = len(declared) - dec_rk
+    # For a player a manager has DECLARED, trust the declared type — keeping a
+    # rookie-eligible player in a regular slot is a valid choice the value board's
+    # eligibility flag would otherwise override.
+    dec_type = {str(s["player_id"]): bool(s.get("is_rookie_keeper")) for s in declared}
     team = lb[lb["Team"] == config.manager_name(owner_id)]
-    out = list(team[team["_pid"].astype(str).isin(declared_ids)].to_dict("records"))
+    out = []
+    for r in team[team["_pid"].astype(str).isin(declared_ids)].to_dict("records"):
+        r["Rookie"] = dec_type.get(str(r["_pid"]), r.get("Rookie"))
+        out.append(r)
     cap = MAX_REG + MAX_ROOKIE
     rest = team[~team["_pid"].astype(str).isin(declared_ids)]
-    out += [dict(r) for r in _select_keepers(rest, cap - len(declared), position_keeper_caps(), seeded)]
+    out += [dict(r) for r in _select_keepers(
+        rest, cap - len(declared), position_keeper_caps(), seeded,
+        max_rookie=MAX_ROOKIE - dec_rk, max_reg=MAX_REG - dec_reg)]
     return out
 
 
