@@ -1,7 +1,7 @@
 {
   "season": 2026,
   "scoring": "ppr",
-  "updated_utc": "2026-06-17T19:31:17Z",
+  "updated_utc": "2026-06-18T19:37:22Z",
   "sources": [
     "CBS",
     "DraftKings",
@@ -16,9 +16,9 @@
   ],
   "status": {
     "espn": "ok (400 rows)",
-    "fantasypros": "ok (413 rows)",
-    "footballguys": "ok (1783 rows)",
-    "sleeper": "ok (297 rows)"
+    "fantasypros": "ok (411 rows)",
+    "footballguys": "ok (1781 rows)",
+    "sleeper": "ok (299 rows)"
   },
-  "players": 522
+  "players": 520
 }
