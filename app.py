@@ -164,6 +164,24 @@ def get_owned_for(season: int):
     return draftboard.owned_picks_by_owner(season=season)
 
 
+def current_pick_slots():
+    """owner_id -> {round: [overall pick_no, ...]} for the CURRENT season, using
+    the real snake- and trade-aware draft slots from the board (so a 1.01 and a
+    1.03 are distinct picks with distinct values)."""
+    board = get_board()
+    r2o = {rid: o for o, rid in board["owner_to_roster"].items()}
+    out: dict = {}
+    for (rnd, _slot), c in board["cells"].items():
+        owner = r2o.get(c["owner_roster"])
+        if owner is None:
+            continue
+        out.setdefault(owner, {}).setdefault(rnd, []).append(c["pick_no"])
+    for rounds in out.values():
+        for nums in rounds.values():
+            nums.sort()
+    return out
+
+
 @st.cache_data(ttl=86400, show_spinner=False)
 def get_name_index():
     """normalized name -> Sleeper player_id (skill positions; prefer active/with team)."""
@@ -954,23 +972,39 @@ def render_trade_analyzer() -> None:
         return out
 
     pick_seasons = [SEASON, SEASON + 1, SEASON + 2]
+    cur_slots = current_pick_slots()
 
-    def pick_opts(oid):
-        opts = []
+    def owned_picks(oid):
+        """[(label, points)] for every pick `oid` owns. This year uses the real
+        snake/trade-aware slot (e.g. '2026 R1 (1.03)' -> curve at pick #3); future
+        years use a round midpoint, discounted ~20% per year out (slot unknown)."""
+        items = []
         for yr in pick_seasons:
-            owned = get_owned_for(yr).get(oid) or {}
-            for r in range(1, DRAFT_ROUNDS + 1):
-                for i in range(owned.get(r, 0)):
-                    opts.append(f"{yr} R{r}" + (f" (#{i+1})" if owned.get(r, 0) > 1 else ""))
-        return opts
+            discount = 0.8 ** (yr - SEASON)
+            if yr == SEASON:
+                for rnd in sorted(cur_slots.get(oid, {})):
+                    for pick_no in cur_slots[oid][rnd]:
+                        pir = pick_no - (rnd - 1) * NT
+                        items.append((f"{yr} R{rnd} ({rnd}.{pir:02d})",
+                                      _draft_value(pick_no) * discount))
+            else:
+                owned = get_owned_for(yr).get(oid) or {}
+                for rnd in range(1, DRAFT_ROUNDS + 1):
+                    cnt = owned.get(rnd, 0)
+                    for i in range(cnt):
+                        label = f"{yr} R{rnd}" + (f" (#{i+1})" if cnt > 1 else "")
+                        items.append((label, _pick_value(rnd) * discount))
+        return items
 
     ra, rb = roster_opts(oa), roster_opts(ob)
+    a_picks, b_picks = owned_picks(oa), owned_picks(ob)
+    a_pts_map, b_pts_map = dict(a_picks), dict(b_picks)
     with c1:
         a_pl = st.multiselect(f"{a} sends — players", list(ra.keys()), key="ta_apl")
-        a_pk = st.multiselect(f"{a} sends — picks", pick_opts(oa), key="ta_apk")
+        a_pk = st.multiselect(f"{a} sends — picks", [lbl for lbl, _ in a_picks], key="ta_apk")
     with c2:
         b_pl = st.multiselect(f"{b} sends — players", list(rb.keys()), key="ta_bpl")
-        b_pk = st.multiselect(f"{b} sends — picks", pick_opts(ob), key="ta_bpk")
+        b_pk = st.multiselect(f"{b} sends — picks", [lbl for lbl, _ in b_picks], key="ta_bpk")
 
     def player_value(pid):
         """Talent (by ADP draft position) + a bonus for any keeper bargain."""
@@ -980,21 +1014,14 @@ def render_trade_analyzer() -> None:
         bonus = max(0, kv.get(pid, 0)) * 6   # cheap-keeper edge, on top of talent
         return talent + bonus
 
-    def pick_pts(label):
-        # "2027 R1 (#2)" -> discounted value (future picks worth less, slot unknown)
-        yr = int(label.split()[0])
-        rnd = int(label.split()[1][1:])
-        discount = 0.8 ** (yr - SEASON)
-        return _pick_value(rnd) * discount
-
-    def side_value(players, ropts, picks):
+    def side_value(players, ropts, picks, pts_map):
         pv = sum(player_value(ropts[p]) for p in players)
-        pc = sum(pick_pts(p) for p in picks)
+        pc = sum(pts_map.get(p, 0) for p in picks)
         return pv, pc
 
     # What each team RECEIVES (the other side's outgoing assets).
-    a_pv, a_pc = side_value(b_pl, rb, b_pk)   # A receives B's stuff
-    b_pv, b_pc = side_value(a_pl, ra, a_pk)   # B receives A's stuff
+    a_pv, a_pc = side_value(b_pl, rb, b_pk, b_pts_map)   # A receives B's stuff
+    b_pv, b_pc = side_value(a_pl, ra, a_pk, a_pts_map)   # B receives A's stuff
 
     if not (a_pl or a_pk or b_pl or b_pk):
         st.info("Pick players and/or picks for each side to grade the deal.")
@@ -1015,9 +1042,10 @@ def render_trade_analyzer() -> None:
         winner = a if diff > 0 else b
         st.success(f"📈 Edge to **{winner}** by ~{abs(round(diff))} pts.")
     st.caption("Heuristic only — player value = a draft-value curve at their ADP "
-               "plus a bonus for any keeper discount; picks use the same curve at a "
-               "mid-round slot. Future picks (next two years) are discounted ~20% "
-               "per year out. Doesn't model roster need or positional scarcity.")
+               "plus a bonus for any keeper discount. This-year picks use the curve "
+               "at their actual snake-draft slot (e.g. 1.01 > 1.03); future-year "
+               "picks use a round midpoint and are discounted ~20% per year out. "
+               "Doesn't model roster need or positional scarcity.")
 
 
 def render_keeper_landscape() -> None:
