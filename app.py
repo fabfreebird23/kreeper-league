@@ -662,7 +662,8 @@ def build_mock_draft(rookie_factor: float | None = None) -> pd.DataFrame:
                 keeper_at[spot] = {"player": k["Player"], "pos": k["Pos"], "pid": str(k["_pid"]),
                                    "adp": k.get("ADP"), "owner": config.manager_name(o)}
 
-    # 2) Available pool: ADP-ranked, keepers removed, league rookie premium applied.
+    # 2) Available pool: keepers removed, ranked by trade-asset value so a stud
+    #    rookie (career last-round keeper) rises above vets of the same ADP.
     name_idx, pool, seen = get_name_index(), [], set()
     for _, ar in ADP_DF.iterrows():
         pos, rank = ar.get("position"), ar.get("consensus_rank")
@@ -673,9 +674,9 @@ def build_mock_draft(rookie_factor: float | None = None) -> pd.DataFrame:
             continue
         seen.add(str(pid))
         rookie = _years_exp(pid) == 0
-        pool.append((float(rank) * (rookie_factor if rookie else 1.0), str(pid),
+        pool.append((-asset_value(int(rank), rookie, rookie_factor), str(pid),
                      ar["name"], pos, int(rank), rookie))
-    pool.sort(key=lambda x: x[0])
+    pool.sort(key=lambda x: x[0])   # highest asset value first
 
     # 3) Walk the board in pick order; keeper cells = keepers, else next available.
     rows, pi = [], 0
@@ -696,18 +697,19 @@ def build_mock_draft(rookie_factor: float | None = None) -> pd.DataFrame:
 
 @st.cache_data(ttl=600, show_spinner=False)
 def pick_market_values():
-    """Realistic value of each draft pick = the talent of the player projected to
-    be AVAILABLE at that slot once keepers are off the board. So the 1.01 is worth
-    the best un-kept player (this year ~the 6th-ranked vet, with the top rookie a
-    few picks later) — not an abstract '#1 overall'. A pick occupied by a keeper in
-    the projection is valued by the nearest open pick (what you'd draft there).
+    """Realistic value of each draft pick = the trade-asset value of the player
+    projected AVAILABLE at that slot once keepers are off the board — including the
+    rookie-keeper premium, so the 1.01 lands the top rookie (a career last-round
+    keeper) and is the most valuable pick, not an abstract '#1 overall'. A pick
+    occupied by a keeper in the projection is valued by the nearest open pick.
     Returns (by_pick: {pick_no: pts}, by_round: {round: avg pts})."""
+    rf = config.mock_draft_rookie_factor()
     mock = build_mock_draft()
     by_pick = {}
     for _, r in mock.iterrows():
         rank = r.get("ADP")
         if not bool(r.get("Keeper")) and rank is not None and not pd.isna(rank):
-            by_pick[int(r["Pick"])] = _draft_value(int(rank))
+            by_pick[int(r["Pick"])] = asset_value(int(rank), bool(r.get("Rookie")), rf)
     valued = sorted(by_pick)
     for _, r in mock.iterrows():
         pn = int(r["Pick"])
@@ -966,6 +968,19 @@ def _draft_value(pos: int) -> int:
     return max(1, round(100 * (0.965 ** (max(1, pos) - 1))))
 
 
+def asset_value(rank: int, rookie: bool, rookie_factor: float | None = None) -> int:
+    """Trade value of an available draft asset. Veterans = talent by their ADP.
+    Rookies are worth MORE than their rookie-year ADP because a hit becomes a
+    near-free last-round keeper for their whole career — so we scale a rookie's
+    talent by the league's rookie premium (1/rookie_factor; at 0.4 that's ~2.5x).
+    This is why a stud rookie tops the board and the 1.01 is so valuable."""
+    base = _draft_value(rank)
+    if not rookie:
+        return base
+    rf = config.mock_draft_rookie_factor() if rookie_factor is None else rookie_factor
+    return max(1, round(base / max(0.15, rf)))
+
+
 def _pick_value(rnd: int) -> int:
     """Points for a draft pick in a given round (valued at a mid-round slot)."""
     return _draft_value((rnd - 1) * NT + NT // 2)
@@ -1072,10 +1087,11 @@ def render_trade_analyzer() -> None:
         st.success(f"📈 Edge to **{winner}** by ~{abs(round(diff))} pts.")
     st.caption("Heuristic only — player value = a draft-value curve at their ADP "
                "plus a bonus for any keeper discount. Picks are valued by the player "
-               "projected available at that slot once keepers are off the board (so "
-               "the 1.01 is worth the best un-kept player, not an abstract #1, and a "
-               "1.03 differs from a 1.01). Future-year picks use that round's average "
-               "value, discounted ~20% per year out. Doesn't model roster need.")
+               "projected available at that slot once keepers are off the board, "
+               "including the rookie-keeper premium — so the 1.01 lands the top rookie "
+               "(a near-free last-round keeper for years) and is the most valuable pick, "
+               "and a 1.03 differs from a 1.01. Future-year picks use that round's "
+               "average value, discounted ~20% per year out. Doesn't model roster need.")
 
 
 def render_keeper_landscape() -> None:
@@ -1136,9 +1152,10 @@ def render_mock_draft() -> None:
     rf = config.mock_draft_rookie_factor()
     c1, c2 = st.columns([2, 1])
     with c1:
-        rf = st.slider("Rookie premium (lower = rookies go higher)", 0.15, 1.0,
+        rf = st.slider("Rookie premium (lower = rookies more valuable)", 0.15, 1.0,
                        value=float(rf), step=0.05,
-                       help="A rookie's draft rank = ADP rank × this. 1.0 = no premium.")
+                       help="A rookie's trade value = ADP talent ÷ this (career last-round "
+                            "keeper upside). 0.4 ≈ 2.5× their ADP; 1.0 = no premium.")
     df = build_mock_draft(rf)
     if df.empty:
         st.info("No ADP data yet — run `python scripts/refresh_adp.py`.")
