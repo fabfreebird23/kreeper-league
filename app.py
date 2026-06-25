@@ -694,6 +694,32 @@ def build_mock_draft(rookie_factor: float | None = None) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+@st.cache_data(ttl=600, show_spinner=False)
+def pick_market_values():
+    """Realistic value of each draft pick = the talent of the player projected to
+    be AVAILABLE at that slot once keepers are off the board. So the 1.01 is worth
+    the best un-kept player (this year ~the 6th-ranked vet, with the top rookie a
+    few picks later) — not an abstract '#1 overall'. A pick occupied by a keeper in
+    the projection is valued by the nearest open pick (what you'd draft there).
+    Returns (by_pick: {pick_no: pts}, by_round: {round: avg pts})."""
+    mock = build_mock_draft()
+    by_pick = {}
+    for _, r in mock.iterrows():
+        rank = r.get("ADP")
+        if not bool(r.get("Keeper")) and rank is not None and not pd.isna(rank):
+            by_pick[int(r["Pick"])] = _draft_value(int(rank))
+    valued = sorted(by_pick)
+    for _, r in mock.iterrows():
+        pn = int(r["Pick"])
+        if pn not in by_pick and valued:
+            by_pick[pn] = by_pick[min(valued, key=lambda p: abs(p - pn))]
+    by_round: dict = {}
+    for _, r in mock.iterrows():
+        by_round.setdefault(int(r["Round"]), []).append(by_pick.get(int(r["Pick"]), 1))
+    by_round = {rd: max(1, round(sum(v) / len(v))) for rd, v in by_round.items()}
+    return by_pick, by_round
+
+
 def build_rookies_table(top_n: int = 40) -> pd.DataFrame:
     """This year's NFL rookies (years_exp == 0) ranked by consensus ADP."""
     name_idx = get_name_index()
@@ -973,11 +999,14 @@ def render_trade_analyzer() -> None:
 
     pick_seasons = [SEASON, SEASON + 1, SEASON + 2]
     cur_slots = current_pick_slots()
+    by_pick, by_round = pick_market_values()
 
     def owned_picks(oid):
-        """[(label, points)] for every pick `oid` owns. This year uses the real
-        snake/trade-aware slot (e.g. '2026 R1 (1.03)' -> curve at pick #3); future
-        years use a round midpoint, discounted ~20% per year out (slot unknown)."""
+        """[(label, points)] for every pick `oid` owns. Picks are valued by the
+        player projected AVAILABLE at that slot once keepers are off the board (so
+        the 1.01 is worth the best un-kept player, and a 1.03 differs from a 1.01).
+        This year uses the real snake/trade-aware slot ('2026 R1 (1.03)'); future
+        years use that round's average value, discounted ~20% per year out."""
         items = []
         for yr in pick_seasons:
             discount = 0.8 ** (yr - SEASON)
@@ -985,15 +1014,15 @@ def render_trade_analyzer() -> None:
                 for rnd in sorted(cur_slots.get(oid, {})):
                     for pick_no in cur_slots[oid][rnd]:
                         pir = pick_no - (rnd - 1) * NT
-                        items.append((f"{yr} R{rnd} ({rnd}.{pir:02d})",
-                                      _draft_value(pick_no) * discount))
+                        pts = by_pick.get(pick_no, by_round.get(rnd, 1))
+                        items.append((f"{yr} R{rnd} ({rnd}.{pir:02d})", pts * discount))
             else:
                 owned = get_owned_for(yr).get(oid) or {}
                 for rnd in range(1, DRAFT_ROUNDS + 1):
                     cnt = owned.get(rnd, 0)
                     for i in range(cnt):
                         label = f"{yr} R{rnd}" + (f" (#{i+1})" if cnt > 1 else "")
-                        items.append((label, _pick_value(rnd) * discount))
+                        items.append((label, by_round.get(rnd, _pick_value(rnd)) * discount))
         return items
 
     ra, rb = roster_opts(oa), roster_opts(ob)
@@ -1042,10 +1071,11 @@ def render_trade_analyzer() -> None:
         winner = a if diff > 0 else b
         st.success(f"📈 Edge to **{winner}** by ~{abs(round(diff))} pts.")
     st.caption("Heuristic only — player value = a draft-value curve at their ADP "
-               "plus a bonus for any keeper discount. This-year picks use the curve "
-               "at their actual snake-draft slot (e.g. 1.01 > 1.03); future-year "
-               "picks use a round midpoint and are discounted ~20% per year out. "
-               "Doesn't model roster need or positional scarcity.")
+               "plus a bonus for any keeper discount. Picks are valued by the player "
+               "projected available at that slot once keepers are off the board (so "
+               "the 1.01 is worth the best un-kept player, not an abstract #1, and a "
+               "1.03 differs from a 1.01). Future-year picks use that round's average "
+               "value, discounted ~20% per year out. Doesn't model roster need.")
 
 
 def render_keeper_landscape() -> None:
