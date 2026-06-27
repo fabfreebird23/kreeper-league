@@ -1,7 +1,7 @@
 {
   "season": 2026,
   "scoring": "ppr",
-  "updated_utc": "2026-06-26T17:21:27Z",
+  "updated_utc": "2026-06-27T12:05:34Z",
   "sources": [
     "CBS",
     "DraftKings",
@@ -16,7 +16,7 @@
   "status": {
     "espn": "ok (400 rows)",
     "fantasypros": "FAILED: ImportError: `Import html5lib` failed.  Use pip or conda to install the html5lib package.",
-    "footballguys": "ok (1786 rows)",
+    "footballguys": "ok (1785 rows)",
     "sleeper": "ok (301 rows)"
   },
   "players": 468
