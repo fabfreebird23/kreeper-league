@@ -140,5 +140,52 @@
       "cost_choice": null,
       "cost_round": 13
     }
+  ],
+  "979360012843663360": [
+    {
+      "player_id": "9221",
+      "player_name": "Jahmyr Gibbs",
+      "position": "RB",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_choice": null,
+      "cost_round": 14
+    },
+    {
+      "player_id": "8138",
+      "player_name": "James Cook",
+      "position": "RB",
+      "is_rookie_keeper": false,
+      "keep_year": 3,
+      "cost_choice": null,
+      "cost_round": 2
+    },
+    {
+      "player_id": "8112",
+      "player_name": "Drake London",
+      "position": "WR",
+      "is_rookie_keeper": false,
+      "keep_year": 1,
+      "cost_choice": null,
+      "cost_round": 12
+    },
+    {
+      "player_id": "7569",
+      "player_name": "Nico Collins",
+      "position": "WR",
+      "is_rookie_keeper": false,
+      "keep_year": 3,
+      "cost_choice": null,
+      "cost_round": 3
+    },
+    {
+      "player_id": "12527",
+      "player_name": "Ashton Jeanty",
+      "position": "RB",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_choice": null,
+      "cost_round": 13
+    }
   ]
 }
