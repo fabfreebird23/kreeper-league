@@ -187,5 +187,52 @@
       "cost_choice": null,
       "cost_round": 13
     }
+  ],
+  "980483220603015168": [
+    {
+      "player_id": "9509",
+      "player_name": "Bijan Robinson",
+      "position": "RB",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_choice": null,
+      "cost_round": 14
+    },
+    {
+      "player_id": "7525",
+      "player_name": "DeVonta Smith",
+      "position": "WR",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_choice": null,
+      "cost_round": 13
+    },
+    {
+      "player_id": "7588",
+      "player_name": "Javonte Williams",
+      "position": "RB",
+      "is_rookie_keeper": false,
+      "keep_year": 1,
+      "cost_choice": null,
+      "cost_round": 12
+    },
+    {
+      "player_id": "12517",
+      "player_name": "Colston Loveland",
+      "position": "TE",
+      "is_rookie_keeper": false,
+      "keep_year": 1,
+      "cost_choice": null,
+      "cost_round": 11
+    },
+    {
+      "player_id": "12519",
+      "player_name": "Luther Burden",
+      "position": "WR",
+      "is_rookie_keeper": false,
+      "keep_year": 1,
+      "cost_choice": null,
+      "cost_round": 10
+    }
   ]
 }
