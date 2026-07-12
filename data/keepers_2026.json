@@ -264,6 +264,15 @@
       "cost_round": 2
     },
     {
+      "player_id": "11564",
+      "player_name": "Drake Maye",
+      "position": "QB",
+      "is_rookie_keeper": false,
+      "keep_year": 1,
+      "cost_choice": null,
+      "cost_round": 12
+    },
+    {
       "player_id": "12512",
       "player_name": "Quinshon Judkins",
       "position": "RB",
@@ -271,15 +280,6 @@
       "keep_year": "Rookie",
       "cost_choice": null,
       "cost_round": 13
-    },
-    {
-      "player_id": "4983",
-      "player_name": "DJ Moore",
-      "position": "WR",
-      "is_rookie_keeper": false,
-      "keep_year": 3,
-      "cost_choice": null,
-      "cost_round": 8
     }
   ]
 }
