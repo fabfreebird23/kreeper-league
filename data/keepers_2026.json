@@ -271,6 +271,15 @@
       "keep_year": "Rookie",
       "cost_choice": null,
       "cost_round": 13
+    },
+    {
+      "player_id": "4983",
+      "player_name": "DJ Moore",
+      "position": "WR",
+      "is_rookie_keeper": false,
+      "keep_year": 3,
+      "cost_choice": null,
+      "cost_round": 8
     }
   ]
 }
