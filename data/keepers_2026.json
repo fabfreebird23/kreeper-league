@@ -234,5 +234,52 @@
       "cost_choice": null,
       "cost_round": 10
     }
+  ],
+  "980587844647419904": [
+    {
+      "player_id": "12507",
+      "player_name": "Omarion Hampton",
+      "position": "RB",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_choice": null,
+      "cost_round": 14
+    },
+    {
+      "player_id": "9997",
+      "player_name": "Zay Flowers",
+      "position": "WR",
+      "is_rookie_keeper": false,
+      "keep_year": 2,
+      "cost_choice": "Round 10",
+      "cost_round": 10
+    },
+    {
+      "player_id": "5850",
+      "player_name": "Josh Jacobs",
+      "position": "RB",
+      "is_rookie_keeper": false,
+      "keep_year": 1,
+      "cost_choice": null,
+      "cost_round": 2
+    },
+    {
+      "player_id": "8146",
+      "player_name": "Garrett Wilson",
+      "position": "WR",
+      "is_rookie_keeper": false,
+      "keep_year": 1,
+      "cost_choice": null,
+      "cost_round": 1
+    },
+    {
+      "player_id": "12512",
+      "player_name": "Quinshon Judkins",
+      "position": "RB",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_choice": null,
+      "cost_round": 13
+    }
   ]
 }
