@@ -643,15 +643,20 @@ def build_mock_draft(rookie_factor: float | None = None) -> pd.DataFrame:
     owner_to_roster = board["owner_to_roster"]
 
     # 1) Place each team's projected keepers onto a pick they OWN (their keeper
-    #    cost round, or the nearest owned pick), marking those pick numbers.
+    #    cost round, or the nearest owned pick), marking those pick numbers. When a
+    #    team owns multiple picks in the same round (e.g. their own + one acquired
+    #    via trade), the keeper takes the LAST pick in that round — preserving the
+    #    earlier pick(s) as open for the actual draft.
     keeper_at = {}     # pick_no -> {player, pos, adp, owner}
     kept_ids, used = set(), set()
     for o in MANAGERS:
         rid = owner_to_roster.get(str(o))
-        owned = {}     # round -> [(pick_no)]
+        owned = {}     # round -> [pick_no, ...] sorted latest-in-round first
         for (r, _slot), c in cells.items():
             if c["owner_roster"] == rid:
                 owned.setdefault(r, []).append(c["pick_no"])
+        for lst in owned.values():
+            lst.sort(reverse=True)
         for k in sorted(team_keeper_rows(o), key=lambda x: (x.get("Cost Rd") or 99)):
             kept_ids.add(str(k["_pid"]))
             rd = int(k.get("Cost Rd") or rounds)
@@ -1612,9 +1617,10 @@ def render_draft_board() -> None:
     teams, rounds, cells = board["teams"], board["rounds"], board["cells"]
 
     # Overlay submitted keepers onto a pick the team OWNS that round — preferring
-    # their own column, then an acquired pick's slot. So two keepers at the same
-    # round (when the team owns two of that pick) split across both cells instead
-    # of stacking. Each cell is used at most once.
+    # the LAST pick in that round (highest overall pick number), so an earlier
+    # pick they own the same round stays open for the actual draft. So two keepers
+    # at the same round (when the team owns two of that pick) split across both
+    # cells instead of stacking. Each cell is used at most once.
     from collections import defaultdict
     data = current_keepers()
     owner_to_slot = board["owner_to_slot"]
@@ -1637,7 +1643,7 @@ def render_draft_board() -> None:
                 continue
             rd = int(rd)
             cands = sorted(owned_slots.get((rd, roster), []),
-                           key=lambda sl: (sl != own_slot, sl))
+                           key=lambda sl: -cells[(rd, sl)]["pick_no"])
             placed = next((sl for sl in cands if (rd, sl) not in used_cells), None)
             conflict = placed is None
             if placed is None:
