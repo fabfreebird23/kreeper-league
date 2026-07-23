@@ -17,7 +17,7 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
-from kreeper import config, draftboard, engine, history, storage, theme
+from kreeper import config, draftboard, engine, history, sleeper, storage, theme
 from kreeper.adp import consensus as adp_consensus
 from kreeper.names import normalize_name
 
@@ -1997,6 +1997,12 @@ st.markdown(
 with st.sidebar:
     st.caption(f"**{LEAGUE['name']}** · season **{SEASON}** · {NT} teams · "
                f"{DRAFT_ROUNDS} rds · {LEAGUE.get('scoring','ppr').upper()}")
+    if st.button("🔄 Refresh rosters & picks", use_container_width=True,
+                 help="Just made a trade? Pull the latest rosters and traded "
+                      "picks from Sleeper instead of waiting ~30 min for the cache."):
+        sleeper.invalidate_league_cache(LEAGUE["sleeper_league_id"])
+        st.cache_data.clear()
+        st.rerun()
     st.divider()
     st.subheader("ADP freshness")
     if ADP_META:

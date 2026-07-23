@@ -81,6 +81,15 @@ def get_winners_bracket(league_id: str) -> List[Dict[str, Any]]:
     return _disk(f"bracket_{league_id}", 86400, lambda: _get(f"league/{league_id}/winners_bracket") or [])
 
 
+def invalidate_league_cache(league_id: str) -> None:
+    """Drop the on-disk cache for rosters + traded picks — the two things a trade
+    changes — so the next read hits Sleeper fresh instead of waiting out the
+    30-minute TTL. Callers should also clear st.cache_data (the layer on top)."""
+    for key in (f"rosters_{league_id}", f"traded_{league_id}"):
+        p = config.DATA_DIR / f"cache_{key}.json"
+        p.unlink(missing_ok=True)
+
+
 def get_season_stats(season: int, scoring: str = "ppr") -> Dict[str, Any]:
     """player_id -> season stat line (pts_ppr, pos_rank_ppr, rank_ppr, ...)."""
     return _disk(f"stats_{season}", 86400 * 7,
