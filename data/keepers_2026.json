@@ -281,5 +281,43 @@
       "cost_choice": null,
       "cost_round": 13
     }
+  ],
+  "980678769612488704": [
+    {
+      "player_id": "5859",
+      "player_name": "A.J. Brown",
+      "position": "WR",
+      "is_rookie_keeper": false,
+      "keep_year": 1,
+      "cost_choice": null,
+      "cost_round": 2
+    },
+    {
+      "player_id": "12481",
+      "player_name": "Cam Skattebo",
+      "position": "RB",
+      "is_rookie_keeper": false,
+      "keep_year": 1,
+      "cost_choice": null,
+      "cost_round": 6
+    },
+    {
+      "player_id": "11620",
+      "player_name": "Rome Odunze",
+      "position": "WR",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_choice": null,
+      "cost_round": 13
+    },
+    {
+      "player_id": "11628",
+      "player_name": "Marvin Harrison",
+      "position": "WR",
+      "is_rookie_keeper": true,
+      "keep_year": "Rookie",
+      "cost_choice": null,
+      "cost_round": 12
+    }
   ]
 }
