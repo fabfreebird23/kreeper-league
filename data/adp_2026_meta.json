@@ -1,7 +1,7 @@
 {
   "season": 2026,
   "scoring": "ppr",
-  "updated_utc": "2026-07-23T12:19:36Z",
+  "updated_utc": "2026-07-24T12:13:55Z",
   "sources": [
     "CBS",
     "DraftKings",
@@ -16,8 +16,8 @@
   "status": {
     "espn": "ok (400 rows)",
     "fantasypros": "FAILED: ValueError: FantasyPros: could not locate player column",
-    "footballguys": "ok (1845 rows)",
-    "sleeper": "ok (300 rows)"
+    "footballguys": "ok (1853 rows)",
+    "sleeper": "ok (299 rows)"
   },
-  "players": 488
+  "players": 490
 }
