@@ -93,7 +93,35 @@
       "cost_round": 12
     }
   ],
-  "980547002628927488": [],
+  "980547002628927488": [
+    {
+      "player_id": "8137",
+      "player_name": "George Pickens",
+      "position": "WR",
+      "is_rookie_keeper": false,
+      "keep_year": 1,
+      "cost_choice": null,
+      "cost_round": 4
+    },
+    {
+      "player_id": "8151",
+      "player_name": "Kenneth Walker",
+      "position": "RB",
+      "is_rookie_keeper": false,
+      "keep_year": 1,
+      "cost_choice": null,
+      "cost_round": 3
+    },
+    {
+      "player_id": "7021",
+      "player_name": "Rico Dowdle",
+      "position": "RB",
+      "is_rookie_keeper": false,
+      "keep_year": 1,
+      "cost_choice": null,
+      "cost_round": 14
+    }
+  ],
   "980679503968018432": [
     {
       "player_id": "4034",
