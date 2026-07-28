@@ -14,8 +14,7 @@ from typing import List
 
 import pandas as pd
 
-from .base import AdpRow, clean_float, http_get
-from .fantasypros import _PLATFORMS, _POS_RE
+from .base import PLATFORMS, POS_RE, AdpRow, clean_float, http_get
 
 SOURCE = "FootballGuys"
 _URL = "https://www.footballguys.com/adp"
@@ -41,9 +40,9 @@ def fetch(season: int, scoring: str = "ppr") -> List[AdpRow]:
 
     # Skip ESPN here — we pull it directly from ESPN's own feed.
     platform_cols = {
-        c: _PLATFORMS[c.lower()]
+        c: PLATFORMS[c.lower()]
         for c in df.columns
-        if c.lower() in _PLATFORMS and c.lower() != "espn"
+        if c.lower() in PLATFORMS and c.lower() != "espn"
     }
 
     rows: List[AdpRow] = []
@@ -54,7 +53,7 @@ def fetch(season: int, scoring: str = "ppr") -> List[AdpRow]:
             continue
         pos = ""
         if pos_col is not None:
-            m = _POS_RE.search(str(r[pos_col]))
+            m = POS_RE.search(str(r[pos_col]))
             pos = (m.group(1).upper() if m else "").replace("DEF", "DST")
         if cons_col is not None:
             a = clean_float(r[cons_col])

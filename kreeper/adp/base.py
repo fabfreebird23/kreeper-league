@@ -7,10 +7,22 @@ die because one site hiccuped.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import List, Optional
 
 import requests
+
+# Shared by providers that scrape an HTML table with per-platform ADP columns
+# (FootballGuys still does; FantasyPros switched to embedded JSON but the
+# header-name -> canonical-label mapping is the same convention either way).
+PLATFORMS = {
+    "espn": "ESPN", "yahoo": "Yahoo", "sleeper": "Sleeper", "cbs": "CBS",
+    "nfl": "NFL", "rtsports": "RTSports", "ffc": "FFC", "nffc": "NFFC",
+    "mfl": "MFL", "underdog": "Underdog", "ud": "Underdog", "bb10s": "BestBall10s",
+    "drafters": "Drafters", "dk": "DraftKings", "draftkings": "DraftKings",
+}
+POS_RE = re.compile(r"\b(QB|RB|WR|TE|K|DST|DEF)\d*\b", re.I)
 
 BROWSER_HEADERS = {
     "User-Agent": (

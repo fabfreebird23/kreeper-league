@@ -3,16 +3,21 @@
 The page is itself an aggregator: it has an AVG (consensus) column plus
 per-platform columns (ESPN, Yahoo, Sleeper, etc.). We emit the per-platform
 columns as individual sources and the AVG as a 'FantasyPros' aggregate.
+
+As of mid-2026 FantasyPros moved this page to a client-rendered table (data
+embedded as JSON in a `window.FP.reportConfig` script block) and put a
+"registrationFence" on it — anonymous requests only get the top 5 rows. We
+still parse the embedded JSON (more robust than the old HTML-table scrape),
+but if the fence is up there's no legitimate way to get the rest without an
+account, so we raise clearly rather than pretend to have full data.
 """
 from __future__ import annotations
 
-import io
+import json
 import re
 from typing import List
 
-import pandas as pd
-
-from .base import AdpRow, clean_float, http_get
+from .base import POS_RE, AdpRow, clean_float, http_get
 
 SOURCE = "FantasyPros"
 _URLS = {
@@ -21,63 +26,65 @@ _URLS = {
     "std": "https://www.fantasypros.com/nfl/adp/overall.php",
 }
 
-# header text (lowercased) -> canonical platform label
-_PLATFORMS = {
-    "espn": "ESPN", "yahoo": "Yahoo", "sleeper": "Sleeper", "cbs": "CBS",
-    "nfl": "NFL", "rtsports": "RTSports", "ffc": "FFC", "nffc": "NFFC",
-    "mfl": "MFL", "underdog": "Underdog", "ud": "Underdog", "bb10s": "BestBall10s",
-    "drafters": "Drafters", "dk": "DraftKings", "draftkings": "DraftKings",
-}
-_POS_RE = re.compile(r"\b(QB|RB|WR|TE|K|DST|DEF)\d*\b", re.I)
-_NAME_RE = re.compile(r"^(.*?)\s+[A-Z]{2,3}\s*(\(\d+\))?\s*$")
+# A full ADP board is normally 300+ players; a suspiciously short response
+# means the registration fence (or some other gate) kicked in.
+_MIN_ROWS = 50
 
 
-def _split_player_cell(cell: str):
-    """'Ja'Marr Chase CIN (10)' -> ('Ja'Marr Chase', '')."""
-    s = re.sub(r"\s+", " ", str(cell)).strip()
-    m = _NAME_RE.match(s)
-    name = m.group(1).strip() if m else s
-    return name
+def _extract_report_config(html: str) -> dict:
+    marker = "window.FP.reportConfig = "
+    i = html.find(marker)
+    if i < 0:
+        raise ValueError("FantasyPros: page layout changed (no reportConfig found)")
+    i += len(marker)
+    depth, start, end = 0, i, None
+    for j in range(i, len(html)):
+        if html[j] == "{":
+            depth += 1
+        elif html[j] == "}":
+            depth -= 1
+            if depth == 0:
+                end = j + 1
+                break
+    if end is None:
+        raise ValueError("FantasyPros: reportConfig block wasn't well-formed")
+    return json.loads(html[start:end])
 
 
 def fetch(season: int, scoring: str = "ppr") -> List[AdpRow]:
     url = _URLS.get(scoring, _URLS["ppr"])
     html = http_get(url).text
-    tables = pd.read_html(io.StringIO(html))
-    # The data table is the widest one with a 'Player' column.
-    df = max(tables, key=lambda t: t.shape[0] * t.shape[1])
-    df.columns = [str(c).strip() for c in df.columns]
+    cfg = _extract_report_config(html)
+    table = cfg.get("table") or {}
+    rows_in = table.get("rows") or []
 
-    player_col = next((c for c in df.columns if "player" in c.lower()), None)
-    pos_col = next((c for c in df.columns if c.lower() in ("pos", "position")), None)
-    avg_col = next((c for c in df.columns if c.lower() in ("avg", "average")), None)
-    if player_col is None:
-        raise ValueError("FantasyPros: could not locate player column")
+    if cfg.get("registrationFence") and len(rows_in) < _MIN_ROWS:
+        raise ValueError(
+            f"FantasyPros now gates full ADP behind free registration "
+            f"(only {len(rows_in)} rows public) — skipping until that changes"
+        )
+    if len(rows_in) < _MIN_ROWS:
+        raise ValueError(f"FantasyPros: only {len(rows_in)} rows returned (expected 300+)")
 
-    # Skip ESPN here — we pull it directly from ESPN's own feed.
-    platform_cols = {
-        c: _PLATFORMS[c.lower()]
-        for c in df.columns
-        if c.lower() in _PLATFORMS and c.lower() != "espn"
-    }
+    # field key ('src_79', 'avg', ...) -> display label ('ESPN', 'FantasyPros', ...)
+    field_label = {"avg": SOURCE}
+    for f in table.get("fields", []):
+        key = f.get("key", "")
+        if key.startswith("src_"):
+            field_label[key] = f.get("label") or key
 
     rows: List[AdpRow] = []
-    for _, r in df.iterrows():
-        name = _split_player_cell(r[player_col])
-        if not name or name.lower().startswith("player"):
+    for r in rows_in:
+        player = r.get("player") or {}
+        name = re.sub(r"\s+", " ", str(player.get("name") or "")).strip()
+        if not name:
             continue
-        pos = ""
-        if pos_col is not None:
-            m = _POS_RE.search(str(r[pos_col]))
-            pos = (m.group(1).upper() if m else "").replace("DEF", "DST")
-        # consensus AVG -> aggregate source
-        if avg_col is not None:
-            a = clean_float(r[avg_col])
-            if a:
-                rows.append(AdpRow(SOURCE, name, pos, "", a))
-        # per-platform sub-columns -> individual sources
-        for col, label in platform_cols.items():
-            a = clean_float(r[col])
+        pos_m = POS_RE.search(str(r.get("pos") or ""))
+        pos = (pos_m.group(1).upper() if pos_m else "").replace("DEF", "DST")
+        for key, label in field_label.items():
+            if label == "ESPN":
+                continue  # we pull ESPN directly from ESPN's own feed
+            a = clean_float(r.get(key))
             if a:
                 rows.append(AdpRow(label, name, pos, "", a))
     return rows

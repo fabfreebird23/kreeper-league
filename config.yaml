@@ -59,9 +59,12 @@ managers:
 # ADP sources to pull and average into a consensus. Toggle any off if it gets flaky.
 adp_sources:
   espn: true
-  fantasypros: true
+  # FantasyPros put its ADP page behind a free-registration wall in mid-2026
+  # (anonymous requests only see the top 5 rows) — no public data to scrape
+  # anymore, so it's off until/unless that changes. See kreeper/adp/fantasypros.py.
+  fantasypros: false
   footballguys: true
   sleeper: true          # Sleeper ADP from DraftSharks (PPR / Sleeper / 12-team board)
-  # Yahoo / Underdog are extracted from the FootballGuys & FantasyPros
-  # per-source columns when available (no separate scraper / OAuth needed).
+  # Yahoo / Underdog are extracted from the FootballGuys per-source columns
+  # when available (no separate scraper / OAuth needed).
   include_aggregator_subcolumns: true
