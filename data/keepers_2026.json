@@ -19,6 +19,15 @@
       "cost_round": 8
     },
     {
+      "player_id": "8130",
+      "player_name": "Trey McBride",
+      "position": "TE",
+      "is_rookie_keeper": false,
+      "keep_year": 3,
+      "cost_choice": null,
+      "cost_round": 3
+    },
+    {
       "player_id": "11632",
       "player_name": "Malik Nabers",
       "position": "WR",
@@ -35,15 +44,6 @@
       "keep_year": "Rookie",
       "cost_choice": null,
       "cost_round": 14
-    },
-    {
-      "player_id": "12490",
-      "player_name": "Bhayshul Tuten",
-      "position": "RB",
-      "is_rookie_keeper": false,
-      "keep_year": 1,
-      "cost_choice": null,
-      "cost_round": 13
     }
   ],
   "980552553920274432": [
