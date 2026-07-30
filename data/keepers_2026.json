@@ -133,15 +133,6 @@
       "cost_round": 1
     },
     {
-      "player_id": "8138",
-      "player_name": "James Cook",
-      "position": "RB",
-      "is_rookie_keeper": false,
-      "keep_year": 3,
-      "cost_choice": null,
-      "cost_round": 2
-    },
-    {
       "player_id": "11604",
       "player_name": "Brock Bowers",
       "position": "TE",
@@ -149,6 +140,15 @@
       "keep_year": "Rookie",
       "cost_choice": null,
       "cost_round": 14
+    },
+    {
+      "player_id": "3198",
+      "player_name": "Derrick Henry",
+      "position": "RB",
+      "is_rookie_keeper": false,
+      "keep_year": 1,
+      "cost_choice": null,
+      "cost_round": 2
     },
     {
       "player_id": "10229",
