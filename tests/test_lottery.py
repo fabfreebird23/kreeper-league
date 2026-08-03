@@ -242,3 +242,18 @@ def test_live_projection_worst_record_gets_highest_projected_weight():
         rows = lottery.live_projection("fake", playoff_teams=1)
     by_owner = {r["owner"]: r for r in rows}
     assert by_owner["worst"]["proj_weight"] > by_owner["best"]["proj_weight"]
+
+
+def test_projection_favors_strongest_of_the_projected_consolation_group():
+    """The consolation bracket is a real mini-tournament, so the team
+    closest to the playoff cutoff (strongest of the projected-bad four)
+    should project a HIGHER expected weight than the team that's weakest of
+    all — even though the weakest team has a HIGHER probability of actually
+    landing in the consolation group in the first place. Regression test for
+    the bug where a flat within-group average ignored this entirely."""
+    power = {"weakest": 1.0, "b": 5.0, "c": 9.0, "closest_to_cutoff": 13.0,
+             "e": 20.0, "f": 25.0, "g": 30.0, "h": 35.0}
+    with patch("kreeper.config.lottery_weights", return_value=[25, 22, 19, 14, 10, 6, 3, 1]):
+        rows = lottery.preseason_projection(power, playoff_teams=4)
+    by_owner = {r["owner"]: r for r in rows}
+    assert by_owner["closest_to_cutoff"]["proj_weight"] > by_owner["weakest"]["proj_weight"]

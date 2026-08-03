@@ -269,6 +269,25 @@ def draw_order(weights: Dict[str, float], rng: Optional[random.Random] = None) -
     return order
 
 
+def _expected_weight_given_group(
+    members: List[Tuple[str, float]], group_weights: List[float]
+) -> Dict[str, float]:
+    """members: [(owner, positive_strength), ...] for exactly len(group_weights)
+    teams. group_weights are that bracket's weights, BEST first (e.g. the
+    consolation group's [25, 22, 19, 14]). Returns owner -> expected lottery
+    weight, using `position_probabilities` so the STRONGEST member of the
+    group is most likely to WIN that bracket (and so claim its best weight)
+    — not the weakest. This is what makes "closest to the cutoff" project
+    better odds within the consolation group than "the very worst team
+    overall": the whole point of that bracket is a real mini-tournament, and
+    the strongest of the four bad teams is the one most likely to win it."""
+    if not members:
+        return {}
+    power = {o: max(1e-6, s) for o, s in members}
+    probs = position_probabilities(power)
+    return {o: sum(probs[o][i] * group_weights[i] for i in range(len(group_weights))) for o, _ in members}
+
+
 def live_projection(
     league_id: Optional[str] = None, playoff_teams: Optional[int] = None
 ) -> Optional[List[Dict[str, Any]]]:
@@ -298,6 +317,18 @@ def live_projection(
 
     # Worst record first (win%, then points-for as the tiebreak).
     ranked = sorted(standings, key=lambda t: (win_pct(t[1], t[2]), t[3]))
+    # Assumed group membership: the n_consol weakest teams / n_playoff
+    # strongest, using a positive win%+points-for strength proxy so the
+    # STRONGEST of each assumed group is favored to win that bracket.
+    strength = {o: 1.0 + win_pct(w, l) * 10 + pf / 1000 for o, w, l, pf in ranked}
+    consol_members = [(o, strength[o]) for o, *_ in ranked[:n_consol]]
+    playoff_members = [(o, strength[o]) for o, *_ in ranked[n_consol:]]
+    consol_exp = _expected_weight_given_group(consol_members, weights[:n_consol])
+    playoff_exp = _expected_weight_given_group(playoff_members, weights[n_consol:])
+    # Flat-average fallback for the cross-group term (e.g. a team assumed
+    # playoff-bound still has SOME chance of ending up in consolation) —
+    # only matters for teams near the boundary, where that probability is
+    # small, so a flat average there is a fine approximation.
     consol_avg = sum(weights[:n_consol]) / n_consol
     playoff_avg = sum(weights[n_consol:]) / playoff_teams
 
@@ -312,11 +343,13 @@ def live_projection(
         steepness = 0.35 + 0.12 * gp
         p_playoff = 1.0 / (1.0 + math.exp(-steepness * (idx - boundary)))
         p_consol = 1.0 - p_playoff
+        e_consol = consol_exp.get(owner, consol_avg)
+        e_playoff = playoff_exp.get(owner, playoff_avg)
         rows.append({
             "owner": owner, "wins": w, "losses": l, "points_for": pf,
             "p_consolation": round(p_consol, 3),   # -> better lottery odds
             "p_playoff": round(p_playoff, 3),       # -> worse lottery odds
-            "proj_weight": round(p_consol * consol_avg + p_playoff * playoff_avg, 2),
+            "proj_weight": round(p_consol * e_consol + p_playoff * e_playoff, 2),
         })
     rows.sort(key=lambda r: -r["proj_weight"])
     return rows
@@ -344,6 +377,12 @@ def preseason_projection(
 
     # Weakest (lowest power) first -> most likely consolation-bound.
     ranked = sorted(power.items(), key=lambda kv: kv[1])
+    # Within each assumed group, the STRONGEST member is favored to win that
+    # bracket (same reasoning as live_projection — see _expected_weight_given_group).
+    consol_members = ranked[:n_consol]
+    playoff_members = ranked[n_consol:]
+    consol_exp = _expected_weight_given_group(consol_members, weights[:n_consol])
+    playoff_exp = _expected_weight_given_group(playoff_members, weights[n_consol:])
     consol_avg = sum(weights[:n_consol]) / n_consol
     playoff_avg = sum(weights[n_consol:]) / playoff_teams
     boundary = n_consol - 0.5
@@ -353,12 +392,14 @@ def preseason_projection(
     for idx, (owner, p) in enumerate(ranked):
         p_playoff = 1.0 / (1.0 + math.exp(-steepness * (idx - boundary)))
         p_consol = 1.0 - p_playoff
+        e_consol = consol_exp.get(owner, consol_avg)
+        e_playoff = playoff_exp.get(owner, playoff_avg)
         rows.append({
             "owner": owner,
             "power_rank": idx + 1,
             "p_consolation": round(p_consol, 3),
             "p_playoff": round(p_playoff, 3),
-            "proj_weight": round(p_consol * consol_avg + p_playoff * playoff_avg, 2),
+            "proj_weight": round(p_consol * e_consol + p_playoff * e_playoff, 2),
         })
     rows.sort(key=lambda r: -r["proj_weight"])
     return rows
