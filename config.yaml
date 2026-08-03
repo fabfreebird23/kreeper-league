@@ -49,16 +49,17 @@ mock_draft_rookie_factor: 0.4
 # in the lottery drafts 1st, rank N drafts last) is set by one combined
 # weighted draw across all num_teams teams:
 #   * Consolation-bracket ("Chase for the Pick") teams occupy lottery ranks
-#     1..(num_teams/2) — best odds. Their rank is set by their bracket finish
-#     INVERTED: the team that finishes LAST in the consolation bracket (lost
-#     every consolation game) gets the single best odds, since the whole
-#     point of that bracket is confirming who's actually worst. The
-#     consolation bracket's own winner gets the weakest odds of that group.
+#     1..(num_teams/2) — best odds. The CONSOLATION BRACKET CHAMPION gets the
+#     single best odds; the last-place finisher in that bracket gets the
+#     weakest odds of that group.
 #   * Championship-bracket (playoff) teams occupy the remaining ranks — worse
-#     odds. Their rank is NOT inverted: the league champion gets the best
-#     odds of that group, the 4th-place playoff finisher the worst overall.
+#     odds, same direction: the league champion gets the best odds of that
+#     group, the 4th-place playoff finisher the worst overall.
 #   * `weights` has one entry per team, HIGHEST-first, mapped onto lottery
 #     ranks 1..N in order (rank 1 = weights[0] = best odds).
+#   * Placements are computed from real per-round scores (kreeper/lottery.py),
+#     never from Sleeper's own bracket w/l fields — those were found to be
+#     wrong for a multi-week playoff round in this league's real 2025 data.
 lottery:
   weights: [25, 22, 19, 14, 10, 6, 3, 1]
 

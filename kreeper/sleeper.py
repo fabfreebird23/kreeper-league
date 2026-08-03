@@ -77,6 +77,15 @@ def get_traded_picks(league_id: str) -> List[Dict[str, Any]]:
     return _disk(f"traded_{league_id}", 1800, lambda: _get(f"league/{league_id}/traded_picks") or [])
 
 
+def get_matchups(league_id: str, week: int) -> List[Dict[str, Any]]:
+    """Real per-roster scores for one week: [{roster_id, points, ...}, ...]. Used
+    to determine bracket results from actual points rather than trusting the
+    bracket API's own w/l fields, which have been observed stale/wrong for
+    multi-week playoff rounds (see kreeper/lottery.py)."""
+    return _disk(f"matchups_{league_id}_{week}", 1800,
+                 lambda: _get(f"league/{league_id}/matchups/{week}") or [])
+
+
 def get_winners_bracket(league_id: str) -> List[Dict[str, Any]]:
     return _disk(f"bracket_{league_id}", 86400, lambda: _get(f"league/{league_id}/winners_bracket") or [])
 

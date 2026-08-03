@@ -7,17 +7,27 @@ House rule (config.yaml has the full text + weights):
   selection order).
 
   * Consolation-bracket ("Chase for the Pick") teams occupy the best-odds
-    ranks. Their rank is the bracket's own placement INVERTED — the team
-    that finishes LAST in that bracket (loses every consolation game) gets
-    the single best odds, since the bracket's whole purpose is confirming
-    who's actually worst. The bracket's own winner gets the weakest odds of
-    that group.
+    ranks. The bracket CHAMPION (won both their bracket games) gets the
+    single best odds; the last-place finisher in that bracket gets the
+    weakest odds of that group.
   * Championship-bracket (playoff) teams occupy the remaining, worse-odds
-    ranks. NOT inverted — the champion gets the best odds of that group, the
-    last-place playoff finisher the worst overall.
+    ranks, in the same direction: the league champion gets the best odds of
+    that group, the 4th-place playoff finisher the worst odds overall.
+
+  Both brackets work the same way — bracket placement maps directly onto
+  lottery rank, no inversion. (An earlier version of this module inverted
+  the consolation bracket, on the theory that "worst team should get the
+  best odds." That was wrong: Sleeper's bracket API had the wrong winner
+  recorded in both round-1 games of the real 2025 consolation bracket —
+  confirmed by cross-checking actual matchup scores — which made the
+  inverted version look validated against real history by coincidence. See
+  `_resolve_bracket_placements` below: placements are computed directly from
+  real per-round scores, never from the bracket API's own w/l fields, so
+  this can't recur.)
 
 Validated against this league's real 2025 result (see tests/test_lottery.py
-and the throwaway verification script referenced in that season's PR).
+and the derivation this was built from — kreeper-league conversation, the
+2025 season).
 
 Pure logic module — no Streamlit here.
 """
@@ -34,22 +44,101 @@ def _roster_to_owner(league_id: str) -> Dict[int, str]:
     return {int(r["roster_id"]): str(r.get("owner_id")) for r in sleeper.get_rosters(league_id)}
 
 
-def _full_placements(bracket: List[Dict[str, Any]]) -> Dict[int, int]:
-    """{placement_rank: roster_id} from a bracket's `p`-tagged games (winner
-    takes placement `p`, loser takes `p+1`). Returns {} if the bracket has no
-    placement games yet, OR any placement game exists but isn't decided yet
-    (both cases correctly read as "not complete")."""
-    out: Dict[int, int] = {}
+def _weeks_per_round(league_id: str) -> int:
+    """Sleeper's `playoff_round_type`: 0 = one scored week per round; any other
+    value = a combined two-week round (this league uses type 2)."""
+    settings = sleeper.get_league(league_id).get("settings", {}) or {}
+    return 1 if int(settings.get("playoff_round_type", 0) or 0) == 0 else 2
+
+
+def _round_scores(league_id: str, round_num: int, playoff_week_start: int, wpr: int) -> Dict[int, float]:
+    """roster_id -> total real points across the week(s) that make up this
+    playoff round."""
+    start = playoff_week_start + (round_num - 1) * wpr
+    totals: Dict[int, float] = {}
+    for wk in range(start, start + wpr):
+        for m in sleeper.get_matchups(league_id, wk):
+            rid = m.get("roster_id")
+            if rid is None:
+                continue
+            totals[rid] = totals.get(rid, 0.0) + float(m.get("points") or 0)
+    return totals
+
+
+def _resolve_bracket_placements(bracket: List[Dict[str, Any]], league_id: str) -> Dict[int, int]:
+    """{placement: roster_id} for a bracket (winners_ or losers_bracket),
+    determined from REAL per-round scores — never from the bracket API's own
+    `w`/`l` fields, which have been observed stale/wrong for this league's
+    multi-week playoff rounds (see the module docstring). `t1`/`t2` (who's
+    scheduled to play whom) are trusted — that's been reliable in every case
+    checked — only the WINNER of each game is independently recomputed.
+
+    Each team's true win/lose result in every prior round is tracked so a
+    round's games can be grouped by "both participants won their previous
+    round" (-> the true higher-placement decider) vs "both lost" (-> the
+    true lower-placement decider), rather than trusting which `p` tag
+    Sleeper's own (possibly-buggy) bracket-building attached to each game.
+
+    Returns {} if any game needed to fully resolve is unscheduled or its
+    round's scores aren't in yet — read as "not complete."
+    """
+    if not bracket:
+        return {}
+    settings = sleeper.get_league(league_id).get("settings", {}) or {}
+    playoff_start = int(settings.get("playoff_week_start") or 1)
+    wpr = _weeks_per_round(league_id)
+
+    by_round: Dict[int, List[Dict[str, Any]]] = {}
     for g in bracket:
+        by_round.setdefault(int(g.get("r") or 0), []).append(g)
+
+    result: Dict[int, str] = {}       # (round, roster_id) key below, flattened as f"{r}:{rid}"
+    winner_of: Dict[int, int] = {}    # matchup id -> winning roster_id (real, score-based)
+    loser_of: Dict[int, int] = {}
+
+    def key(r, rid):
+        return f"{r}:{rid}"
+
+    for r in sorted(by_round):
+        scores = _round_scores(league_id, r, playoff_start, wpr)
+        for g in by_round[r]:
+            t1, t2 = g.get("t1"), g.get("t2")
+            if t1 is None or t2 is None:
+                return {}  # this round isn't scheduled yet
+            s1, s2 = scores.get(t1), scores.get(t2)
+            if s1 is None or s2 is None or s1 == s2:
+                return {}  # scores not in yet, or an unresolved tie
+            w, l = (t1, t2) if s1 > s2 else (t2, t1)
+            winner_of[g["m"]], loser_of[g["m"]] = w, l
+            result[key(r, w)] = "win"
+            result[key(r, l)] = "lose"
+
+    # Final round's `p`-tagged games decide placements. Group by each game's
+    # participants' shared result in the PRIOR round (both won -> the true
+    # top-half decider; both lost -> the true bottom-half decider) instead of
+    # trusting Sleeper's own p-tag-to-game assignment, since that assignment
+    # is itself built from the same (possibly-wrong) round-by-round advancement.
+    last_round = max(by_round)
+    placements: Dict[int, int] = {}
+    for g in by_round[last_round]:
         p = g.get("p")
         if not p:
             continue
-        w, l = g.get("w"), g.get("l")
-        if w is None or l is None:
-            return {}
-        out[p] = w
-        out[p + 1] = l
-    return out
+        t1, t2 = g["t1"], g["t2"]
+        w, l = winner_of[g["m"]], loser_of[g["m"]]
+        if last_round > 1:
+            prior = {result.get(key(last_round - 1, t1)), result.get(key(last_round - 1, t2))}
+        else:
+            prior = set()  # single-round bracket -> nothing to disambiguate against
+        if prior == {"win"}:
+            placements[1], placements[2] = w, l
+        elif prior == {"lose"}:
+            placements[3], placements[4] = w, l
+        else:
+            # Can't disambiguate (bracket deeper than 2 rounds, or a bye) —
+            # fall back to trusting this game's own p tag.
+            placements[p], placements[p + 1] = w, l
+    return placements
 
 
 def _standings(league_id: str) -> List[Tuple[str, int, int, float]]:
@@ -66,22 +155,31 @@ def _standings(league_id: str) -> List[Tuple[str, int, int, float]]:
 
 def season_is_complete(league_id: Optional[str] = None) -> bool:
     """True once BOTH the championship and consolation brackets have every
-    placement game decided."""
+    placement game decided (per real scores, not the bracket API's own
+    w/l fields)."""
     league_id = league_id or config.league()["sleeper_league_id"]
     wb = sleeper.get_winners_bracket(league_id)
     lb = sleeper.get_losers_bracket(league_id)
-    return bool(_full_placements(wb)) and bool(_full_placements(lb))
+    return bool(_resolve_bracket_placements(wb, league_id)) and \
+        bool(_resolve_bracket_placements(lb, league_id))
 
 
 def final_tiers(league_id: Optional[str] = None) -> Optional[Dict[str, Dict[str, Any]]]:
     """For a COMPLETED season: {owner_id: {"weight", "tier", "rank",
     "bracket_placement"}} for every team. Returns None if either bracket
-    isn't fully decided yet — callers should treat that as "not ready"."""
+    isn't fully decided yet — callers should treat that as "not ready".
+
+    Placement maps directly onto lottery rank for BOTH brackets, no
+    inversion: the consolation-bracket CHAMPION gets the single best odds;
+    the championship-bracket champion gets the best odds of the (worse)
+    playoff group. See the module docstring for why an earlier inverted
+    version was wrong.
+    """
     league_id = league_id or config.league()["sleeper_league_id"]
     wb = sleeper.get_winners_bracket(league_id)
     lb = sleeper.get_losers_bracket(league_id)
-    wb_places = _full_placements(wb)
-    lb_places = _full_placements(lb)
+    wb_places = _resolve_bracket_placements(wb, league_id)
+    lb_places = _resolve_bracket_placements(lb, league_id)
     if not wb_places or not lb_places:
         return None
 
@@ -95,18 +193,18 @@ def final_tiers(league_id: Optional[str] = None) -> Optional[Dict[str, Dict[str,
         )
 
     out: Dict[str, Dict[str, Any]] = {}
-    # Consolation bracket, ranks 1..n_consol — INVERTED (worst literal
-    # placement gets the best lottery odds).
-    for lottery_rank in range(1, n_consol + 1):
-        literal_placement = n_consol + 1 - lottery_rank
+    # Consolation bracket, ranks 1..n_consol — bracket champion (placement 1)
+    # gets the single best odds; straight, no inversion.
+    for literal_placement in range(1, n_consol + 1):
         owner = r2o.get(lb_places.get(literal_placement))
         out[owner] = {
-            "weight": weights[lottery_rank - 1],
+            "weight": weights[literal_placement - 1],
             "tier": "consolation",
-            "rank": lottery_rank,
+            "rank": literal_placement,
             "bracket_placement": literal_placement,
         }
-    # Championship bracket, ranks (n_consol+1)..(n_consol+n_playoff) — NOT inverted.
+    # Championship bracket, ranks (n_consol+1)..(n_consol+n_playoff) — same
+    # direction: champion (placement 1) gets the best odds of this group.
     for literal_placement in range(1, n_playoff + 1):
         lottery_rank = n_consol + literal_placement
         owner = r2o.get(wb_places.get(literal_placement))

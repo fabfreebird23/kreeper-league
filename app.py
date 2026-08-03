@@ -1765,12 +1765,11 @@ def render_lottery() -> None:
         "overall, rank " + str(len(weights)) + " drafts last. Weights (highest = "
         "best odds): **" + ", ".join(str(int(w)) for w in weights) + "**. "
         "Ranks 1–4 go to the four consolation-bracket (\"Chase for the Pick\") "
-        "teams — the team that finishes **last** in that bracket gets the single "
-        "best odds, since the bracket's whole job is confirming who's actually "
-        "worst; the bracket's own winner gets the weakest odds of that group. "
-        "Ranks 5–8 go to the four championship-bracket teams in normal order — "
-        "the league **champion** gets the best odds of that group, the 4th-place "
-        "playoff finisher the worst odds overall."
+        "teams — the **consolation bracket champion** gets the single best "
+        "odds, the last-place finisher in that bracket the weakest odds of "
+        "that group. Ranks 5–8 go to the four championship-bracket teams the "
+        "same way — the league **champion** gets the best odds of that group, "
+        "the 4th-place playoff finisher the worst odds overall."
     )
 
     lid = LEAGUE["sleeper_league_id"]
