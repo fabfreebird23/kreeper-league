@@ -81,6 +81,13 @@ def get_winners_bracket(league_id: str) -> List[Dict[str, Any]]:
     return _disk(f"bracket_{league_id}", 86400, lambda: _get(f"league/{league_id}/winners_bracket") or [])
 
 
+def get_losers_bracket(league_id: str) -> List[Dict[str, Any]]:
+    """The consolation ("Chase for the Pick") bracket — same shape as the
+    winners bracket (round/matchup/`p`-tagged placement games)."""
+    return _disk(f"losers_bracket_{league_id}", 86400,
+                 lambda: _get(f"league/{league_id}/losers_bracket") or [])
+
+
 def invalidate_league_cache(league_id: str) -> None:
     """Drop the on-disk cache for rosters + traded picks — the two things a trade
     changes — so the next read hits Sleeper fresh instead of waiting out the

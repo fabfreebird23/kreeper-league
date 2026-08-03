@@ -17,7 +17,7 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
-from kreeper import config, draftboard, engine, history, sleeper, storage, theme
+from kreeper import config, draftboard, engine, history, lottery, sleeper, storage, theme
 from kreeper.adp import consensus as adp_consensus
 from kreeper.names import normalize_name
 
@@ -1756,6 +1756,106 @@ def render_adp_trends() -> None:
     c2.markdown(_tbl(fallers), unsafe_allow_html=True)
 
 
+def render_lottery() -> None:
+    st.markdown(f'<h2>{theme.crt("draft")}Draft-Order Lottery</h2>', unsafe_allow_html=True)
+    weights = config.lottery_weights()
+    st.caption(
+        "One weighted lottery across all " + str(len(weights)) + " teams sets NEXT "
+        "season's draft **position** directly — rank 1 in the draw drafts 1st "
+        "overall, rank " + str(len(weights)) + " drafts last. Weights (highest = "
+        "best odds): **" + ", ".join(str(int(w)) for w in weights) + "**. "
+        "Ranks 1–4 go to the four consolation-bracket (\"Chase for the Pick\") "
+        "teams — the team that finishes **last** in that bracket gets the single "
+        "best odds, since the bracket's whole job is confirming who's actually "
+        "worst; the bracket's own winner gets the weakest odds of that group. "
+        "Ranks 5–8 go to the four championship-bracket teams in normal order — "
+        "the league **champion** gets the best odds of that group, the 4th-place "
+        "playoff finisher the worst odds overall."
+    )
+
+    lid = LEAGUE["sleeper_league_id"]
+
+    if not lottery.season_is_complete(lid):
+        st.markdown("##### Pre-season / in-progress projection")
+        proj = lottery.live_projection(lid)
+        if proj is None:
+            st.info("The season hasn't started yet — there's no record to project "
+                     "lottery odds from. Check back once games have been played.")
+            return
+        st.caption("⚠️ Approximation only, based on this season's CURRENT record and "
+                   "points-for — not the actual bracket results (unknown until the "
+                   "season ends). These odds will keep shifting every week.")
+        rows = [{
+            "Team": config.manager_name(r["owner"]),
+            "Record": f"{r['wins']}-{r['losses']}",
+            "PF": r["points_for"],
+            "P(consolation-bound)": f"{r['p_consolation'] * 100:.0f}%",
+            "P(playoff-bound)": f"{r['p_playoff'] * 100:.0f}%",
+            "Proj. Balls": r["proj_weight"],
+        } for r in proj]
+        st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
+        return
+
+    tiers = lottery.final_tiers(lid)
+    if tiers is None:
+        st.warning("The season shows complete but tiers couldn't be computed — "
+                   "check that both brackets are fully decided on Sleeper.")
+        return
+
+    st.markdown("##### Final ball weights")
+    by_rank = sorted(tiers.items(), key=lambda kv: kv[1]["rank"])
+    weight_rows = [{
+        "Rank": info["rank"], "Team": config.manager_name(oid),
+        "Tier": "Consolation" if info["tier"] == "consolation" else "Championship",
+        "Bracket Placement": info["bracket_placement"], "Weight": info["weight"],
+    } for oid, info in by_rank]
+    st.dataframe(pd.DataFrame(weight_rows), hide_index=True, use_container_width=True)
+
+    weights_by_owner = {oid: info["weight"] for oid, info in tiers.items()}
+    n = len(weights_by_owner)
+    probs = lottery.position_probabilities(weights_by_owner)
+
+    st.markdown("##### Odds by draft position")
+    ordered_oids = sorted(weights_by_owner, key=lambda o: -weights_by_owner[o])
+    grid_rows = []
+    for oid in ordered_oids:
+        row = {"Team": config.manager_name(oid)}
+        for pos in range(n):
+            row[f"Pick {pos + 1}"] = f"{probs[oid][pos] * 100:.1f}%"
+        grid_rows.append(row)
+    st.dataframe(pd.DataFrame(grid_rows), hide_index=True, use_container_width=True)
+
+    record = storage.load_lottery(SEASON)
+    drawn = record.get("draw_order")
+
+    st.markdown("##### The draw")
+    if not drawn:
+        if st.button("🎉 Run the lottery", type="primary"):
+            order = lottery.draw_order(weights_by_owner)
+            storage.save_lottery(
+                {"weights": weights_by_owner, "tiers": tiers, "draw_order": order}, SEASON
+            )
+            st.session_state["_lottery_just_drawn"] = True
+            st.rerun()
+        return
+
+    st.markdown(f'<h3>{theme.crt("draft")}Next Season\'s Draft Order</h3>', unsafe_allow_html=True)
+    cards = [
+        f'<div class="kcard"><h4>Pick {i + 1}</h4><p>{config.manager_name(oid)}</p></div>'
+        for i, oid in enumerate(drawn)
+    ]
+    st.markdown('<div class="kcards">' + "".join(cards) + "</div>", unsafe_allow_html=True)
+    if st.session_state.pop("_lottery_just_drawn", False):
+        st.balloons()
+    st.caption("This does **not** automatically update `draft_order` in config.yaml — that "
+               "drives the CURRENT board while it's still active. The commissioner should "
+               "carry this over manually when next season starts, same manual step used "
+               "for today's draft order.")
+    if st.button("↩️ Reset the lottery (redo)"):
+        storage.save_lottery({}, SEASON)
+        st.rerun()
+
+
 def render_draft_capital() -> None:
     st.markdown(f'<h2>{theme.crt("draft")}Draft Capital & Keeper Cost</h2>', unsafe_allow_html=True)
     st.caption("What each team brings to the draft after keepers: picks they'll "
@@ -2031,13 +2131,15 @@ elif page == "keepers":
     with t3:
         render_roster_needs()
 elif page == "draft":
-    t1, t2, t3 = st.tabs(["🃏 Draft Board", "🔮 Projected Draft", "💰 Draft Capital"])
+    t1, t2, t3, t4 = st.tabs(["🃏 Draft Board", "🔮 Projected Draft", "💰 Draft Capital", "🎟️ Draft-Order Lottery"])
     with t1:
         render_draft_board()
     with t2:
         render_mock_draft()
     with t3:
         render_draft_capital()
+    with t4:
+        render_lottery()
 elif page == "trades":
     t1, t2 = st.tabs(["🔁 Trade Market", "⚖️ Trade Analyzer"])
     with t1:

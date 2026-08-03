@@ -58,6 +58,16 @@ def mock_draft_rookie_factor() -> float:
         return 0.4
 
 
+def lottery_weights() -> list:
+    """Ball weights, highest (best odds) first — one per team. Defaults to a
+    flat descending sequence sized to num_teams if not set in config.yaml."""
+    raw = (load().get("lottery") or {}).get("weights")
+    if raw:
+        return [float(w) for w in raw]
+    n = num_teams()
+    return [float(n - i) for i in range(n)]
+
+
 def keeper_timezone_name() -> str:
     return str(league().get("keeper_timezone") or "America/Indiana/Indianapolis")
 
