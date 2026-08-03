@@ -1490,13 +1490,15 @@ def _board_cell_html(c: dict, keepers: list) -> str:
     return f'<td class="dbcell db-base">{pick}<br>{c["owner_short"]}</td>'
 
 
-@st.cache_data(ttl=1800, show_spinner="Setting the line…")
-def build_championship_odds():
-    """A for-fun Vegas-style title line. Rosters reset at the draft, so the only
-    thing that carries over is each team's KEEPERS — the model blends three
-    seasons of results with keeper strength (talent retained) and keeper value
-    (draft capital saved), then converts to win probabilities and American odds
-    with a bookmaker's vig."""
+@st.cache_data(ttl=1800, show_spinner=False)
+def team_power():
+    """Blended pre-season strength signal per team: 3-season recency-weighted
+    win% + keeper talent (ADP) + keeper draft-capital value, z-scored and
+    combined into a "fair" (sums to 1) title-odds-style win probability.
+    Rosters reset at the draft, so the only thing that carries over is each
+    team's KEEPERS. Used by the Title Odds page AND the pre-season lottery
+    projection (before real in-season record exists to project from).
+    Returns (fair, record, keeprank, kcap, best) — all owner_id-keyed."""
     from kreeper import sleeper
 
     chain = sleeper.league_chain(LEAGUE["sleeper_league_id"])
@@ -1547,6 +1549,13 @@ def build_championship_odds():
     tot = sum(exps.values())
     fair = {o: exps[o] / tot for o in power}
     keeprank = {o: i + 1 for i, o in enumerate(sorted(talent, key=talent.get, reverse=True))}
+    return fair, record, keeprank, kcap, best
+
+
+@st.cache_data(ttl=1800, show_spinner="Setting the line…")
+def build_championship_odds():
+    """A for-fun Vegas-style title line, formatted for display from team_power()."""
+    fair, record, keeprank, kcap, best = team_power()
 
     def american(p):
         p = min(0.95, max(0.01, p * 1.16))  # ~16% overround (the house edge)
@@ -1777,17 +1786,38 @@ def render_lottery() -> None:
     if not lottery.season_is_complete(lid):
         st.markdown("##### Pre-season / in-progress projection")
         proj = lottery.live_projection(lid)
-        if proj is None:
-            st.info("The season hasn't started yet — there's no record to project "
-                     "lottery odds from. Check back once games have been played.")
+        if proj is not None:
+            st.caption("⚠️ Approximation only, based on this season's CURRENT record and "
+                       "points-for — not the actual bracket results (unknown until the "
+                       "season ends). These odds will keep shifting every week.")
+            rows = [{
+                "Team": config.manager_name(r["owner"]),
+                "Record": f"{r['wins']}-{r['losses']}",
+                "PF": r["points_for"],
+                "P(consolation-bound)": f"{r['p_consolation'] * 100:.0f}%",
+                "P(playoff-bound)": f"{r['p_playoff'] * 100:.0f}%",
+                "Proj. Balls": r["proj_weight"],
+            } for r in proj]
+            st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
             return
-        st.caption("⚠️ Approximation only, based on this season's CURRENT record and "
-                   "points-for — not the actual bracket results (unknown until the "
-                   "season ends). These odds will keep shifting every week.")
+
+        # No games played yet — nothing to project from record, so fall back
+        # to a PRE-SEASON strength signal (the same blended history + keeper
+        # power score the Title Odds page uses) until real games start.
+        fair, _, _, _, _ = team_power()
+        proj = lottery.preseason_projection(fair)
+        if not proj:
+            st.info("Nothing to project lottery odds from yet — check back once "
+                     "games have been played.")
+            return
+        st.caption("⚠️ Rough pre-season approximation, based on 3-season history "
+                   "and keeper strength (the same signal behind Title Odds) — "
+                   "**not** actual games, since none have been played yet. This "
+                   "will be replaced by real-record projections once the season "
+                   "starts, and then by the exact math once it's over.")
         rows = [{
             "Team": config.manager_name(r["owner"]),
-            "Record": f"{r['wins']}-{r['losses']}",
-            "PF": r["points_for"],
+            "Power Rk": r["power_rank"],
             "P(consolation-bound)": f"{r['p_consolation'] * 100:.0f}%",
             "P(playoff-bound)": f"{r['p_playoff'] * 100:.0f}%",
             "Proj. Balls": r["proj_weight"],

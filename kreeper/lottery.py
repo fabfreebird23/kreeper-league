@@ -320,3 +320,45 @@ def live_projection(
         })
     rows.sort(key=lambda r: -r["proj_weight"])
     return rows
+
+
+def preseason_projection(
+    power: Dict[str, float], playoff_teams: Optional[int] = None, weights: Optional[List[float]] = None,
+) -> List[Dict[str, Any]]:
+    """Before the season starts (or before enough games exist for
+    `live_projection` to have real signal): project each team's likely
+    lottery tier from a PRE-SEASON strength signal instead of in-season
+    record. `power`: owner_id -> relative strength (higher = stronger team,
+    more likely to make the playoffs) — e.g. the same blended history +
+    keeper-strength signal the Title Odds page uses. Deliberately uses a
+    fixed, modest confidence (no games played yet to sharpen with), so this
+    reads softer/less certain than `live_projection` once real games start.
+    Returns [] if `power` is empty (nothing to project from).
+    """
+    weights = weights if weights is not None else config.lottery_weights()
+    n = len(weights)
+    playoff_teams = playoff_teams or n // 2
+    n_consol = n - playoff_teams
+    if not power:
+        return []
+
+    # Weakest (lowest power) first -> most likely consolation-bound.
+    ranked = sorted(power.items(), key=lambda kv: kv[1])
+    consol_avg = sum(weights[:n_consol]) / n_consol
+    playoff_avg = sum(weights[n_consol:]) / playoff_teams
+    boundary = n_consol - 0.5
+    steepness = 0.5  # fixed and modest — there's no in-season signal to sharpen with yet
+
+    rows = []
+    for idx, (owner, p) in enumerate(ranked):
+        p_playoff = 1.0 / (1.0 + math.exp(-steepness * (idx - boundary)))
+        p_consol = 1.0 - p_playoff
+        rows.append({
+            "owner": owner,
+            "power_rank": idx + 1,
+            "p_consolation": round(p_consol, 3),
+            "p_playoff": round(p_playoff, 3),
+            "proj_weight": round(p_consol * consol_avg + p_playoff * playoff_avg, 2),
+        })
+    rows.sort(key=lambda r: -r["proj_weight"])
+    return rows
