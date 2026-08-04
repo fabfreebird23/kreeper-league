@@ -77,6 +77,14 @@ def get_traded_picks(league_id: str) -> List[Dict[str, Any]]:
     return _disk(f"traded_{league_id}", 1800, lambda: _get(f"league/{league_id}/traded_picks") or [])
 
 
+def get_nfl_state() -> Dict[str, Any]:
+    """Sleeper's global NFL clock: {season, season_type, week, leg, ...}.
+    `season_type` is one of "pre" | "regular" | "post" | "off" — used to tell
+    a completed fantasy draft sitting in the preseason apart from a fantasy
+    season that's actually underway."""
+    return _disk("nfl_state", 3600, lambda: _get("state/nfl") or {})
+
+
 def get_matchups(league_id: str, week: int) -> List[Dict[str, Any]]:
     """Real per-roster scores for one week: [{roster_id, points, ...}, ...]. Used
     to determine bracket results from actual points rather than trusting the

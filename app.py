@@ -17,7 +17,7 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
-from kreeper import config, draftboard, engine, faab, history, lottery, sleeper, storage, theme
+from kreeper import config, draftboard, engine, faab, history, lottery, phase, sleeper, storage, theme
 from kreeper.adp import consensus as adp_consensus
 from kreeper.names import normalize_name
 
@@ -825,6 +825,49 @@ def render_team_boxes() -> None:
 
 
 def render_home() -> None:
+    """The home page leads with whatever's actually useful right now — keeper
+    decisions while they're still open, draft prep once they're locked, the
+    draft recap once it wraps, FAAB/odds once the season's live, and a recap
+    once it's over. See kreeper/phase.py for how the phase is inferred."""
+    ph = phase.current_phase()
+    if ph == "pre_draft":
+        _render_home_pre_draft()
+    elif ph == "pre_season":
+        _render_home_pre_season()
+    elif ph == "in_season":
+        _render_home_in_season()
+    elif ph == "offseason":
+        _render_home_offseason()
+    else:
+        _render_home_keepers_open()
+
+
+def _render_home_pre_draft() -> None:
+    st.caption("Keepers are locked — here's what everyone's bringing into the draft.")
+    render_draft_capital()
+    st.markdown(f'<h2>Submitted Keepers by Team</h2>', unsafe_allow_html=True)
+    render_team_boxes()
+
+
+def _render_home_pre_season() -> None:
+    st.markdown(f'<h2>The Draft</h2>', unsafe_allow_html=True)
+    st.caption("It's in the books — here's how it landed.")
+    render_draft_board()
+    render_odds()
+
+
+def _render_home_in_season() -> None:
+    render_faab()
+    render_odds()
+
+
+def _render_home_offseason() -> None:
+    st.caption("Season's over — here's the recap.")
+    render_record_book()
+    render_superlatives()
+
+
+def _render_home_keepers_open() -> None:
     render_countdown()
     st.markdown(f'<h2>Top 50 Keeper Values</h2>', unsafe_allow_html=True)
     st.caption("Best keeper bargains across every roster — draft value gained by keeping a "
