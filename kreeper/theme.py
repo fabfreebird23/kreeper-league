@@ -31,20 +31,12 @@ CYAN = "#5ecbf0"
 AMBER = "#f0b840"
 RED = "#ff5c6c"
 
-# Per-page accent gradient (g1 -> g2 -> g3). g2 is also used as the flat
-# "--accent" for solid fills (buttons, active nav, bar fills) — every g2
-# below is bright/light enough to stay readable under the fixed dark ink.
-# This is the one thing that changes page to page; everything else (type,
-# panel radius, semantic colors) stays constant so the app still reads as
-# one product, just with each section given its own identity.
-_PAGE_ACCENT = {
-    "home":    ("#ff5aa0", "#a06bff", "#4f9dff"),
-    "keepers": ("#a06bff", "#c9a6ff", "#a06bff"),
-    "draft":   ("#4f9dff", "#3fd67c", "#4f9dff"),
-    "trades":  ("#ff5aa0", "#ff8fc0", "#ff5aa0"),
-    "league":  ("#3fd67c", "#4f9dff", "#3fd67c"),
-    "players": ("#cfcfd6", "#e9e9ee", "#cfcfd6"),
-}
+# One fixed accent gradient (g1 -> g2 -> g3) used everywhere — same nav,
+# same headings, same accent color regardless of which section you're on,
+# so the theme doesn't shift underneath you as you click around. g2 also
+# doubles as the flat "--accent" for solid fills (buttons, active nav, bar
+# fills); it's bright/light enough to stay readable under the fixed dark ink.
+GRADIENT = ("#ff5aa0", "#a06bff", "#4f9dff")
 
 CSS = """
 <style>
@@ -63,10 +55,12 @@ CSS = """
    like a dashboard product shot */
 .stApp{
   background:
-    radial-gradient(46% 34% at 14% 6%, rgba(255,90,160,.09), transparent 60%),
-    radial-gradient(40% 34% at 86% 4%, rgba(79,157,255,.09), transparent 60%),
-    repeating-radial-gradient(circle at 20% 8%, rgba(255,255,255,.028) 0,
-      rgba(255,255,255,.028) 1px, transparent 1px, transparent 34px),
+    radial-gradient(46% 34% at 14% 6%, rgba(255,90,160,.10), transparent 60%),
+    radial-gradient(40% 34% at 86% 4%, rgba(79,157,255,.10), transparent 60%),
+    repeating-radial-gradient(circle at 12% 4%, rgba(255,255,255,.05) 0,
+      rgba(255,255,255,.05) 1px, transparent 1px, transparent 40px),
+    repeating-radial-gradient(circle at 88% 100%, rgba(255,255,255,.035) 0,
+      rgba(255,255,255,.035) 1px, transparent 1px, transparent 56px),
     var(--bg);
   background-attachment:fixed;
 }
@@ -268,19 +262,20 @@ table.lb tr.fa td{ background:rgba(94,203,240,.06); }
 .lottery-row-val{ flex:0 0 34px; text-align:right; font-family:'Anton'; font-weight:400;
   font-size:14px; color:var(--ink); }
 
-/* draft board */
+/* draft board — flat, hairline cell dividers; only cells that mean
+   something (traded/kept/conflict) carry a background */
 table.dboard{ width:100%; border-collapse:collapse; table-layout:fixed; font-family:'Oswald'; font-size:12px; }
-table.dboard th{ background:var(--panel2); color:var(--ink); text-align:center; font-size:11px; padding:5px;
-  border:1px solid var(--line); text-transform:uppercase; letter-spacing:.5px; }
+table.dboard th{ color:var(--muted); text-align:center; font-size:11px; padding:5px;
+  border-bottom:1px solid var(--line); text-transform:uppercase; letter-spacing:.5px; }
 .dbcell{ border:1px solid var(--line); padding:3px 4px; vertical-align:top; height:48px; }
 /* higher specificity so our padding beats Streamlit's default table td padding */
 table.dboard td.dbcell{ padding:3px 4px; }
 .dbpick{ color:var(--muted); font-size:9px; white-space:nowrap; }
-.db-base{ background:var(--panel); color:var(--muted); }
+.db-base{ background:none; color:var(--muted); }
 .db-traded{ background:rgba(79,157,255,.16); color:#bcd7ff; }
 .db-keep{ background:rgba(63,214,124,.16); color:#a4f0bf; box-shadow:inset 0 0 0 1px rgba(63,214,124,.45); }
 .db-conflict{ background:rgba(255,92,108,.16); color:#ffb3ba; box-shadow:inset 0 0 0 1px rgba(255,92,108,.45); }
-.db-rd{ background:var(--panel2); color:var(--purple); font-family:'Anton'; text-align:center; white-space:nowrap; }
+.db-rd{ background:none; color:var(--purple); font-family:'Anton'; text-align:center; white-space:nowrap; }
 
 .lb .pos{ white-space:nowrap; }
 
@@ -520,7 +515,5 @@ def liquid_stat_html(pct: float, value_html: str, ring_label: str, label: str, s
             + (f'<div class="sub">{sub}</div>' if sub else '') + '</div></div>')
 
 
-def inject(st, page: str = "home") -> None:
+def inject(st) -> None:
     st.markdown(CSS, unsafe_allow_html=True)
-    g1, g2, g3 = _PAGE_ACCENT.get(page, _PAGE_ACCENT["home"])
-    st.markdown(f"<style>:root{{ --g1:{g1}; --g2:{g2}; --g3:{g3}; }}</style>", unsafe_allow_html=True)

@@ -23,9 +23,7 @@ from kreeper.names import normalize_name
 
 st.set_page_config(page_title="The Kreeper League — Keeper Hub", page_icon=None, layout="wide")
 
-# Routing via a `?p=` query param so the nav links are real, shareable, static
-# links. Read before theme.inject() so the per-page accent gradient can match
-# the section currently on screen.
+# Routing via a `?p=` query param so the nav links are real, shareable, static links.
 SECTIONS = [
     ("home", "Home"),
     ("keepers", "Keepers"),
@@ -39,7 +37,7 @@ page = st.query_params.get("p", "home")
 if page not in _VALID:
     page = "home"
 
-theme.inject(st, page=page)
+theme.inject(st)
 
 LEAGUE = config.league()
 SEASON = config.current_season()
@@ -1080,9 +1078,7 @@ def _pick_value(rnd: int) -> int:
 
 def render_trade_analyzer() -> None:
     st.markdown(f'<h2>Trade Analyzer</h2>', unsafe_allow_html=True)
-    st.caption("Build a deal and grade it. Each player is valued by their talent "
-               "(ADP draft position) plus any keeper bargain on top; picks by a "
-               "draft-value curve. Higher total wins.")
+    st.caption("Build a deal and grade it — higher total wins.")
 
     tt = build_trade_targets()
     kv = {str(r["_pid"]): int(r["Value"]) for _, r in tt.iterrows()}     # keeper bargain (rounds)
@@ -1177,13 +1173,7 @@ def render_trade_analyzer() -> None:
     else:
         winner = a if diff > 0 else b
         st.success(f"Edge to **{winner}** by ~{abs(round(diff))} pts.")
-    st.caption("Heuristic only — player value = a draft-value curve at their ADP "
-               "plus a bonus for any keeper discount. Picks are valued by the player "
-               "projected available at that slot once keepers are off the board, "
-               "including the rookie-keeper premium — so the 1.01 lands the top rookie "
-               "(a near-free last-round keeper for years) and is the most valuable pick, "
-               "and a 1.03 differs from a 1.01. Future-year picks use that round's "
-               "average value, discounted ~20% per year out. Doesn't model roster need.")
+    st.caption("Heuristic only — doesn't model roster need.")
 
 
 def render_keeper_landscape() -> None:
@@ -1236,9 +1226,7 @@ def render_keeper_landscape() -> None:
 
 def render_mock_draft() -> None:
     st.markdown(f'<h2>Projected Draft</h2>', unsafe_allow_html=True)
-    st.caption("A full projected board: each team's likely keepers (declared + "
-               "best by value) sit in their pick slots, and every other pick is the "
-               "best available by consensus ADP with our league's rookie premium.")
+    st.caption("Likely keepers in their slots; best available by ADP everywhere else.")
     rf = config.mock_draft_rookie_factor()
     c1, c2 = st.columns([2, 1])
     with c1:
@@ -1273,17 +1261,12 @@ def render_mock_draft() -> None:
     st.markdown('<div class="neonwrap"><table class="lb lb-mock"><thead>' + head
                 + '</thead><tbody>' + "".join(rows) + '</tbody></table></div>',
                 unsafe_allow_html=True)
-    st.caption("**KEEP** = a kept player (occupies that pick) · everyone else = projected "
-               "pick by ADP. **RK** = rookie. Tune the rookie premium above to match "
-               "how your league really values rookies.")
+    st.caption("**KEEP** = a kept player · **RK** = rookie.")
 
 
 def render_trade_targets() -> None:
     st.markdown(f'<h2>Keeper Trade Market</h2>', unsafe_allow_html=True)
-    st.caption("Pick the round you want to keep someone at — these are the players "
-               "across the league whose keeper cost is that round. The keeper round "
-               "carries over on a trade, so you could deal for one and keep them "
-               "there. Best value (cheapest relative to ADP) up top.")
+    st.caption("Players keepable at the round you pick — best value up top.")
     df = build_trade_targets()
     if df.empty:
         st.info("No keeper data yet — run `python scripts/refresh_adp.py` to populate ADP.")
@@ -1338,18 +1321,14 @@ def render_trade_targets() -> None:
     st.markdown('<div class="neonwrap"><table class="lb lb-trade"><thead>' + head
                 + '</thead><tbody>' + "".join(rows) + '</tbody></table></div>',
                 unsafe_allow_html=True)
-    st.caption(f"Value = Round {rnd} − the player's ADP round (draft capital you'd "
-               "gain by keeping them there). Remember: to keep a player you must own "
-               "a pick at their cost round or earlier. **RK** = rookie keeper — kept "
-               "at a last round, and on a trade they convert to a regular keeper "
-               "(rookie status doesn't transfer, and the 3-year clock starts).")
+    st.caption(f"Value = Round {rnd} − the player's ADP round.")
     if me in NAME_TO_ID and "Ned" in me:
         st.caption("You're Ned. The whole league is your trade partner.")
 
 
 def render_rookies() -> None:
     st.markdown(f'<h3>{SEASON} Top Rookies</h3>', unsafe_allow_html=True)
-    st.caption("This year's NFL rookie class ranked by our consensus ADP — your rookie-keeper targets.")
+    st.caption("Ranked by consensus ADP — your rookie-keeper targets.")
     df = build_rookies_table(40)
     if df.empty:
         st.info("No rookies found in the current ADP data yet — run `python scripts/refresh_adp.py`.")
@@ -1498,8 +1477,7 @@ def render_my_keepers() -> None:
     df["Rookie Keeper"] = df["player_id"].map(
         lambda p: bool(saved.get(p, {}).get("is_rookie_keeper", False)))
 
-    st.caption("Tick **Keep** for players you want to keep. Tick **Rookie Keeper** "
-               "for career-long rookie keepers (kept at your last rounds, exempt from the 3-year clock).")
+    st.caption("Tick **Keep**, or **Rookie Keeper** for career-long rookie keepers.")
     edited = st.data_editor(
         df,
         key=f"editor_{owner_id}",
@@ -1738,10 +1716,7 @@ def build_championship_odds():
 
 def render_odds() -> None:
     st.markdown(f'<h2>{SEASON} Title Odds</h2>', unsafe_allow_html=True)
-    st.caption("For fun — rosters reset at the draft, so this prices each team on "
-               "what carries over: three seasons of results plus keeper strength "
-               "and value. A Vegas-style line, juice included. Not a real "
-               "sportsbook; no Ned were harmed.")
+    st.caption("For fun — Vegas-style line, juice included.")
     rows = build_championship_odds()
     body = []
     n = len(rows)
@@ -1765,10 +1740,7 @@ def render_odds() -> None:
     st.markdown('<div class="neonwrap"><table class="lb lb-odds"><thead>' + head
                 + '</thead><tbody>' + "".join(body) + '</tbody></table></div>',
                 unsafe_allow_html=True)
-    st.caption("Odds = how the model prices each team to win it all (American "
-               "format: −150 = favorite, +600 = longshot). Keeper Rk = strength of "
-               "your kept players by ADP (1 = best core) · Keeper Value = draft "
-               "rounds gained by your best keepers.")
+    st.caption("Keeper Rk = strength of your core · Keeper Value = rounds gained by keeping.")
 
 
 def render_draft_board() -> None:
@@ -1851,9 +1823,7 @@ def render_draft_board() -> None:
 
 def render_adp() -> None:
     st.markdown(f'<h3>{SEASON} Consensus ADP</h3>', unsafe_allow_html=True)
-    st.caption("One consensus number per player, averaged across all sources: "
-               + ", ".join(ADP_META.get("sources", [])) + ". The **Move** column shows each "
-               "player's consensus-rank change over the selected window (▲ = drafted earlier).")
+    st.caption("Averaged across " + ", ".join(ADP_META.get("sources", [])) + ".")
     if ADP_DF.empty:
         st.info("No ADP data yet. Run `python scripts/refresh_adp.py`.")
         return
@@ -1972,9 +1942,7 @@ def render_lottery() -> None:
     if not lottery.season_is_complete(lid):
         proj = lottery.live_projection(lid)
         if proj is not None:
-            st.caption("Approximation only, based on this season's CURRENT record and "
-                       "points-for — not the actual bracket results (unknown until the "
-                       "season ends). These odds will keep shifting every week.")
+            st.caption("Live approximation — shifts every week until the season ends.")
             items = [(
                 r["owner"], r["proj_weight"],
                 f'{r["wins"]}-{r["losses"]} · {r["points_for"]:.0f} PF · '
@@ -1994,11 +1962,7 @@ def render_lottery() -> None:
             st.info("Nothing to project lottery odds from yet — check back once "
                      "games have been played.")
             return
-        st.caption("Rough pre-season approximation, based on 3-season history "
-                   "and keeper strength (the same signal behind Title Odds) — "
-                   "**not** actual games, since none have been played yet. This "
-                   "will be replaced by real-record projections once the season "
-                   "starts, and then by the exact math once it's over.")
+        st.caption("Pre-season approximation — no games played yet.")
         items = [(
             r["owner"], r["proj_weight"],
             f'Power rank {r["power_rank"]} · {r["p_consolation"] * 100:.0f}% consolation-bound'
@@ -2044,10 +2008,7 @@ def render_lottery() -> None:
     st.markdown('<div class="kcards">' + "".join(cards) + "</div>", unsafe_allow_html=True)
     if st.session_state.pop("_lottery_just_drawn", False):
         st.balloons()
-    st.caption("This does **not** automatically update `draft_order` in config.yaml — that "
-               "drives the CURRENT board while it's still active. The commissioner should "
-               "carry this over manually when next season starts, same manual step used "
-               "for today's draft order.")
+    st.caption("Doesn't auto-update `draft_order` in config.yaml — carry it over manually.")
     if st.button("Reset the lottery (redo)"):
         storage.save_lottery({}, SEASON)
         st.rerun()
@@ -2089,8 +2050,7 @@ def render_draft_capital() -> None:
 
 def render_roster_needs() -> None:
     st.markdown(f'<h2>Roster Needs</h2>', unsafe_allow_html=True)
-    st.caption("After likely keepers, the starting spots each team still has to draft. "
-               "set · one short · multiple holes.")
+    st.caption("Starting spots each team still has to draft, after likely keepers.")
     from collections import Counter
     slots = starter_slots()
     need = Counter(s for s in slots if s in ("QB", "RB", "WR", "TE"))
@@ -2125,8 +2085,7 @@ def render_roster_needs() -> None:
     st.markdown('<div class="neonwrap"><table class="lb"><thead>' + head
                 + '</thead><tbody>' + "".join(body) + '</tbody></table></div>',
                 unsafe_allow_html=True)
-    st.caption(f"Each cell = keepers / starters needed at that position ({dict(need)}). "
-               "Starters Set counts FLEX filled by extra RB/WR/TE.")
+    st.caption("Each cell = keepers / starters needed at that position.")
 
 
 @st.cache_data(ttl=86400 * 7, show_spinner=False)
@@ -2174,8 +2133,7 @@ def build_keeper_hitrate():
 
 def render_keeper_hitrate() -> None:
     st.markdown(f'<h2>Keeper Hit-Rate</h2>', unsafe_allow_html=True)
-    st.caption("Did past keepers pay off? A keep \"hits\" if the player finished a "
-               "startable positional rank that season (QB/TE top-12, RB top-24, WR top-30).")
+    st.caption("Did past keepers pay off — finished a startable rank that season?")
     per_owner, decisions = build_keeper_hitrate()
     if not decisions:
         st.info("No prior keeper seasons on record yet.")
