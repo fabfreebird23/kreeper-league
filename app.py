@@ -1845,6 +1845,72 @@ def render_adp_trends() -> None:
     c2.markdown(_tbl(fallers), unsafe_allow_html=True)
 
 
+def _ordinal(k: int) -> str:
+    return "1st" if k == 1 else "2nd" if k == 2 else "3rd" if k == 3 else f"{k}th"
+
+
+def _median_pick(dist: list) -> int:
+    cum = 0.0
+    for i, p in enumerate(dist):
+        cum += p
+        if cum >= 0.5:
+            return i + 1
+    return len(dist)
+
+
+def _lottery_bar_panels(items: list, eyebrow: str, weight_label: str = "Weight",
+                         weight_fmt=lambda w: f"{w:g}") -> None:
+    """Shared bar-chart rendering for all three lottery states (pre-season,
+    in-progress, and final) — `items` is [(oid, weight, sub_html), ...],
+    any ordering; sorted here by weight descending so every state looks
+    and behaves the same regardless of where its numbers come from."""
+    items = sorted(items, key=lambda x: -x[1])
+    max_weight = max(w for _, w, _ in items) or 1
+    n = len(items)
+
+    weight_rows_html = "".join(
+        f'<div class="lottery-row">'
+        f'<div class="lottery-row-label"><b>{config.manager_name(oid)}</b>'
+        f'<span class="lottery-row-sub">{sub}</span></div>'
+        f'<div class="lottery-row-bar"><div class="lottery-bar-track">'
+        f'<div class="lottery-bar-fill{" dim" if i == n - 1 else ""}" '
+        f'style="width:{round(100 * w / max_weight)}%;">{weight_fmt(w)}</div>'
+        f'</div></div><div class="lottery-row-val">#{i + 1}</div>'
+        f'</div>'
+        for i, (oid, w, sub) in enumerate(items)
+    )
+    st.markdown(
+        f'<div class="kr-section"><div class="kr-section-head"><h3>{weight_label}</h3>'
+        f'<span class="tag">{eyebrow}</span></div>'
+        f'<div class="lottery-rows">{weight_rows_html}</div></div>',
+        unsafe_allow_html=True,
+    )
+
+    weights_by_owner = {oid: w for oid, w, _ in items}
+    probs = lottery.position_probabilities(weights_by_owner)
+    odds_rows_html = "".join(
+        (lambda p1, p2, med: (
+            f'<div class="lottery-row">'
+            f'<div class="lottery-row-label"><b>{config.manager_name(oid)}</b>'
+            f'<span class="lottery-row-sub">1st {p1 * 100:.0f}% · median {_ordinal(med)}</span></div>'
+            f'<div class="lottery-row-bar"><div class="lottery-stack">'
+            + (f'<div class="lottery-seg lottery-seg-1" style="width:{p1 * 100:.1f}%;">{p1 * 100:.0f}%</div>'
+               if p1 >= 0.06 else f'<div class="lottery-seg lottery-seg-1" style="width:{p1 * 100:.1f}%;"></div>')
+            + (f'<div class="lottery-seg lottery-seg-2" style="width:{p2 * 100:.1f}%;">{p2 * 100:.0f}%</div>'
+               if p2 >= 0.06 else f'<div class="lottery-seg lottery-seg-2" style="width:{p2 * 100:.1f}%;"></div>')
+            + '<div class="lottery-seg-rest">3rd+</div>'
+            + '</div></div></div>'
+        ))(probs[oid][0], probs[oid][1], _median_pick(probs[oid]))
+        for oid, _, _ in items
+    )
+    st.markdown(
+        f'<div class="kr-section"><div class="kr-section-head"><h3>Selection Odds</h3>'
+        f'<span class="tag">{"Exact probabilities" if eyebrow.startswith("Weighted") else "Based on these odds"}</span></div>'
+        f'<div class="lottery-rows">{odds_rows_html}</div></div>',
+        unsafe_allow_html=True,
+    )
+
+
 def render_lottery() -> None:
     st.markdown(f'<h2>{theme.crt("draft")}Draft-Order Lottery</h2>', unsafe_allow_html=True)
     weights = config.lottery_weights()
@@ -1864,21 +1930,19 @@ def render_lottery() -> None:
     lid = LEAGUE["sleeper_league_id"]
 
     if not lottery.season_is_complete(lid):
-        st.markdown("##### Pre-season / in-progress projection")
         proj = lottery.live_projection(lid)
         if proj is not None:
             st.caption("Approximation only, based on this season's CURRENT record and "
                        "points-for — not the actual bracket results (unknown until the "
                        "season ends). These odds will keep shifting every week.")
-            rows = [{
-                "Team": config.manager_name(r["owner"]),
-                "Record": f"{r['wins']}-{r['losses']}",
-                "PF": r["points_for"],
-                "P(consolation-bound)": f"{r['p_consolation'] * 100:.0f}%",
-                "P(playoff-bound)": f"{r['p_playoff'] * 100:.0f}%",
-                "Proj. Balls": r["proj_weight"],
-            } for r in proj]
-            st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
+            items = [(
+                r["owner"], r["proj_weight"],
+                f'{r["wins"]}-{r["losses"]} · {r["points_for"]:.0f} PF · '
+                f'{r["p_consolation"] * 100:.0f}% consolation-bound'
+            ) for r in proj]
+            _lottery_bar_panels(items, eyebrow="Live projection · current record",
+                                 weight_label="Projected Ball Weights",
+                                 weight_fmt=lambda w: f"{w:.1f}")
             return
 
         # No games played yet — nothing to project from record, so fall back
@@ -1895,14 +1959,13 @@ def render_lottery() -> None:
                    "**not** actual games, since none have been played yet. This "
                    "will be replaced by real-record projections once the season "
                    "starts, and then by the exact math once it's over.")
-        rows = [{
-            "Team": config.manager_name(r["owner"]),
-            "Power Rk": r["power_rank"],
-            "P(consolation-bound)": f"{r['p_consolation'] * 100:.0f}%",
-            "P(playoff-bound)": f"{r['p_playoff'] * 100:.0f}%",
-            "Proj. Balls": r["proj_weight"],
-        } for r in proj]
-        st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
+        items = [(
+            r["owner"], r["proj_weight"],
+            f'Power rank {r["power_rank"]} · {r["p_consolation"] * 100:.0f}% consolation-bound'
+        ) for r in proj]
+        _lottery_bar_panels(items, eyebrow="Pre-season projection · power score",
+                             weight_label="Projected Ball Weights",
+                             weight_fmt=lambda w: f"{w:.1f}")
         return
 
     tiers = lottery.final_tiers(lid)
@@ -1911,65 +1974,13 @@ def render_lottery() -> None:
                    "check that both brackets are fully decided on Sleeper.")
         return
 
-    by_rank = sorted(tiers.items(), key=lambda kv: kv[1]["rank"])
-    max_weight = max(info["weight"] for _, info in by_rank) or 1
-    weight_rows_html = "".join(
-        f'<div class="lottery-row">'
-        f'<div class="lottery-row-label"><b>{config.manager_name(oid)}</b>'
-        f'<span class="lottery-row-sub">'
+    items = [(
+        oid, info["weight"],
         f'{"Consolation" if info["tier"] == "consolation" else "Championship"} · '
-        f'{info["bracket_placement"]} place</span></div>'
-        f'<div class="lottery-row-bar"><div class="lottery-bar-track">'
-        f'<div class="lottery-bar-fill{" dim" if info["rank"] == len(by_rank) else ""}" '
-        f'style="width:{round(100 * info["weight"] / max_weight)}%;">{info["weight"]}</div>'
-        f'</div></div><div class="lottery-row-val">#{info["rank"]}</div>'
-        f'</div>'
-        for oid, info in by_rank
-    )
-    st.markdown(
-        f'<div class="kr-section"><div class="kr-section-head"><h3>Final Ball Weights</h3>'
-        f'<span class="tag">Weighted by final standing</span></div>'
-        f'<div class="lottery-rows">{weight_rows_html}</div></div>',
-        unsafe_allow_html=True,
-    )
-
-    weights_by_owner = {oid: info["weight"] for oid, info in tiers.items()}
-    n = len(weights_by_owner)
-    probs = lottery.position_probabilities(weights_by_owner)
-
-    def _ordinal(k: int) -> str:
-        return "1st" if k == 1 else "2nd" if k == 2 else "3rd" if k == 3 else f"{k}th"
-
-    def _median_pick(dist: list) -> int:
-        cum = 0.0
-        for i, p in enumerate(dist):
-            cum += p
-            if cum >= 0.5:
-                return i + 1
-        return len(dist)
-
-    ordered_oids = sorted(weights_by_owner, key=lambda o: -weights_by_owner[o])
-    odds_rows_html = "".join(
-        (lambda p1, p2, med: (
-            f'<div class="lottery-row">'
-            f'<div class="lottery-row-label"><b>{config.manager_name(oid)}</b>'
-            f'<span class="lottery-row-sub">1st {p1 * 100:.0f}% · median {_ordinal(med)}</span></div>'
-            f'<div class="lottery-row-bar"><div class="lottery-stack">'
-            + (f'<div class="lottery-seg lottery-seg-1" style="width:{p1 * 100:.1f}%;">{p1 * 100:.0f}%</div>'
-               if p1 >= 0.06 else f'<div class="lottery-seg lottery-seg-1" style="width:{p1 * 100:.1f}%;"></div>')
-            + (f'<div class="lottery-seg lottery-seg-2" style="width:{p2 * 100:.1f}%;">{p2 * 100:.0f}%</div>'
-               if p2 >= 0.06 else f'<div class="lottery-seg lottery-seg-2" style="width:{p2 * 100:.1f}%;"></div>')
-            + '<div class="lottery-seg-rest">3rd+</div>'
-            + '</div></div></div>'
-        ))(probs[oid][0], probs[oid][1], _median_pick(probs[oid]))
-        for oid in ordered_oids
-    )
-    st.markdown(
-        f'<div class="kr-section"><div class="kr-section-head"><h3>Selection Odds</h3>'
-        f'<span class="tag">Exact probabilities</span></div>'
-        f'<div class="lottery-rows">{odds_rows_html}</div></div>',
-        unsafe_allow_html=True,
-    )
+        f'{info["bracket_placement"]} place'
+    ) for oid, info in tiers.items()]
+    _lottery_bar_panels(items, eyebrow="Weighted by final standing",
+                         weight_label="Final Ball Weights", weight_fmt=lambda w: f"{w:g}")
 
     record = storage.load_lottery(SEASON)
     drawn = record.get("draw_order")
