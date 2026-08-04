@@ -831,8 +831,19 @@ def render_home() -> None:
     """The home page leads with whatever's actually useful right now — keeper
     decisions while they're still open, draft prep once they're locked, the
     draft recap once it wraps, FAAB/odds once the season's live, and a recap
-    once it's over. See kreeper/phase.py for how the phase is inferred."""
-    ph = phase.current_phase()
+    once it's over. See kreeper/phase.py for how the phase is inferred.
+
+    `?preview_phase=<phase>` overrides the detected phase, purely for
+    previewing how Home looks at each stage of the season — never used to
+    decide anything else, and clearly flagged so it can't be mistaken for
+    the real state."""
+    forced = st.query_params.get("preview_phase")
+    if forced in phase.PHASES:
+        ph = forced
+        st.info(f"👁️ Previewing the **{forced.replace('_', ' ')}** phase — "
+                f"remove `?preview_phase=` from the URL to see the real one.")
+    else:
+        ph = phase.current_phase()
     if ph == "pre_draft":
         _render_home_pre_draft()
     elif ph == "pre_season":
@@ -1002,12 +1013,37 @@ def build_record_book():
     return seasons, agg
 
 
+def _glance_box(tiles: list) -> None:
+    """A gradient-bordered headline strip — same box as the Home quick-glance
+    panel (FAAB Pot / Title Favorite), reused here for a page's top-line stat.
+    `tiles` is [(value_html, label, sub), ...]."""
+    cells = "".join(
+        f'<div class="tile"><div class="num accent">{v}</div>'
+        f'<div class="lbl">{lbl}</div><div class="sub">{sub}</div></div>'
+        for v, lbl, sub in tiles
+    )
+    st.markdown(
+        f'<div class="glance-panel"><div class="glance-panel-in">'
+        f'<div class="tiles" style="margin-bottom:0;">{cells}</div>'
+        f'</div></div>',
+        unsafe_allow_html=True,
+    )
+
+
 def render_record_book() -> None:
     st.markdown(f'<h2>League <span class="g">Record Book</span></h2>', unsafe_allow_html=True)
     seasons, agg = build_record_book()
     if not seasons:
         st.info("No completed seasons on record yet.")
         return
+
+    champ_season = max(seasons, key=lambda s: s["season"])
+    titles_leader = max(agg.items(), key=lambda kv: kv[1]["titles"], default=None)
+    _glance_box([
+        (champ_season["champ"] or "—", "Reigning Champion", f'{champ_season["season"]} season'),
+        (config.manager_name(titles_leader[0]) if titles_leader else "—", "Most Titles",
+         f'{titles_leader[1]["titles"]} title(s)' if titles_leader else ""),
+    ])
 
     st.markdown("##### Champions")
     champ_rows = "".join(
@@ -1797,6 +1833,12 @@ def render_odds() -> None:
     st.markdown(f'<h2>{SEASON} Title <span class="g">Odds</span></h2>', unsafe_allow_html=True)
     st.caption("For fun — Vegas-style line, juice included.")
     rows = build_championship_odds()
+    if rows:
+        fav, dog = rows[0], rows[-1]
+        _glance_box([
+            (fav["Odds"], "Favorite", f'{fav["Team"]} · {fav["Win %"]}%'),
+            (dog["Odds"], "Longshot", f'{dog["Team"]} · {dog["Win %"]}%'),
+        ])
     body = []
     n = len(rows)
     for i, r in enumerate(rows):
@@ -2164,6 +2206,8 @@ def render_roster_needs() -> None:
                 f'border-radius:6px;">{have}/{req}</span></td>')
 
     body = []
+    pos_gap = Counter()
+    team_filled = []
     for o in MANAGERS:
         kr = team_keeper_rows(o)
         pc = Counter(r["Pos"] for r in kr)
@@ -2177,9 +2221,21 @@ def render_roster_needs() -> None:
                 take = min(overflow, flex_left)
                 filled += take
                 flex_left -= take
+            pos_gap[p] += max(0, need.get(p, 0) - pc.get(p, 0))
+        team_filled.append((config.manager_name(o), filled))
         cells = "".join(cell(pc.get(p, 0), need.get(p, 0)) for p in cols_pos)
         body.append(f'<tr><td class="pl">{config.manager_name(o)}</td>{cells}'
                     f'<td class="num">{filled}/{n_start}</td></tr>')
+
+    neediest = pos_gap.most_common(1)
+    best_team = max(team_filled, key=lambda x: x[1], default=None)
+    _glance_box([
+        (neediest[0][0] if neediest else "—", "Neediest Position",
+         f'{neediest[0][1]} open league-wide' if neediest else ""),
+        (best_team[0] if best_team else "—", "Most Draft-Ready",
+         f'{best_team[1]}/{n_start} starters set' if best_team else ""),
+    ])
+
     head = ('<tr><th>Team</th>' + "".join(f"<th>{p}</th>" for p in cols_pos)
             + '<th>Starters&nbsp;Set</th></tr>')
     st.markdown('<div class="neonwrap"><table class="lb"><thead>' + head
@@ -2238,6 +2294,18 @@ def render_keeper_hitrate() -> None:
     if not decisions:
         st.info("No prior keeper seasons on record yet.")
         return
+
+    best_owner = max(per_owner.items(), key=lambda kv: kv[1]["hit"] / max(1, kv[1]["tot"]))
+    misses = [d for d in decisions if not d["hit"]]
+    coldest = max(misses, key=lambda d: d["fin"]) if misses else None
+    _glance_box([
+        (config.manager_name(best_owner[0]), "Best Hit-Rate",
+         f'{round(100 * best_owner[1]["hit"] / max(1, best_owner[1]["tot"]))}% · '
+         f'{best_owner[1]["hit"]}/{best_owner[1]["tot"]}'),
+        (coldest["name"] if coldest else "—", "Coldest Keep",
+         f'{coldest["pos"]}{coldest["fin"]}, {coldest["season"]}' if coldest else ""),
+    ])
+
     rows = []
     for oid, d in sorted(per_owner.items(), key=lambda kv: -(kv[1]["hit"] / max(1, kv[1]["tot"]))):
         rate = d["hit"] / max(1, d["tot"])
