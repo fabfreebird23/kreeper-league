@@ -107,6 +107,19 @@ h3{ color:var(--ink); }
 .neon-tag{ font-family:'Oswald'; letter-spacing:5px; font-weight:700; font-size:11px;
   color:var(--purple); text-transform:uppercase; }
 
+/* section tabs (st.tabs) -> match the display-font header treatment */
+[data-testid="stTabs"] button[data-baseweb="tab"]{
+  font-family:'Anton', sans-serif !important; letter-spacing:.8px; text-transform:uppercase;
+  font-size:14px; color:var(--muted);
+}
+[data-testid="stTabs"] button[data-baseweb="tab"] p{
+  font-family:'Anton', sans-serif !important; letter-spacing:.8px; text-transform:uppercase;
+  font-size:14px;
+}
+[data-testid="stTabs"] button[aria-selected="true"]{ color:var(--pink) !important; }
+[data-testid="stTabs"] button[aria-selected="true"] p{ color:var(--pink) !important; }
+[data-testid="stTabs"] [data-baseweb="tab-highlight"]{ background-color:var(--pink) !important; }
+
 /* sidebar nav radio -> pastel pills */
 [data-testid="stSidebar"] [role="radiogroup"] label{ border:1px solid var(--line); border-radius:6px;
   padding:6px 10px; margin-bottom:6px; background:#fff; transition:.15s; }
@@ -214,6 +227,32 @@ table.lb tr.fa td{ background:rgba(43,181,232,.05); }
 .badge.surplus-neg{ background:#fdeaec; border-color:#f4c7cb; color:var(--red); }
 .ccard .note{ font-size:11.5px; color:var(--muted); margin-top:1px; }
 
+/* lottery weighted-odds bar rows */
+.lottery-rows{ display:flex; flex-direction:column; gap:10px; }
+.lottery-row{ display:flex; align-items:center; gap:14px; }
+.lottery-row-label{ flex:0 0 200px; min-width:0; }
+.lottery-row-label b{ display:block; font-size:13.5px; color:var(--ink); }
+.lottery-row-sub{ display:block; font-size:10.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.3px; }
+.lottery-row-bar{ flex:1; display:flex; align-items:center; gap:10px; min-width:0; }
+.lottery-bar-track{ flex:1; height:22px; border-radius:6px; background:var(--panel2);
+  border:1px solid var(--line); overflow:hidden; position:relative; }
+.lottery-bar-fill{ height:100%; border-radius:5px; background:var(--pink);
+  display:flex; align-items:center; justify-content:flex-end; padding-right:8px;
+  font-family:var(--mono, monospace); font-size:11.5px; font-weight:700; color:#fff; white-space:nowrap; }
+.lottery-bar-fill.dim{ background:var(--muted); }
+.lottery-row-val{ flex:0 0 34px; text-align:right; font-family:'Anton'; font-weight:400;
+  font-size:14px; color:var(--ink); }
+
+/* lottery selection-odds stacked bars: pick 1 / pick 2 / 3rd+ */
+.lottery-stack{ flex:1; height:22px; border-radius:6px; background:var(--panel2);
+  border:1px solid var(--line); overflow:hidden; display:flex; }
+.lottery-seg{ height:100%; display:flex; align-items:center; justify-content:center;
+  font-size:10.5px; font-weight:700; color:#fff; white-space:nowrap; overflow:hidden; }
+.lottery-seg-1{ background:var(--pink); }
+.lottery-seg-2{ background:var(--purple); }
+.lottery-seg-rest{ flex:1; display:flex; align-items:center; justify-content:center;
+  font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.3px; }
+
 /* draft board */
 table.dboard{ width:100%; border-collapse:collapse; table-layout:fixed; font-family:'Oswald'; font-size:12px; }
 table.dboard th{ background:#f1ebfb; color:var(--ink); text-align:center; font-size:11px; padding:5px;
@@ -283,6 +322,11 @@ table.dboard td.dbcell{ padding:3px 4px; }
 
   /* contract cards: single column */
   .contract-grid{ grid-template-columns:1fr; }
+
+  /* lottery bar rows: stack label above bar */
+  .lottery-row{ flex-wrap:wrap; }
+  .lottery-row-label{ flex:1 1 100%; }
+  .lottery-row-bar{ flex:1 1 100%; }
 
   /* draft board: tiny + horizontal scroll */
   table.dboard{ font-size:9px; }
