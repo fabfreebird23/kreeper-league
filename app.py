@@ -827,6 +827,37 @@ def render_team_boxes() -> None:
         )
 
 
+# The draft has a fixed calendar date this season, unlike the other four
+# phases (which are inferred live from Sleeper) — so it gets its own
+# milestone node on the stepper rather than a phase of its own.
+_DRAFT_DATE_LABEL = "Aug 13"
+
+
+def _phase_stepper_html(current: str) -> str:
+    deadline = config.keeper_deadline()
+    keeper_sub = deadline.strftime("%b %-d") if deadline else ""
+    order = ["keepers_open", "pre_draft", "draft_event", "pre_season", "in_season", "offseason"]
+    labels = {
+        "keepers_open": ("Keepers", keeper_sub),
+        "pre_draft": ("Draft Prep", ""),
+        "draft_event": ("Draft", _DRAFT_DATE_LABEL),
+        "pre_season": ("Pre-Season", ""),
+        "in_season": ("In-Season", ""),
+        "offseason": ("Offseason", ""),
+    }
+    cur_idx = order.index(current) if current in order else 1
+    cells = []
+    for i, key in enumerate(order):
+        label, sub = labels[key]
+        state = "done" if i < cur_idx else ("now" if i == cur_idx else "")
+        dot = "" if state == "done" else ("●" if state == "now" else str(i + 1))
+        cells.append(
+            f'<div class="step {state}"><div class="line"></div><div class="dot">{dot}</div>'
+            f'<div class="lbl">{label}</div><div class="sub">{sub}</div></div>'
+        )
+    return '<div class="stepper">' + "".join(cells) + '</div>'
+
+
 def render_home() -> None:
     """The home page leads with whatever's actually useful right now — keeper
     decisions while they're still open, draft prep once they're locked, the
@@ -844,6 +875,13 @@ def render_home() -> None:
                 f"remove `?preview_phase=` from the URL to see the real one.")
     else:
         ph = phase.current_phase()
+
+    st.markdown(
+        '<div class="glance-panel"><div class="glance-panel-in">'
+        + _phase_stepper_html(ph) + '</div></div>',
+        unsafe_allow_html=True,
+    )
+
     if ph == "pre_draft":
         _render_home_pre_draft()
     elif ph == "pre_season":
