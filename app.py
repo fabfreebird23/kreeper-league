@@ -800,34 +800,17 @@ def _leaderboard_html(df) -> str:
 
 
 def render_team_boxes() -> None:
-    """One line-card per team (quick scan), each expandable into the same
-    contract cards used on Set My Keepers — pips, badges, and surplus for
-    every player they actually kept."""
+    """Every team's kept players as contract cards (pips, badges, surplus —
+    same cards as Set My Keepers), one expander per team so eight rosters
+    don't turn Home into an endless scroll."""
     data = current_keepers()
-    cards = []
-    for i, (oid, m) in enumerate(MANAGERS.items()):
-        picks = data.get(oid, [])
-        if picks:
-            picks = sorted(picks, key=lambda x: (x.get("cost_round") or 99,
-                                                 bool(x.get("is_rookie_keeper"))))
-            inner = ""
-            for s in picks:
-                rk = '<span class="rk-tag">RK</span>' if s.get("is_rookie_keeper") else ""
-                rd = f"R{s['cost_round']}" if s.get("cost_round") else "ADP"
-                hs = theme.img_tag(s.get("player_id", ""), cls="")
-                inner += (f'<div class="kp">{hs}<span>{s["player_name"]}{rk}</span>'
-                          f'<span class="rd">{rd}</span></div>')
-        else:
-            inner = '<div class="empty">— no keepers yet —</div>'
-        cards.append(f'<div class="kcard"><h4 style="background:{theme.card_color(i)};">'
-                     f'{m["name"]}</h4>{inner}</div>')
-    st.markdown('<div class="kcards">' + "".join(cards) + "</div>", unsafe_allow_html=True)
-
     for oid, m in MANAGERS.items():
         picks = data.get(oid, [])
-        if not picks:
-            continue
-        with st.expander(f"{m['name']} — contract cards"):
+        n = len(picks)
+        with st.expander(f"{m['name']} — {n} keeper{'' if n == 1 else 's'}" if n else f"{m['name']} — no keepers yet"):
+            if not picks:
+                st.caption("Nothing submitted yet.")
+                continue
             kept_ids = {s.get("player_id") for s in picks}
             df = build_candidate_rows(oid)
             df = df[df["player_id"].isin(kept_ids)]
@@ -885,12 +868,12 @@ def _render_home_pre_draft() -> None:
     st.caption("Keepers are locked — here's what everyone's bringing into the draft.")
     _home_quick_glance()
     render_draft_capital()
-    st.markdown(f'<h2>Submitted Keepers by Team</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>Submitted Keepers by <span class="g">Team</span></h2>', unsafe_allow_html=True)
     render_team_boxes()
 
 
 def _render_home_pre_season() -> None:
-    st.markdown(f'<h2>The Draft</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>The <span class="g">Draft</span></h2>', unsafe_allow_html=True)
     st.caption("It's in the books — here's how it landed.")
     render_draft_board()
     render_odds()
@@ -911,7 +894,7 @@ def _render_home_offseason() -> None:
 def _render_home_keepers_open() -> None:
     render_countdown()
     _home_quick_glance()
-    st.markdown(f'<h2>Top 50 Keeper Values</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>Top 50 Keeper <span class="g">Values</span></h2>', unsafe_allow_html=True)
     st.caption("Draft value gained by keeping a player, best bargains first.")
     fc1, fc2, fc3 = st.columns([1, 1, 1])
     with fc1:
@@ -933,7 +916,7 @@ def _render_home_keepers_open() -> None:
         st.info("No players match those filters (or no ADP data yet).")
     else:
         st.markdown(_leaderboard_html(lb), unsafe_allow_html=True)
-    st.markdown(f'<h2>Submitted Keepers by Team</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>Submitted Keepers by <span class="g">Team</span></h2>', unsafe_allow_html=True)
     render_team_boxes()
 
     # Export — grab every submitted keeper to paste into the year-to-year sheet.
@@ -1013,7 +996,7 @@ def build_record_book():
 
 
 def render_record_book() -> None:
-    st.markdown(f'<h2>League Record Book</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>League <span class="g">Record Book</span></h2>', unsafe_allow_html=True)
     seasons, agg = build_record_book()
     if not seasons:
         st.info("No completed seasons on record yet.")
@@ -1086,13 +1069,78 @@ def asset_value(rank: int, rookie: bool, rookie_factor: float | None = None) -> 
     return max(1, round(base / max(0.15, rf)))
 
 
-def _pick_value(rnd: int) -> int:
-    """Points for a draft pick in a given round (valued at a mid-round slot)."""
-    return _draft_value((rnd - 1) * NT + NT // 2)
+def _ordinal(n: int) -> str:
+    if 10 <= n % 100 <= 20:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return f"{n}{suffix}"
+
+
+@st.cache_data(ttl=1800, show_spinner=False)
+def get_recent_trades(limit: int = 8) -> list:
+    """Completed trades from Sleeper, newest first — every asset each side
+    received, players and picks alike."""
+    lid = LEAGUE["sleeper_league_id"]
+    r2o = {int(r["roster_id"]): str(r.get("owner_id")) for r in sleeper.get_rosters(lid)}
+
+    raw = []
+    for wk in range(0, 19):
+        try:
+            txs = sleeper.get_transactions(lid, wk)
+        except Exception:  # noqa: BLE001 — a missing/future week just has none
+            continue
+        raw.extend(t for t in txs if t.get("type") == "trade" and t.get("status") == "complete")
+    raw.sort(key=lambda t: t.get("status_updated") or 0, reverse=True)
+
+    out = []
+    for tx in raw[:limit]:
+        roster_ids = tx.get("roster_ids") or []
+        adds = tx.get("adds") or {}
+        picks = tx.get("draft_picks") or []
+        receives = {rid: [] for rid in roster_ids}
+        for pid, rid in adds.items():
+            if rid in receives:
+                receives[rid].append(H.player_meta(pid).name)
+        for p in picks:
+            owner = p.get("owner_id")
+            if owner in receives:
+                receives[owner].append(f'{p.get("season")} {_ordinal(int(p.get("round", 0)))}')
+        teams = [(config.manager_name(r2o.get(rid, "")), receives.get(rid, [])) for rid in roster_ids]
+        ts = tx.get("status_updated")
+        date = dt.datetime.fromtimestamp(ts / 1000).strftime("%b %d, %Y") if ts else ""
+        out.append({"teams": teams, "date": date})
+    return out
+
+
+def render_recent_trades() -> None:
+    st.markdown('<h2>Recent <span class="g">Trades</span></h2>', unsafe_allow_html=True)
+    st.caption("Every deal carries its keeper round obligations forward to the new team.")
+    trades = get_recent_trades()
+    if not trades:
+        st.info("No completed trades on record yet.")
+        return
+    cards = []
+    for t in trades:
+        header = ' <span class="vs">traded with</span> '.join(f'<b>{nm}</b>' for nm, _ in t["teams"])
+        cols = "".join(
+            f'<div><b>{nm} receives</b>'
+            + "".join(f'<span class="gasset-chip">{a}</span>' for a in assets)
+            + '</div>'
+            for nm, assets in t["teams"]
+        )
+        cards.append(
+            '<div class="gpanel"><div class="gpanel-in">'
+            f'<div class="gtrade-teams">{header}</div>'
+            f'<div class="gtrade-assets">{cols}</div>'
+            f'<div class="gtrade-date">{t["date"]}</div>'
+            '</div></div>'
+        )
+    st.markdown('<div class="gtrades">' + "".join(cards) + '</div>', unsafe_allow_html=True)
 
 
 def render_trade_analyzer() -> None:
-    st.markdown(f'<h2>Trade Analyzer</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>Trade <span class="g">Analyzer</span></h2>', unsafe_allow_html=True)
     st.caption("Build a deal and grade it — higher total wins.")
 
     tt = build_trade_targets()
@@ -1192,7 +1240,7 @@ def render_trade_analyzer() -> None:
 
 
 def render_keeper_landscape() -> None:
-    st.markdown(f'<h2>Keeper Landscape</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>Keeper <span class="g">Landscape</span></h2>', unsafe_allow_html=True)
     st.caption("Positional scarcity — who's likely kept vs. left in the pool.")
     kept = _projected_kept_ids()
     pid_owner = {}
@@ -1240,7 +1288,7 @@ def render_keeper_landscape() -> None:
 
 
 def render_mock_draft() -> None:
-    st.markdown(f'<h2>Projected Draft</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>Projected <span class="g">Draft</span></h2>', unsafe_allow_html=True)
     st.caption("Likely keepers in their slots; best available by ADP everywhere else.")
     rf = config.mock_draft_rookie_factor()
     c1, c2 = st.columns([2, 1])
@@ -1280,7 +1328,7 @@ def render_mock_draft() -> None:
 
 
 def render_trade_targets() -> None:
-    st.markdown(f'<h2>Keeper Trade Market</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>Keeper Trade <span class="g">Market</span></h2>', unsafe_allow_html=True)
     st.caption("Players keepable at the round you pick — best value up top.")
     df = build_trade_targets()
     if df.empty:
@@ -1342,7 +1390,7 @@ def render_trade_targets() -> None:
 
 
 def render_rookies() -> None:
-    st.markdown(f'<h3>{SEASON} Top Rookies</h3>', unsafe_allow_html=True)
+    st.markdown(f'<h3>{SEASON} Top <span class="g">Rookies</span></h3>', unsafe_allow_html=True)
     st.caption("Ranked by consensus ADP — your rookie-keeper targets.")
     df = build_rookies_table(40)
     if df.empty:
@@ -1447,7 +1495,7 @@ def render_contract_cards(name: str, df: pd.DataFrame) -> None:
     cards = "".join(_contract_card_html(r) for _, r in df.iterrows())
     st.markdown(
         f'<div class="kr-section">'
-        f'<div class="kr-section-head"><h3>Contracts — {name}</h3>'
+        f'<div class="kr-section-head"><h3>Contracts — <span class="g">{name}</span></h3>'
         f'<span class="tag">{eligible_n} eligible</span></div>'
         f'<div class="contract-grid">{cards}</div>'
         f'</div>',
@@ -1456,7 +1504,7 @@ def render_contract_cards(name: str, df: pd.DataFrame) -> None:
 
 
 def render_my_keepers() -> None:
-    st.markdown(f'<h3>Set Your Keepers</h3>', unsafe_allow_html=True)
+    st.markdown(f'<h3>Set Your <span class="g">Keepers</span></h3>', unsafe_allow_html=True)
     deadline, locked = keeper_lock()
     if locked:
         st.warning(f"Keeper submissions closed on **{deadline:%b %d, %Y · %-I:%M %p}**. "
@@ -1730,7 +1778,7 @@ def build_championship_odds():
 
 
 def render_odds() -> None:
-    st.markdown(f'<h2>{SEASON} Title Odds</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>{SEASON} Title <span class="g">Odds</span></h2>', unsafe_allow_html=True)
     st.caption("For fun — Vegas-style line, juice included.")
     rows = build_championship_odds()
     body = []
@@ -1759,7 +1807,7 @@ def render_odds() -> None:
 
 
 def render_draft_board() -> None:
-    st.markdown(f'<h3>{SEASON} Draft Board</h3>', unsafe_allow_html=True)
+    st.markdown(f'<h3>{SEASON} Draft <span class="g">Board</span></h3>', unsafe_allow_html=True)
     try:
         board = get_board()
     except Exception as e:  # noqa: BLE001
@@ -1837,7 +1885,7 @@ def render_draft_board() -> None:
 
 
 def render_adp() -> None:
-    st.markdown(f'<h3>{SEASON} Consensus ADP</h3>', unsafe_allow_html=True)
+    st.markdown(f'<h3>{SEASON} Consensus <span class="g">ADP</span></h3>', unsafe_allow_html=True)
     st.caption("Averaged across " + ", ".join(ADP_META.get("sources", [])) + ".")
     if ADP_DF.empty:
         st.info("No ADP data yet. Run `python scripts/refresh_adp.py`.")
@@ -1897,7 +1945,7 @@ def render_adp() -> None:
 
 
 def render_adp_trends() -> None:
-    st.markdown(f'<h2>ADP Risers & Fallers</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>ADP <span class="g">Risers &amp; Fallers</span></h2>', unsafe_allow_html=True)
     win = st.selectbox("Window", [7, 14, 30], format_func=lambda d: f"Last {d} days", key="adp_win")
     mv = adp_consensus.adp_movement(SEASON, window_days=win)
     if not mv.get("moves"):
@@ -1968,7 +2016,7 @@ def _lottery_bar_panels(items: list, eyebrow: str, weight_label: str = "Weight",
 
 
 def render_lottery() -> None:
-    st.markdown(f'<h2>Draft-Order Lottery</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>Draft-Order <span class="g">Lottery</span></h2>', unsafe_allow_html=True)
     weights = config.lottery_weights()
     st.caption("Weighted odds set next season's draft position directly.")
 
@@ -2035,7 +2083,7 @@ def render_lottery() -> None:
             st.rerun()
         return
 
-    st.markdown(f'<h3>Next Season\'s Draft Order</h3>', unsafe_allow_html=True)
+    st.markdown(f'<h3>Next Season\'s Draft <span class="g">Order</span></h3>', unsafe_allow_html=True)
     cards = [
         f'<div class="kcard"><h4 style="background:{theme.card_color(i)};">Pick {i + 1}</h4>'
         f'<p>{config.manager_name(oid)}</p></div>'
@@ -2051,7 +2099,7 @@ def render_lottery() -> None:
 
 
 def render_draft_capital() -> None:
-    st.markdown(f'<h2>Draft Capital & Keeper Cost</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>Draft <span class="g">Capital</span> &amp; Keeper Cost</h2>', unsafe_allow_html=True)
     st.caption("What each team brings to the draft after keepers.")
     rows = []
     for o in MANAGERS:
@@ -2085,7 +2133,7 @@ def render_draft_capital() -> None:
 
 
 def render_roster_needs() -> None:
-    st.markdown(f'<h2>Roster Needs</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>Roster <span class="g">Needs</span></h2>', unsafe_allow_html=True)
     st.caption("Starting spots each team still has to draft, after likely keepers.")
     from collections import Counter
     slots = starter_slots()
@@ -2168,7 +2216,7 @@ def build_keeper_hitrate():
 
 
 def render_keeper_hitrate() -> None:
-    st.markdown(f'<h2>Keeper Hit-Rate</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>Keeper <span class="g">Hit-Rate</span></h2>', unsafe_allow_html=True)
     st.caption("Did past keepers pay off — finished a startable rank that season?")
     per_owner, decisions = build_keeper_hitrate()
     if not decisions:
@@ -2198,7 +2246,7 @@ def render_keeper_hitrate() -> None:
 
 
 def render_faab() -> None:
-    st.markdown(f'<h2>FAAB Pot</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>FAAB <span class="g">Pot</span></h2>', unsafe_allow_html=True)
     st.caption("Unspent FAAB at year end goes to the consolation-bracket champion.")
 
     lid = LEAGUE["sleeper_league_id"]
@@ -2273,7 +2321,7 @@ def render_faab() -> None:
 
 
 def render_superlatives() -> None:
-    st.markdown(f'<h2>Superlatives</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2><span class="g">Superlatives</span></h2>', unsafe_allow_html=True)
     cards = []
 
     def card(title, who, sub):
@@ -2390,10 +2438,12 @@ elif page == "draft":
     with t4:
         render_lottery()
 elif page == "trades":
-    t1, t2 = st.tabs(["Trade Market", "Trade Analyzer"])
+    t1, t2, t3 = st.tabs(["Recent Trades", "Trade Market", "Trade Analyzer"])
     with t1:
-        render_trade_targets()
+        render_recent_trades()
     with t2:
+        render_trade_targets()
+    with t3:
         render_trade_analyzer()
 elif page == "league":
     t1, t2, t3, t4, t5 = st.tabs(["Title Odds", "Record Book", "Keeper Hit-Rate",

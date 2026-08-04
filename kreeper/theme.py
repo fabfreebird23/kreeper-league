@@ -84,14 +84,33 @@ html, body, [class*="css"]{ font-family:'Oswald', sans-serif; color:var(--ink) !
 [data-testid="stHeader"]{ background:transparent; }
 [data-testid="stSidebar"]{ background:#0d0d11; border-right:1px solid var(--line); }
 
+/* expanders — themed card, not the bare default row */
+[data-testid="stExpander"]{ border:1px solid var(--line); border-left:4px solid var(--accent);
+  border-radius:10px; background:var(--panel); margin-bottom:10px; overflow:hidden; }
+[data-testid="stExpander"] summary{ padding:14px 18px !important; font-family:'Oswald', sans-serif !important;
+  font-size:14.5px !important; font-weight:600 !important; transition:background .12s; }
+[data-testid="stExpander"] summary:hover{ background:rgba(255,255,255,.03); }
+[data-testid="stExpander"] summary [data-testid="stIconMaterial"]{ display:none; }
+[data-testid="stExpander"] [data-testid="stExpanderDetails"]{ padding:0 18px 18px; }
+/* cycle the left accent through the card palette for consecutive expanders
+   (team lists, etc.) so the stack doesn't read as one flat grey column */
+[data-testid="stVerticalBlock"] > [data-testid="stExpander"]:nth-of-type(6n+1){ border-left-color:#ff5aa0; }
+[data-testid="stVerticalBlock"] > [data-testid="stExpander"]:nth-of-type(6n+2){ border-left-color:#4f9dff; }
+[data-testid="stVerticalBlock"] > [data-testid="stExpander"]:nth-of-type(6n+3){ border-left-color:#3fd67c; }
+[data-testid="stVerticalBlock"] > [data-testid="stExpander"]:nth-of-type(6n+4){ border-left-color:#f0b840; }
+[data-testid="stVerticalBlock"] > [data-testid="stExpander"]:nth-of-type(6n+5){ border-left-color:#a06bff; }
+[data-testid="stVerticalBlock"] > [data-testid="stExpander"]:nth-of-type(6n){ border-left-color:#5ecbf0; }
+
 /* headings — h2 carries the page's gradient as text color, not a filled bar */
 h1{ font-family:'Anton', sans-serif !important; letter-spacing:1px; text-transform:uppercase;
   color:var(--ink) !important; }
 h2{ font-family:'Anton', sans-serif !important; letter-spacing:.4px; margin:0 0 8px !important;
-  font-size:1.5rem !important; background:var(--grad) !important; -webkit-background-clip:text !important;
-  background-clip:text !important; -webkit-text-fill-color:transparent !important; }
+  font-size:1.5rem !important; color:var(--ink) !important; }
 h3{ font-family:'Oswald', sans-serif !important; font-weight:600 !important; letter-spacing:.2px;
   color:var(--ink) !important; font-size:1.05rem !important; margin:0 0 10px !important; }
+/* two-tone heading accent — wrap the one word that matters in <span class="g"> */
+.g{ background:var(--grad) !important; -webkit-background-clip:text !important;
+  background-clip:text !important; -webkit-text-fill-color:transparent !important; }
 
 /* shared liquid-wave asset — the fill-level offset + drift animation apply
    anywhere a `.bob > .wv.front/.back` shows up (logo emblem, liquid rings) */
@@ -223,22 +242,42 @@ table.lb tr.fa td{ background:rgba(94,203,240,.06); }
 .burnbar-track{ width:100%; height:8px; border-radius:5px; background:var(--bg); overflow:hidden; }
 .burnbar-fill{ height:100%; border-radius:5px; }
 
+/* generic gradient-bordered panel */
+.gpanel{ border-radius:16px; padding:1px; margin-bottom:16px;
+  background:linear-gradient(135deg, rgba(255,90,160,.4), rgba(160,107,255,.28), rgba(79,157,255,.4)); }
+.gpanel-in{ background:var(--panel); border-radius:15px; padding:20px 22px; }
+
+/* recent trades */
+.gtrades{ display:flex; flex-direction:column; gap:16px; }
+.gtrade-teams{ font-size:15px; font-weight:600; color:var(--ink); margin-bottom:12px; }
+.gtrade-teams .vs{ color:var(--muted); font-weight:400; font-size:12px; margin:0 4px; }
+.gtrade-assets{ display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:18px; }
+.gtrade-assets div b{ display:block; font-size:10px; color:var(--muted); text-transform:uppercase;
+  letter-spacing:.6px; margin-bottom:8px; font-weight:600; }
+.gasset-chip{ display:inline-block; font-size:11.5px; background:rgba(255,90,160,.12);
+  border:1px solid rgba(255,90,160,.32); color:#ffb3d4; padding:4px 10px; border-radius:999px;
+  margin:0 6px 6px 0; }
+.gtrade-date{ font-size:11px; color:var(--muted); margin-top:14px; }
+
 /* contract cards — per-player keeper economics browse grid */
 .kr-section{ margin-bottom:28px; }
-.kr-section-head{ display:flex; align-items:baseline; justify-content:space-between; gap:14px; margin-bottom:12px; }
-.kr-section-head h3{ font-size:16px; margin:0 !important; background:none !important; color:var(--ink) !important;
-  padding:0 !important; display:inline !important; }
+.kr-section-head{ display:flex; align-items:baseline; justify-content:space-between; gap:14px; margin-bottom:14px; }
+.kr-section-head h3{ font-family:'Anton', sans-serif !important; font-size:22px !important;
+  font-weight:400 !important; letter-spacing:.3px; margin:0 !important; background:none !important;
+  color:var(--ink) !important; padding:0 !important; display:inline !important; }
 .kr-section-head .tag{ font-family:'Oswald'; font-weight:600; font-size:10.5px; letter-spacing:.6px;
   text-transform:uppercase; color:var(--purple); }
 .contract-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
-.ccard{ border:1px solid var(--line); border-radius:10px; padding:12px 14px 13px; position:relative;
-  background:var(--panel2); overflow:hidden; }
+.ccard{ border:1px solid var(--line); border-radius:10px; padding:14px 16px 15px; position:relative;
+  background:var(--panel2); overflow:hidden; transition:border-color .15s; }
+.ccard:hover{ border-color:rgba(255,255,255,.22); }
 .ccard::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--accent); }
 .ccard.rookie::before{ background:var(--purple); }
 .ccard.wall::before{ background:var(--red); }
 .ccard.ineligible::before{ background:var(--muted); }
 .ccard-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
-.ccard h4{ font-family:'Anton'; font-weight:400; font-size:14px; color:var(--ink); margin:0; letter-spacing:.3px; }
+.ccard h4{ font-family:'Anton'; font-weight:400; font-size:18px; color:var(--ink); margin:0;
+  letter-spacing:.2px; line-height:1.15; }
 .ccard .pos{ font-size:11px; color:var(--muted); margin-top:1px; }
 .ccard .cost{ text-align:right; }
 .ccard .cost b{ font-family:'Anton'; font-size:18px; color:var(--accent); display:block; line-height:1; font-weight:400; }
@@ -294,12 +333,13 @@ table.dboard td.dbcell{ padding:3px 4px; }
 .khome{ text-decoration:none !important; line-height:1; }
 .khome .neon-logo{ font-size:30px; margin:0; }
 .topnav{ display:flex; gap:26px; flex-wrap:wrap; align-self:stretch; align-items:center; }
-.navlink{ font-family:'Oswald'; font-weight:600; letter-spacing:.8px; font-size:12.5px;
-  text-transform:uppercase; color:var(--muted) !important; text-decoration:none !important;
-  background:none; border:none; border-radius:0; white-space:nowrap;
-  padding:8px 0 13px; border-bottom:2px solid transparent; transition:color .15s; }
-.navlink:hover{ color:var(--ink) !important; }
-.navlink.active{ color:var(--ink) !important; border-bottom:2px solid; border-image:var(--grad) 1; }
+.navlink, [data-testid="stMarkdownContainer"] a.navlink{
+  font-family:'Oswald'; font-weight:600; letter-spacing:.8px; font-size:12.5px;
+  text-transform:uppercase; color:var(--ink) !important; text-decoration:none !important;
+  background:none; border:none; border-radius:0; white-space:nowrap; opacity:.55;
+  padding:8px 0 13px; border-bottom:2px solid transparent; transition:opacity .15s; }
+.navlink:hover{ opacity:.85; }
+.navlink.active{ opacity:1; border-bottom:2px solid; border-image:var(--grad) 1; }
 
 /* ---------------- mobile ---------------- */
 @media (max-width: 640px){
