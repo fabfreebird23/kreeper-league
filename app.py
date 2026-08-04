@@ -800,13 +800,14 @@ def _leaderboard_html(df) -> str:
 
 
 def render_team_boxes() -> None:
+    """One line-card per team (quick scan), each expandable into the same
+    contract cards used on Set My Keepers — pips, badges, and surplus for
+    every player they actually kept."""
     data = current_keepers()
     cards = []
-    for oid, m in MANAGERS.items():
+    for i, (oid, m) in enumerate(MANAGERS.items()):
         picks = data.get(oid, [])
         if picks:
-            # Order by keeper cost round (earliest pick first); rookies, kept at the
-            # last rounds, naturally fall to the bottom.
             picks = sorted(picks, key=lambda x: (x.get("cost_round") or 99,
                                                  bool(x.get("is_rookie_keeper"))))
             inner = ""
@@ -818,8 +819,22 @@ def render_team_boxes() -> None:
                           f'<span class="rd">{rd}</span></div>')
         else:
             inner = '<div class="empty">— no keepers yet —</div>'
-        cards.append(f'<div class="kcard"><h4>{m["name"]}</h4>{inner}</div>')
+        cards.append(f'<div class="kcard"><h4 style="background:{theme.card_color(i)};">'
+                     f'{m["name"]}</h4>{inner}</div>')
     st.markdown('<div class="kcards">' + "".join(cards) + "</div>", unsafe_allow_html=True)
+
+    for oid, m in MANAGERS.items():
+        picks = data.get(oid, [])
+        if not picks:
+            continue
+        with st.expander(f"{m['name']} — contract cards"):
+            kept_ids = {s.get("player_id") for s in picks}
+            df = build_candidate_rows(oid)
+            df = df[df["player_id"].isin(kept_ids)]
+            if df.empty:
+                st.caption("Nothing to show.")
+            else:
+                render_contract_cards(m["name"], df)
 
 
 def render_home() -> None:
@@ -1850,15 +1865,35 @@ def render_adp() -> None:
         view = view[view["name"].str.contains(q, case=False, na=False)]
     if pos:
         view = view[view["position"].isin(pos)]
-    movecol = f"Move ({win}d)"
-    view[movecol] = view["name_key"].map(move_map).map(_fmt_move)
-    view = view[["consensus_rank", "name", "position", "consensus_adp", movecol]].rename(
-        columns={"consensus_rank": "Rank", "name": "Player",
-                 "position": "Pos", "consensus_adp": "Consensus ADP"})
-    st.dataframe(view, hide_index=True, use_container_width=True, height=600)
+    view = view.head(300)
+
+    def _move_html(d):
+        if d is None or (isinstance(d, float) and pd.isna(d)):
+            return '<span style="color:var(--muted);">—</span>'
+        d = int(d)
+        if d > 0:
+            return f'<span style="color:var(--teal);">▲ {d}</span>'
+        if d < 0:
+            return f'<span style="color:var(--red);">▼ {abs(d)}</span>'
+        return '<span style="color:var(--muted);">—</span>'
+
+    rows = "".join(
+        f'<tr><td class="rk">{int(r.consensus_rank)}</td>'
+        f'<td class="pl">{r.name}</td>'
+        f'<td class="pos"><span class="posdot p-{r.position}"></span>{r.position}</td>'
+        f'<td class="num">{r.consensus_adp:.1f}</td>'
+        f'<td class="num">{_move_html(move_map.get(r.name_key))}</td></tr>'
+        for r in view.itertuples()
+    )
+    head = (f'<tr><th>Rank</th><th>Player</th><th>Pos</th><th>ADP</th>'
+            f'<th>Move&nbsp;({win}d)</th></tr>')
+    st.markdown(
+        '<div class="neonwrap" style="max-height:600px;overflow-y:auto;">'
+        '<table class="lb"><thead>' + head + '</thead><tbody>' + rows + '</tbody></table></div>',
+        unsafe_allow_html=True,
+    )
     if not mv.get("moves"):
-        st.caption("ADP movement appears once two daily snapshots exist — check back after "
-                   "the next daily refresh.")
+        st.caption("ADP movement appears once two daily snapshots exist.")
 
 
 def render_adp_trends() -> None:
@@ -2002,7 +2037,8 @@ def render_lottery() -> None:
 
     st.markdown(f'<h3>Next Season\'s Draft Order</h3>', unsafe_allow_html=True)
     cards = [
-        f'<div class="kcard"><h4>Pick {i + 1}</h4><p>{config.manager_name(oid)}</p></div>'
+        f'<div class="kcard"><h4 style="background:{theme.card_color(i)};">Pick {i + 1}</h4>'
+        f'<p>{config.manager_name(oid)}</p></div>'
         for i, oid in enumerate(drawn)
     ]
     st.markdown('<div class="kcards">' + "".join(cards) + "</div>", unsafe_allow_html=True)
@@ -2241,8 +2277,9 @@ def render_superlatives() -> None:
     cards = []
 
     def card(title, who, sub):
-        cards.append(f'<div class="kcard"><h4>{title}</h4>'
-                     f'<div style="font-family:\'Anton\';font-size:18px;color:var(--accent);">{who}</div>'
+        i = len(cards)
+        cards.append(f'<div class="kcard"><h4 style="background:{theme.card_color(i)};">{title}</h4>'
+                     f'<div style="font-family:\'Anton\';font-size:18px;color:var(--ink);">{who}</div>'
                      f'<div style="font-size:12px;opacity:.8;">{sub}</div></div>')
 
     lb = build_value_leaderboard(400)

@@ -38,6 +38,14 @@ RED = "#ff5c6c"
 # fills); it's bright/light enough to stay readable under the fixed dark ink.
 GRADIENT = ("#ff5aa0", "#a06bff", "#4f9dff")
 
+# Cycled across repeated card lists (team boxes, superlatives, draft-order
+# picks) so a stack of identical cards doesn't read as one giant color block.
+CARD_PALETTE = ["#ff5aa0", "#4f9dff", "#3fd67c", "#f0b840", "#a06bff", "#5ecbf0"]
+
+
+def card_color(i: int) -> str:
+    return CARD_PALETTE[i % len(CARD_PALETTE)]
+
 CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&family=Rubik+Wet+Paint&display=swap');
@@ -57,10 +65,10 @@ CSS = """
   background:
     radial-gradient(46% 34% at 14% 6%, rgba(255,90,160,.10), transparent 60%),
     radial-gradient(40% 34% at 86% 4%, rgba(79,157,255,.10), transparent 60%),
-    repeating-radial-gradient(circle at 12% 4%, rgba(255,255,255,.05) 0,
-      rgba(255,255,255,.05) 1px, transparent 1px, transparent 40px),
-    repeating-radial-gradient(circle at 88% 100%, rgba(255,255,255,.035) 0,
-      rgba(255,255,255,.035) 1px, transparent 1px, transparent 56px),
+    repeating-radial-gradient(circle at 12% 4%, rgba(255,255,255,.032) 0,
+      rgba(255,255,255,.032) 1px, transparent 1px, transparent 40px),
+    repeating-radial-gradient(circle at 88% 100%, rgba(255,255,255,.022) 0,
+      rgba(255,255,255,.022) 1px, transparent 1px, transparent 56px),
     var(--bg);
   background-attachment:fixed;
 }
@@ -255,7 +263,7 @@ table.lb tr.fa td{ background:rgba(94,203,240,.06); }
 .lottery-row-bar{ flex:1; display:flex; align-items:center; gap:10px; min-width:0; }
 .lottery-bar-track{ flex:1; height:22px; border-radius:6px; background:var(--panel2);
   border:1px solid var(--line); overflow:hidden; position:relative; }
-.lottery-bar-fill{ height:100%; border-radius:5px; background:var(--accent);
+.lottery-bar-fill{ height:100%; border-radius:5px; background:var(--grad);
   display:flex; align-items:center; justify-content:flex-end; padding-right:8px;
   font-family:var(--mono, monospace); font-size:11.5px; font-weight:700; color:var(--accent-ink); white-space:nowrap; }
 .lottery-bar-fill.dim{ background:var(--muted); }
