@@ -59,11 +59,14 @@ CSS = """
   --grad:linear-gradient(90deg, var(--g1), var(--g2) 55%, var(--g3));
 }
 
-/* near-black field with a soft pink/blue glow, like a dashboard product shot */
+/* near-black field with a soft pink/blue glow + faint topo-line grid,
+   like a dashboard product shot */
 .stApp{
   background:
     radial-gradient(46% 34% at 14% 6%, rgba(255,90,160,.09), transparent 60%),
     radial-gradient(40% 34% at 86% 4%, rgba(79,157,255,.09), transparent 60%),
+    repeating-radial-gradient(circle at 20% 8%, rgba(255,255,255,.028) 0,
+      rgba(255,255,255,.028) 1px, transparent 1px, transparent 34px),
     var(--bg);
   background-attachment:fixed;
 }
@@ -88,17 +91,20 @@ h2{ font-family:'Anton', sans-serif !important; letter-spacing:.4px; margin:0 0 
 h3{ font-family:'Oswald', sans-serif !important; font-weight:600 !important; letter-spacing:.2px;
   color:var(--ink) !important; font-size:1.05rem !important; margin:0 0 10px !important; }
 
-/* ThunderCats wordmark — liquid-chrome steel letters + red-disc pig emblem */
-.tc-wrap{ display:inline-flex; align-items:center; gap:8px; }
-.tc-emblem{ flex:0 0 auto; filter:drop-shadow(0 4px 16px rgba(79,157,255,.35)); }
-.tc-emblem .bob{ transform:translateY(var(--sy,0px)); }
-.tc-emblem .wv.front{ animation:liq-front 7s linear infinite; }
-.tc-emblem .wv.back{ animation:liq-back 11s linear infinite; }
+/* shared liquid-wave asset — the fill-level offset + drift animation apply
+   anywhere a `.bob > .wv.front/.back` shows up (logo emblem, liquid rings) */
+.bob{ transform:translateY(var(--sy,0px)); }
+.wv.front{ animation:liq-front 7s linear infinite; }
+.wv.back{ animation:liq-back 11s linear infinite; }
 @keyframes liq-front{ from{transform:translateX(0)} to{transform:translateX(-200px)} }
 @keyframes liq-back{ from{transform:translateX(0)} to{transform:translateX(200px)} }
 @media (prefers-reduced-motion: reduce){
-  .tc-emblem .wv.front, .tc-emblem .wv.back{ animation:none !important; }
+  .wv.front, .wv.back{ animation:none !important; }
 }
+
+/* ThunderCats wordmark — liquid-chrome steel letters + red-disc pig emblem */
+.tc-wrap{ display:inline-flex; align-items:center; gap:8px; }
+.tc-emblem{ flex:0 0 auto; filter:drop-shadow(0 4px 16px rgba(79,157,255,.35)); }
 .neon-logo{ font-family:'Anton', sans-serif; line-height:1; display:inline-block;
   letter-spacing:0px; white-space:nowrap; transform:skewX(-7deg); }
 .neon-logo .kl{ display:inline-block;
@@ -133,13 +139,13 @@ h3{ font-family:'Oswald', sans-serif !important; font-weight:600 !important; let
   background:var(--accent); color:var(--accent-ink); border:none; border-radius:4px; }
 .stButton>button:hover{ background:var(--purple); color:#fff; }
 
-/* ---- shared custom tables ---- */
-.neonwrap{ overflow-x:auto; border:1px solid var(--line); border-radius:10px; background:var(--panel); }
+/* ---- shared custom tables — flat, no boxed wrapper, hairline row dividers only ---- */
+.neonwrap{ overflow-x:auto; }
 table.lb{ width:100%; border-collapse:collapse; font-family:'Oswald'; font-size:14px; }
-table.lb th{ background:var(--panel2); color:var(--muted); text-transform:uppercase; letter-spacing:1px;
-  font-size:11px; text-align:left; padding:8px 10px; border-bottom:2px solid var(--line); position:sticky; top:0; }
+table.lb th{ color:var(--muted); text-transform:uppercase; letter-spacing:1px;
+  font-size:11px; text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--bg); }
 table.lb td{ padding:6px 10px; border-bottom:1px solid var(--line); }
-table.lb tr:hover td{ background:var(--panel2); }
+table.lb tr:hover td{ background:rgba(255,255,255,.025); }
 table.lb tr.kept td{ background:linear-gradient(90deg, rgba(47,224,196,.16), rgba(47,224,196,.03)); }
 table.lb tr.kept td:first-child{ box-shadow:inset 3px 0 0 var(--teal); }
 .lb .rk{ font-family:'Anton'; color:var(--accent); width:34px; text-align:center; }
@@ -184,18 +190,28 @@ table.lb tr.fa td{ background:rgba(94,203,240,.06); }
 .tile .lbl{ font-size:10px; text-transform:uppercase; letter-spacing:.8px; color:var(--muted); margin-top:5px; }
 .tile .sub{ font-size:11px; color:var(--ink); opacity:.75; margin-top:1px; }
 
-/* FAAB debt ring — a CSS conic-gradient donut, no chart library needed */
+/* FAAB debt ring — animated liquid-wave fill, same wave asset as the logo */
 .faab-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
 .faab-card{ border:1px solid var(--line); border-radius:10px; background:var(--panel);
   padding:12px; text-align:center; }
 .faab-card h4{ font-family:'Anton'; font-size:14px; margin:0 0 8px; color:var(--purple); }
-.faab-ring{ width:84px; height:84px; border-radius:50%; margin:0 auto 8px;
-  display:flex; align-items:center; justify-content:center; }
-.faab-ring-hole{ width:64px; height:64px; border-radius:50%; background:var(--bg);
-  display:flex; flex-direction:column; align-items:center; justify-content:center; }
-.faab-ring-hole b{ font-family:'Anton'; font-size:16px; color:var(--accent); line-height:1; }
-.faab-ring-hole small{ font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
 .faab-card .rem{ font-size:11px; color:var(--muted); margin-top:2px; }
+
+/* liquid-fill circle gauge — reusable for FAAB rings + home quick-glance tiles */
+.liq-ring{ position:relative; display:inline-flex; align-items:center; justify-content:center; margin-bottom:8px; }
+.liq-ring svg{ display:block; }
+.liq-ring .liq-val{ position:absolute; inset:0; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; text-align:center; line-height:1.15; pointer-events:none; }
+.liq-ring .liq-val b{ font-family:'Anton'; font-weight:400; }
+.liq-ring .liq-val small{ font-size:8.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; }
+
+.glance-panel{ border-radius:16px; padding:1px; margin:10px 0 26px;
+  background:linear-gradient(135deg, rgba(255,90,160,.4), rgba(160,107,255,.28), rgba(79,157,255,.4)); }
+.glance-panel-in{ background:var(--panel); border-radius:15px; padding:20px 24px; }
+.liquid-stats{ display:flex; gap:36px; flex-wrap:wrap; }
+.liquid-stat{ display:flex; align-items:center; gap:14px; }
+.liquid-stat .txt .lbl{ font-size:10.5px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); }
+.liquid-stat .txt .sub{ font-size:13px; color:var(--ink); margin-top:3px; max-width:180px; }
 .faab-pot{ text-align:center; padding:18px 12px; border-radius:12px; border:1px solid transparent;
   background:linear-gradient(var(--panel2),var(--panel2)) padding-box, var(--grad) border-box;
   margin-bottom:16px; }
@@ -206,9 +222,8 @@ table.lb tr.fa td{ background:rgba(94,203,240,.06); }
 .burnbar-fill{ height:100%; border-radius:5px; }
 
 /* contract cards — per-player keeper economics browse grid */
-.kr-section{ border:1px solid var(--line); border-radius:14px; background:var(--panel);
-  padding:16px 18px 18px; margin-bottom:16px; }
-.kr-section-head{ display:flex; align-items:baseline; justify-content:space-between; gap:14px; margin-bottom:10px; }
+.kr-section{ margin-bottom:28px; }
+.kr-section-head{ display:flex; align-items:baseline; justify-content:space-between; gap:14px; margin-bottom:12px; }
 .kr-section-head h3{ font-size:16px; margin:0 !important; background:none !important; color:var(--ink) !important;
   padding:0 !important; display:inline !important; }
 .kr-section-head .tag{ font-family:'Oswald'; font-weight:600; font-size:10.5px; letter-spacing:.6px;
@@ -460,6 +475,49 @@ def logo_html(size: int = 52, tag: str | None = "The Keeper Hub") -> str:
     emblem = _TC_EMBLEM.format(w=em)
     return (f'<div class="tc-wrap">{emblem}'
             f'<div class="neon-logo" style="font-size:{size}px;">{letters}</div></div>{t}')
+
+
+_liq_uid_counter = 0
+
+
+def liquid_ring_html(pct: float, value_html: str, label: str = "", size: int = 84,
+                      accent: str = "#4f9dff") -> str:
+    """A small animated liquid-wave-fill circle gauge (same wave asset as the
+    logo), with an HTML value overlaid in the middle. `pct` in [0,1]."""
+    global _liq_uid_counter
+    _liq_uid_counter += 1
+    uid = f"liq{_liq_uid_counter}"
+    p = max(0.06, min(0.94, pct))
+    surface = 200.0 - 200.0 * p
+    inner = size - 8
+    k = inner / 200.0
+    off = (size - inner) / 2
+    cx = cy = size / 2
+    sub = f"<small>{label}</small>" if label else ""
+    return (
+        f'<span class="liq-ring" style="width:{size}px;height:{size}px;">'
+        f'<svg width="{size}" height="{size}" viewBox="0 0 {size} {size}" aria-hidden="true">'
+        f'<circle cx="{cx}" cy="{cy}" r="{(size-3)/2:.1f}" fill="none" '
+        f'stroke="rgba(255,255,255,.12)" stroke-width="1.5"/>'
+        f'<defs><clipPath id="{uid}"><circle cx="{cx}" cy="{cy}" r="{inner/2:.1f}"/></clipPath></defs>'
+        f'<g clip-path="url(#{uid})">'
+        f'<g transform="translate({off:.1f},{off:.1f}) scale({k:.4f})">'
+        f'<g class="bob" style="--sy:{surface:.1f}px">'
+        f'<path class="wv back" d="{_WAVE_BACK}" fill="{accent}" opacity=".45"/>'
+        f'<path class="wv front" d="{_WAVE_FRONT}" fill="{accent}" opacity=".85"/>'
+        f'</g></g></g></svg>'
+        f'<span class="liq-val"><b>{value_html}</b>{sub}</span>'
+        f'</span>'
+    )
+
+
+def liquid_stat_html(pct: float, value_html: str, ring_label: str, label: str, sub: str = "",
+                      size: int = 84, accent: str = "#4f9dff") -> str:
+    """A quick-glance stat: a liquid ring next to a label/sub text block."""
+    ring = liquid_ring_html(pct, value_html, ring_label, size=size, accent=accent)
+    return (f'<div class="liquid-stat">{ring}'
+            f'<div class="txt"><div class="lbl">{label}</div>'
+            + (f'<div class="sub">{sub}</div>' if sub else '') + '</div></div>')
 
 
 def inject(st, page: str = "home") -> None:

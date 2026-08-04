@@ -842,8 +842,35 @@ def render_home() -> None:
         _render_home_keepers_open()
 
 
+def _home_quick_glance() -> None:
+    """Two liquid-fill quick-glance stats — FAAB pot and the title-odds
+    favorite — for whichever phases don't already show that content as the
+    main event below (in-season and pre-season both already render one or
+    both of these in full)."""
+    lid = LEAGUE["sleeper_league_id"]
+    pot = faab.projected_pot(lid)
+    pot_pct = pot["pot"] / max(1, pot["total_budget"])
+    odds_rows = build_championship_odds()
+    stats = [theme.liquid_stat_html(
+        pot_pct, f'${pot["pot"]}', "left", "FAAB Pot",
+        f'${pot["total_spent"]} spent of ${pot["total_budget"]}', accent=theme.ACCENT,
+    )]
+    if odds_rows:
+        fav = odds_rows[0]
+        stats.append(theme.liquid_stat_html(
+            fav["Win %"] / 100, fav["Odds"], "win", "Title Favorite",
+            f'{fav["Team"]} · {fav["Win %"]}%', accent=theme.TEAL,
+        ))
+    st.markdown(
+        '<div class="glance-panel"><div class="glance-panel-in">'
+        '<div class="liquid-stats">' + "".join(stats) + '</div></div></div>',
+        unsafe_allow_html=True,
+    )
+
+
 def _render_home_pre_draft() -> None:
     st.caption("Keepers are locked — here's what everyone's bringing into the draft.")
+    _home_quick_glance()
     render_draft_capital()
     st.markdown(f'<h2>Submitted Keepers by Team</h2>', unsafe_allow_html=True)
     render_team_boxes()
@@ -863,16 +890,16 @@ def _render_home_in_season() -> None:
 
 def _render_home_offseason() -> None:
     st.caption("Season's over — here's the recap.")
+    _home_quick_glance()
     render_record_book()
     render_superlatives()
 
 
 def _render_home_keepers_open() -> None:
     render_countdown()
+    _home_quick_glance()
     st.markdown(f'<h2>Top 50 Keeper Values</h2>', unsafe_allow_html=True)
-    st.caption("Best keeper bargains across every roster — draft value gained by keeping a "
-               "player (cost round vs. consensus ADP round). Green = declared keeper · "
-               "purple RK = rookie keeper · cyan = free agent. Real NFL rookies are on the Rookies tab.")
+    st.caption("Draft value gained by keeping a player, best bargains first.")
     fc1, fc2, fc3 = st.columns([1, 1, 1])
     with fc1:
         pos_f = st.selectbox("Position", ["All", "QB", "RB", "WR", "TE"], key="lb_pos")
@@ -1161,9 +1188,7 @@ def render_trade_analyzer() -> None:
 
 def render_keeper_landscape() -> None:
     st.markdown(f'<h2>Keeper Landscape</h2>', unsafe_allow_html=True)
-    st.caption("Positional scarcity: of the top players at each position, who's "
-               "likely kept (and by whom) vs. left in the draft pool. Thin pools "
-               "= positions to target early; deep pools = wait.")
+    st.caption("Positional scarcity — who's likely kept vs. left in the pool.")
     kept = _projected_kept_ids()
     pid_owner = {}
     for o, pids in CANDS.items():
@@ -1940,18 +1965,7 @@ def _lottery_bar_panels(items: list, eyebrow: str, weight_label: str = "Weight",
 def render_lottery() -> None:
     st.markdown(f'<h2>Draft-Order Lottery</h2>', unsafe_allow_html=True)
     weights = config.lottery_weights()
-    st.caption(
-        "One weighted lottery across all " + str(len(weights)) + " teams sets NEXT "
-        "season's draft **position** directly — rank 1 in the draw drafts 1st "
-        "overall, rank " + str(len(weights)) + " drafts last. Weights (highest = "
-        "best odds): **" + ", ".join(str(int(w)) for w in weights) + "**. "
-        "Ranks 1–4 go to the four consolation-bracket (\"Chase for the Pick\") "
-        "teams — the **consolation bracket champion** gets the single best "
-        "odds, the last-place finisher in that bracket the weakest odds of "
-        "that group. Ranks 5–8 go to the four championship-bracket teams the "
-        "same way — the league **champion** gets the best odds of that group, "
-        "the 4th-place playoff finisher the worst odds overall."
-    )
+    st.caption("Weighted odds set next season's draft position directly.")
 
     lid = LEAGUE["sleeper_league_id"]
 
@@ -2041,8 +2055,7 @@ def render_lottery() -> None:
 
 def render_draft_capital() -> None:
     st.markdown(f'<h2>Draft Capital & Keeper Cost</h2>', unsafe_allow_html=True)
-    st.caption("What each team brings to the draft after keepers: picks they'll "
-               "actually make, future-pick stash, and a win-now vs. rebuild lean.")
+    st.caption("What each team brings to the draft after keepers.")
     rows = []
     for o in MANAGERS:
         kr = team_keeper_rows(o)
@@ -2071,9 +2084,6 @@ def render_draft_capital() -> None:
             '<th>Lean</th></tr>')
     st.markdown('<div class="neonwrap"><table class="lb"><thead>' + head
                 + '</thead><tbody>' + body + '</tbody></table></div>', unsafe_allow_html=True)
-    st.caption("After Keepers = 2026 picks you'll actually draft. 2027/2028 = total "
-               "picks owned that year (14 = untouched). Lean: hoarding future picks → "
-               "rebuild; sold future/early picks or thin on 2026 picks → win-now.")
     st.caption("Ned's lean: whichever one loses harder.")
 
 
@@ -2195,12 +2205,7 @@ def render_keeper_hitrate() -> None:
 
 def render_faab() -> None:
     st.markdown(f'<h2>FAAB Pot</h2>', unsafe_allow_html=True)
-    st.caption("The consolation-bracket champion wins the league's total "
-               "**unspent** FAAB budget at year end (see the Draft-Order "
-               "Lottery tab for how that champion is decided). Every dollar "
-               "you spend on a waiver claim is a dollar out of that pot — "
-               "so your running FAAB spend is framed here as **debt** "
-               "against it, not as budget remaining.")
+    st.caption("Unspent FAAB at year end goes to the consolation-bracket champion.")
 
     lid = LEAGUE["sleeper_league_id"]
     budgets = faab.team_budgets(lid)
@@ -2235,27 +2240,23 @@ def render_faab() -> None:
 
     def ring_color(pct: float) -> str:
         if pct >= 75:
-            return "var(--red)"
+            return theme.RED
         if pct >= 40:
-            return "var(--amber)"
-        return "var(--teal)"
+            return theme.AMBER
+        return theme.TEAL
 
     cards = []
     for owner_id, b in sorted(budgets.items(), key=lambda kv: -kv[1]["spent"]):
-        pct = round(100 * b["spent"] / max(1, b["total"]))
-        color = ring_color(pct)
+        pct = b["spent"] / max(1, b["total"])
+        ring = theme.liquid_ring_html(pct, f'${b["spent"]}', "owed", size=76, accent=ring_color(pct * 100))
         cards.append(
             f'<div class="faab-card"><h4>{config.manager_name(owner_id)}</h4>'
-            f'<div class="faab-ring" style="background:conic-gradient({color} {pct}%, #ede6f7 0);">'
-            f'<div class="faab-ring-hole"><b>${b["spent"]}</b><small>owed</small></div></div>'
-            f'<div class="rem">${b["remaining"]} left of ${b["total"]}</div></div>'
+            f'{ring}<div class="rem">${b["remaining"]} left of ${b["total"]}</div></div>'
         )
     st.markdown('<div class="faab-grid">' + "".join(cards) + "</div>", unsafe_allow_html=True)
 
     st.markdown(f'<h3>Dead Money</h3>', unsafe_allow_html=True)
-    st.caption("FAAB spent on a waiver add that's since been dropped — money "
-               "that bought nothing still on your roster. “Live” is spend on "
-               "players you still have.")
+    st.caption("FAAB spent on adds you've since dropped.")
     dm = dm_preview
     rows = sorted(dm.items(), key=lambda kv: -kv[1]["dead"])
     max_dead = max((rec["dead"] for _, rec in rows), default=0) or 1
