@@ -22,7 +22,24 @@ from kreeper.adp import consensus as adp_consensus
 from kreeper.names import normalize_name
 
 st.set_page_config(page_title="The Kreeper League — Keeper Hub", page_icon=None, layout="wide")
-theme.inject(st)
+
+# Routing via a `?p=` query param so the nav links are real, shareable, static
+# links. Read before theme.inject() so the per-page accent gradient can match
+# the section currently on screen.
+SECTIONS = [
+    ("home", "Home"),
+    ("keepers", "Keepers"),
+    ("draft", "Draft"),
+    ("trades", "Trades"),
+    ("league", "League"),
+    ("players", "Players"),
+]
+_VALID = {k for k, _ in SECTIONS}
+page = st.query_params.get("p", "home")
+if page not in _VALID:
+    page = "home"
+
+theme.inject(st, page=page)
 
 LEAGUE = config.league()
 SEASON = config.current_season()
@@ -1306,7 +1323,10 @@ def _contract_card_html(row: pd.Series) -> str:
     keep_year_int = int(keep_year) if isinstance(keep_year, (int, float)) and not isinstance(keep_year, bool) else None
     is_rookie = keep_year == 1 and row["Acq."] == "rookie→reg"
     eligible = bool(row["Eligible"])
-    css_cls = "ccard rookie" if is_rookie else ("ccard" if eligible else "ccard ineligible")
+    at_wall = eligible and keep_year_int == 3
+    css_cls = ("ccard rookie" if is_rookie else
+               "ccard wall" if at_wall else
+               "ccard" if eligible else "ccard ineligible")
 
     cost_round = None
     m = re.match(r"Round (\d+)", str(row["Reg. Cost"]))
@@ -2270,21 +2290,7 @@ def render_superlatives() -> None:
 
 # ---------------------------------------------------------------- sidebar + nav
 # ----------------------------------------------------------------- navigation
-# Consolidated sections; each groups related pages under sub-tabs. Routing via a
-# `?p=` query param so the nav links are real, shareable, static links.
-SECTIONS = [
-    ("home", "Home"),
-    ("keepers", "Keepers"),
-    ("draft", "Draft"),
-    ("trades", "Trades"),
-    ("league", "League"),
-    ("players", "Players"),
-]
-_VALID = {k for k, _ in SECTIONS}
-page = st.query_params.get("p", "home")
-if page not in _VALID:
-    page = "home"
-
+# Consolidated sections; each groups related pages under sub-tabs.
 # Top bar on every page: clickable KREEPER logo (-> Home) + section links.
 navlinks = "".join(
     f'<a class="navlink{" active" if k == page else ""}" href="?p={k}" target="_self">{label}</a>'

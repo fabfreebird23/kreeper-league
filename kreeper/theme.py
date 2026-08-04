@@ -1,6 +1,8 @@
-"""Flat dark theme: near-black cards, hairline borders, solid blue accent
-strips, animated liquid-wave surfaces, plus shared CSS for the custom HTML
-surfaces (leaderboard, team cards, draft board) and Sleeper headshots.
+"""Gradient-glass theme: near-black cards on a soft pink/blue glow, with a
+page-scoped accent gradient (each of the six sections gets its own hue so
+the app doesn't read as one card style copy-pasted six times), animated
+liquid-wave surfaces, plus shared CSS for the custom HTML surfaces
+(leaderboard, team cards, draft board) and Sleeper headshots.
 """
 from __future__ import annotations
 
@@ -20,27 +22,51 @@ def set_espn_ids(mapping: dict) -> None:
     _ESPN_BY_PID.clear()
     _ESPN_BY_PID.update({str(k): str(v) for k, v in mapping.items() if v})
 
-# Glass palette
+# Fixed semantic palette — status colors that mean the same thing on every
+# page (kept/good, rookie, warn, bad) and never shift with the per-page accent.
 ACCENT = "#4f9dff"
-PURPLE = "#8f7bff"
-TEAL = "#2fe0c4"
+PURPLE = "#a06bff"
+TEAL = "#3fd67c"
 CYAN = "#5ecbf0"
-AMBER = "#ffb84f"
-RED = "#ff6b7d"
+AMBER = "#f0b840"
+RED = "#ff5c6c"
+
+# Per-page accent gradient (g1 -> g2 -> g3). g2 is also used as the flat
+# "--accent" for solid fills (buttons, active nav, bar fills) — every g2
+# below is bright/light enough to stay readable under the fixed dark ink.
+# This is the one thing that changes page to page; everything else (type,
+# panel radius, semantic colors) stays constant so the app still reads as
+# one product, just with each section given its own identity.
+_PAGE_ACCENT = {
+    "home":    ("#ff5aa0", "#a06bff", "#4f9dff"),
+    "keepers": ("#a06bff", "#c9a6ff", "#a06bff"),
+    "draft":   ("#4f9dff", "#3fd67c", "#4f9dff"),
+    "trades":  ("#ff5aa0", "#ff8fc0", "#ff5aa0"),
+    "league":  ("#3fd67c", "#4f9dff", "#3fd67c"),
+    "players": ("#cfcfd6", "#e9e9ee", "#cfcfd6"),
+}
 
 CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&family=Rubik+Wet+Paint&display=swap');
 
 :root{
-  --bg:#0a0a0d; --panel:#131318; --panel2:#17181f;
-  --accent:#8f7bff; --accent-ink:#150c2e; --blue:#4f9dff; --purple:#8f7bff; --teal:#3fd67c; --cyan:#5ecbf0;
+  --bg:#08080b; --panel:#121216; --panel2:#17171d;
+  --g1:#ff5aa0; --g2:#a06bff; --g3:#4f9dff; --accent:var(--g2); --accent-ink:#14101f;
+  --purple:#a06bff; --teal:#3fd67c; --cyan:#5ecbf0;
   --amber:#f0b840; --red:#ff5c6c; --ink:#f2f2f0; --muted:#8a8a95; --dim:#5f5f6b;
   --line:rgba(255,255,255,.09);
+  --grad:linear-gradient(90deg, var(--g1), var(--g2) 55%, var(--g3));
 }
 
-/* flat near-black field */
-.stApp{ background:var(--bg); }
+/* near-black field with a soft pink/blue glow, like a dashboard product shot */
+.stApp{
+  background:
+    radial-gradient(46% 34% at 14% 6%, rgba(255,90,160,.09), transparent 60%),
+    radial-gradient(40% 34% at 86% 4%, rgba(79,157,255,.09), transparent 60%),
+    var(--bg);
+  background-attachment:fixed;
+}
 html, body, [class*="css"]{ font-family:'Oswald', sans-serif; color:var(--ink) !important; }
 [data-testid="stMarkdownContainer"], [data-testid="stMarkdownContainer"] p,
 [data-testid="stMarkdownContainer"] li, [data-testid="stMarkdownContainer"] span,
@@ -53,14 +79,14 @@ html, body, [class*="css"]{ font-family:'Oswald', sans-serif; color:var(--ink) !
 [data-testid="stHeader"]{ background:transparent; }
 [data-testid="stSidebar"]{ background:#0d0d11; border-right:1px solid var(--line); }
 
-/* headings — solid accent strip, full-width bar */
+/* headings — h2 carries the page's gradient as text color, not a filled bar */
 h1{ font-family:'Anton', sans-serif !important; letter-spacing:1px; text-transform:uppercase;
   color:var(--ink) !important; }
-h2,h3{ font-family:'Anton', sans-serif !important; letter-spacing:.6px; text-transform:uppercase;
-  color:var(--accent-ink) !important; background:var(--accent); display:block;
-  padding:10px 16px; border-radius:8px; margin:0 0 14px !important; }
-h2{ font-size:1.15rem !important; }
-h3{ font-size:.95rem !important; }
+h2{ font-family:'Anton', sans-serif !important; letter-spacing:.4px; margin:0 0 8px !important;
+  font-size:1.5rem !important; background:var(--grad) !important; -webkit-background-clip:text !important;
+  background-clip:text !important; -webkit-text-fill-color:transparent !important; }
+h3{ font-family:'Oswald', sans-serif !important; font-weight:600 !important; letter-spacing:.2px;
+  color:var(--ink) !important; font-size:1.05rem !important; margin:0 0 10px !important; }
 
 /* ThunderCats wordmark — liquid-chrome steel letters + red-disc pig emblem */
 .tc-wrap{ display:inline-flex; align-items:center; gap:8px; }
@@ -170,9 +196,11 @@ table.lb tr.fa td{ background:rgba(94,203,240,.06); }
 .faab-ring-hole b{ font-family:'Anton'; font-size:16px; color:var(--accent); line-height:1; }
 .faab-ring-hole small{ font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
 .faab-card .rem{ font-size:11px; color:var(--muted); margin-top:2px; }
-.faab-pot{ text-align:center; padding:18px 12px; border-radius:12px;
-  background:var(--panel2); border:1px solid var(--line); margin-bottom:16px; }
-.faab-pot b{ font-family:'Anton'; font-size:38px; color:var(--accent); display:block; line-height:1; }
+.faab-pot{ text-align:center; padding:18px 12px; border-radius:12px; border:1px solid transparent;
+  background:linear-gradient(var(--panel2),var(--panel2)) padding-box, var(--grad) border-box;
+  margin-bottom:16px; }
+.faab-pot b{ font-family:'Anton'; font-size:38px; background:var(--grad); -webkit-background-clip:text;
+  background-clip:text; -webkit-text-fill-color:transparent; display:block; line-height:1; }
 .faab-pot span{ font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
 .burnbar-track{ width:100%; height:8px; border-radius:5px; background:var(--bg); overflow:hidden; }
 .burnbar-fill{ height:100%; border-radius:5px; }
@@ -190,6 +218,7 @@ table.lb tr.fa td{ background:rgba(94,203,240,.06); }
   background:var(--panel2); overflow:hidden; }
 .ccard::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--accent); }
 .ccard.rookie::before{ background:var(--purple); }
+.ccard.wall::before{ background:var(--red); }
 .ccard.ineligible::before{ background:var(--muted); }
 .ccard-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
 .ccard h4{ font-family:'Anton'; font-weight:400; font-size:14px; color:var(--ink); margin:0; letter-spacing:.3px; }
@@ -240,25 +269,28 @@ table.dboard td.dbcell{ padding:3px 4px; }
 
 .lb .pos{ white-space:nowrap; }
 
-/* top navigation bar */
-.kbar{ display:flex; align-items:center; gap:16px; flex-wrap:wrap;
-  padding-bottom:8px; margin-bottom:10px; border-bottom:1.5px solid var(--line); }
+/* top navigation bar — plain uppercase links, gradient underline on the
+   active section (matches the sub-nav treatment from the gradient-glass mock) */
+.kbar{ display:flex; align-items:center; gap:28px; flex-wrap:wrap;
+  padding-bottom:0; margin-bottom:18px; border-bottom:1px solid var(--line); }
 .khome{ text-decoration:none !important; line-height:1; }
 .khome .neon-logo{ font-size:30px; margin:0; }
-.topnav{ display:flex; gap:6px; flex-wrap:wrap; }
-.navlink{ font-family:'Anton'; text-transform:uppercase; letter-spacing:1px; font-size:13px;
-  color:var(--ink) !important; text-decoration:none !important; padding:6px 13px; border-radius:9px;
-  border:1.5px solid var(--line); background:var(--panel); transition:.15s; white-space:nowrap; }
-.navlink:hover{ border-color:var(--accent); color:var(--accent) !important; }
-.navlink.active{ background:var(--accent); color:var(--accent-ink) !important; border-color:var(--accent); }
+.topnav{ display:flex; gap:26px; flex-wrap:wrap; align-self:stretch; align-items:center; }
+.navlink{ font-family:'Oswald'; font-weight:600; letter-spacing:.8px; font-size:12.5px;
+  text-transform:uppercase; color:var(--muted) !important; text-decoration:none !important;
+  background:none; border:none; border-radius:0; white-space:nowrap;
+  padding:8px 0 13px; border-bottom:2px solid transparent; transition:color .15s; }
+.navlink:hover{ color:var(--ink) !important; }
+.navlink.active{ color:var(--ink) !important; border-bottom:2px solid; border-image:var(--grad) 1; }
 
 /* ---------------- mobile ---------------- */
 @media (max-width: 640px){
   .neon-logo{ font-size:40px !important; }
   .neon-tag{ font-size:8px; letter-spacing:3px; }
-  .kbar{ gap:8px; }
+  .kbar{ gap:14px; }
+  .topnav{ gap:14px; }
   .khome .neon-logo{ font-size:24px !important; }
-  .navlink{ font-size:11px; padding:5px 9px; letter-spacing:.5px; }
+  .navlink{ font-size:11px; padding:6px 0 10px; letter-spacing:.4px; }
   h1{ font-size:1.5rem !important; }
   h2{ font-size:1.25rem !important; }
   h3{ font-size:1.15rem !important; }
@@ -430,5 +462,7 @@ def logo_html(size: int = 52, tag: str | None = "The Keeper Hub") -> str:
             f'<div class="neon-logo" style="font-size:{size}px;">{letters}</div></div>{t}')
 
 
-def inject(st) -> None:
+def inject(st, page: str = "home") -> None:
     st.markdown(CSS, unsafe_allow_html=True)
+    g1, g2, g3 = _PAGE_ACCENT.get(page, _PAGE_ACCENT["home"])
+    st.markdown(f"<style>:root{{ --g1:{g1}; --g2:{g2}; --g3:{g3}; }}</style>", unsafe_allow_html=True)
