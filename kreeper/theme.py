@@ -243,16 +243,6 @@ table.lb tr.fa td{ background:rgba(43,181,232,.05); }
 .lottery-row-val{ flex:0 0 34px; text-align:right; font-family:'Anton'; font-weight:400;
   font-size:14px; color:var(--ink); }
 
-/* lottery selection-odds stacked bars: pick 1 / pick 2 / 3rd+ */
-.lottery-stack{ flex:1; height:22px; border-radius:6px; background:var(--panel2);
-  border:1px solid var(--line); overflow:hidden; display:flex; }
-.lottery-seg{ height:100%; display:flex; align-items:center; justify-content:center;
-  font-size:10.5px; font-weight:700; color:#fff; white-space:nowrap; overflow:hidden; }
-.lottery-seg-1{ background:var(--pink); }
-.lottery-seg-2{ background:var(--purple); }
-.lottery-seg-rest{ flex:1; display:flex; align-items:center; justify-content:center;
-  font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:.3px; }
-
 /* draft board */
 table.dboard{ width:100%; border-collapse:collapse; table-layout:fixed; font-family:'Oswald'; font-size:12px; }
 table.dboard th{ background:#f1ebfb; color:var(--ink); text-align:center; font-size:11px; padding:5px;

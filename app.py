@@ -1845,19 +1845,6 @@ def render_adp_trends() -> None:
     c2.markdown(_tbl(fallers), unsafe_allow_html=True)
 
 
-def _ordinal(k: int) -> str:
-    return "1st" if k == 1 else "2nd" if k == 2 else "3rd" if k == 3 else f"{k}th"
-
-
-def _median_pick(dist: list) -> int:
-    cum = 0.0
-    for i, p in enumerate(dist):
-        cum += p
-        if cum >= 0.5:
-            return i + 1
-    return len(dist)
-
-
 def _lottery_bar_panels(items: list, eyebrow: str, weight_label: str = "Weight",
                          weight_fmt=lambda w: f"{w:g}") -> None:
     """Shared bar-chart rendering for all three lottery states (pre-season,
@@ -1883,30 +1870,6 @@ def _lottery_bar_panels(items: list, eyebrow: str, weight_label: str = "Weight",
         f'<div class="kr-section"><div class="kr-section-head"><h3>{weight_label}</h3>'
         f'<span class="tag">{eyebrow}</span></div>'
         f'<div class="lottery-rows">{weight_rows_html}</div></div>',
-        unsafe_allow_html=True,
-    )
-
-    weights_by_owner = {oid: w for oid, w, _ in items}
-    probs = lottery.position_probabilities(weights_by_owner)
-    odds_rows_html = "".join(
-        (lambda p1, p2, med: (
-            f'<div class="lottery-row">'
-            f'<div class="lottery-row-label"><b>{config.manager_name(oid)}</b>'
-            f'<span class="lottery-row-sub">1st {p1 * 100:.0f}% · median {_ordinal(med)}</span></div>'
-            f'<div class="lottery-row-bar"><div class="lottery-stack">'
-            + (f'<div class="lottery-seg lottery-seg-1" style="width:{p1 * 100:.1f}%;">{p1 * 100:.0f}%</div>'
-               if p1 >= 0.06 else f'<div class="lottery-seg lottery-seg-1" style="width:{p1 * 100:.1f}%;"></div>')
-            + (f'<div class="lottery-seg lottery-seg-2" style="width:{p2 * 100:.1f}%;">{p2 * 100:.0f}%</div>'
-               if p2 >= 0.06 else f'<div class="lottery-seg lottery-seg-2" style="width:{p2 * 100:.1f}%;"></div>')
-            + '<div class="lottery-seg-rest">3rd+</div>'
-            + '</div></div></div>'
-        ))(probs[oid][0], probs[oid][1], _median_pick(probs[oid]))
-        for oid, _, _ in items
-    )
-    st.markdown(
-        f'<div class="kr-section"><div class="kr-section-head"><h3>Selection Odds</h3>'
-        f'<span class="tag">{"Exact probabilities" if eyebrow.startswith("Weighted") else "Based on these odds"}</span></div>'
-        f'<div class="lottery-rows">{odds_rows_html}</div></div>',
         unsafe_allow_html=True,
     )
 
