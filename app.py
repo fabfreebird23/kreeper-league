@@ -1301,6 +1301,78 @@ def _saved_slip(owner_id: str):
     return pd.DataFrame(rows)
 
 
+def _contract_card_html(row: pd.Series) -> str:
+    keep_year = row["Keep Year"]
+    keep_year_int = int(keep_year) if isinstance(keep_year, (int, float)) and not isinstance(keep_year, bool) else None
+    is_rookie = keep_year == 1 and row["Acq."] == "rookie→reg"
+    eligible = bool(row["Eligible"])
+    css_cls = "ccard rookie" if is_rookie else ("ccard" if eligible else "ccard ineligible")
+
+    cost_round = None
+    m = re.match(r"Round (\d+)", str(row["Reg. Cost"]))
+    if m:
+        cost_round = int(m.group(1))
+    cost_label = row["Reg. Cost"] if isinstance(row["Reg. Cost"], str) else "—"
+    if cost_round is not None:
+        cost_big, cost_small = f"R{cost_round}", "cost"
+    else:
+        cost_big, cost_small = "—", cost_label
+
+    adp_round = engine.adp_rank_to_round(row["ADP Rank"], NT) if row["ADP Rank"] else None
+
+    pips_n = keep_year_int if keep_year_int is not None else (3 if keep_year == "DONE" else 0)
+    pips = "".join(f'<span class="pip{" on" if i < pips_n else ""}"></span>' for i in range(3))
+
+    badges = []
+    if is_rookie:
+        badges.append('<span class="badge rookie">Rookie Keeper</span>')
+    elif keep_year_int is not None:
+        badges.append(f'<span class="badge">Year {keep_year_int} of 3</span>')
+    if adp_round:
+        badges.append(f'<span class="badge">ADP R{adp_round}</span>')
+    surplus = None
+    if cost_round is not None and adp_round is not None:
+        surplus = adp_round - cost_round
+        cls = "surplus-pos" if surplus > 0 else ("surplus-neg" if surplus < 0 else "")
+        sign = f"+{surplus}" if surplus > 0 else str(surplus)
+        badges.append(f'<span class="badge {cls}">{sign} RD SURPLUS</span>')
+
+    if not eligible:
+        note = "Not eligible to keep — clock's up or no pick left to use." if keep_year == "DONE" \
+            else "No pick available at or before this round."
+    elif surplus is not None and surplus > 5:
+        note = "Big discount to market — a strong keep."
+    elif surplus is not None and surplus < 0:
+        note = "Underwater vs. ADP — the market's moved past this cost."
+    else:
+        note = ""
+
+    return (
+        f'<div class="{css_cls}">'
+        f'<div class="ccard-top">'
+        f'<div><h4>{row["Player"]}</h4><div class="pos">{row["Pos"]} · {row["NFL"] or "FA"}</div></div>'
+        f'<div class="cost"><b>{cost_big}</b><small>{cost_small}</small></div>'
+        f'</div>'
+        f'<div class="pips">{pips}</div>'
+        f'<div class="badges">{"".join(badges)}</div>'
+        + (f'<div class="note">{note}</div>' if note else "")
+        + '</div>'
+    )
+
+
+def render_contract_cards(name: str, df: pd.DataFrame) -> None:
+    eligible_n = int(df["Eligible"].sum())
+    cards = "".join(_contract_card_html(r) for _, r in df.iterrows())
+    st.markdown(
+        f'<div class="kr-section">'
+        f'<div class="kr-section-head"><h3>Contracts — {name}</h3>'
+        f'<span class="tag">{eligible_n} eligible</span></div>'
+        f'<div class="contract-grid">{cards}</div>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+
 def render_my_keepers() -> None:
     st.markdown(f'<h3>{theme.crt("keepers")}Set Your Keepers</h3>', unsafe_allow_html=True)
     deadline, locked = keeper_lock()
@@ -1318,6 +1390,12 @@ def render_my_keepers() -> None:
 
     owner_id = NAME_TO_ID[name]
 
+    df = build_candidate_rows(owner_id)
+    if df.empty:
+        st.warning("No skill-position players found on your roster.")
+        return
+    render_contract_cards(name, df)
+
     if locked:
         slip = _saved_slip(owner_id)
         if slip is None:
@@ -1325,11 +1403,6 @@ def render_my_keepers() -> None:
         else:
             st.markdown("##### Your final keepers")
             st.dataframe(slip, hide_index=True, use_container_width=True)
-        return
-
-    df = build_candidate_rows(owner_id)
-    if df.empty:
-        st.warning("No skill-position players found on your roster.")
         return
 
     saved = {s["player_id"]: s for s in storage.get_manager_selections(owner_id, SEASON)}
@@ -2059,6 +2132,26 @@ def render_faab() -> None:
         unsafe_allow_html=True,
     )
 
+    leader_id = max(budgets, key=lambda o: budgets[o]["spent"]) if budgets else None
+    dm_preview = faab.dead_money(lid)
+    total_dead = sum(rec["dead"] for rec in dm_preview.values())
+    pct_spent = round(100 * pot["total_spent"] / max(1, pot["total_budget"]))
+    tiles = [
+        (f"${pot['total_spent']}", "League Spend", f"{pct_spent}% of ${pot['total_budget']}"),
+        (f"${pot['pot']}", "Pot Remaining", f"{100 - pct_spent}% left"),
+        (config.manager_name(leader_id).split()[0] if leader_id else "—", "Biggest Spender",
+         f"${budgets[leader_id]['spent']} owed" if leader_id else ""),
+        (f"${total_dead}", "Dead Money", "spent on dropped players"),
+    ]
+    st.markdown(
+        '<div class="tiles">' + "".join(
+            f'<div class="tile"><div class="num pink">{num}</div>'
+            f'<div class="lbl">{lbl}</div><div class="sub">{sub}</div></div>'
+            for num, lbl, sub in tiles
+        ) + '</div>',
+        unsafe_allow_html=True,
+    )
+
     def ring_color(pct: float) -> str:
         if pct >= 75:
             return "var(--red)"
@@ -2082,18 +2175,22 @@ def render_faab() -> None:
     st.caption("FAAB spent on a waiver add that's since been dropped — money "
                "that bought nothing still on your roster. “Live” is spend on "
                "players you still have.")
-    dm = faab.dead_money(lid)
+    dm = dm_preview
     rows = sorted(dm.items(), key=lambda kv: -kv[1]["dead"])
+    max_dead = max((rec["dead"] for _, rec in rows), default=0) or 1
     body = "".join(
         f'<tr><td class="pl">{config.manager_name(o)}</td>'
         f'<td class="num" style="color:var(--red);font-weight:700;">${rec["dead"]}</td>'
         f'<td class="num" style="color:var(--teal);">${rec["live"]}</td>'
-        f'<td class="num">{len(rec["moves"])}</td></tr>'
+        f'<td class="num">{len(rec["moves"])}</td>'
+        f'<td style="min-width:110px;"><div class="burnbar-track">'
+        f'<div class="burnbar-fill" style="width:{round(100 * rec["dead"] / max_dead)}%;'
+        f'background:var(--red);"></div></div></td></tr>'
         for o, rec in rows
     )
     st.markdown(
         '<div class="neonwrap"><table class="lb"><thead><tr>'
-        '<th>Team</th><th>Dead $</th><th>Live $</th><th>Waiver Adds</th>'
+        '<th>Team</th><th>Dead $</th><th>Live $</th><th>Waiver Adds</th><th>Burn</th>'
         f'</tr></thead><tbody>{body}</tbody></table></div>',
         unsafe_allow_html=True,
     )

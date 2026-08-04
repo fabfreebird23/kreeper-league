@@ -155,6 +155,15 @@ table.lb tr.fa td{ background:rgba(43,181,232,.05); }
 .kcard .empty{ color:var(--muted); font-style:italic; font-size:12px; }
 .kcard .rk-tag{ color:var(--amber); font-size:9px; font-weight:700; margin-left:4px; }
 
+/* stat tiles row */
+.tiles{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
+.tile{ background:#fff; border:1px solid var(--line); border-radius:10px; padding:12px 14px;
+  box-shadow:0 6px 18px rgba(123,92,255,.08); }
+.tile .num{ font-family:'Anton'; font-weight:400; font-size:24px; color:var(--ink); line-height:1; }
+.tile .num.pink{ color:var(--pink); }
+.tile .lbl{ font-size:10px; text-transform:uppercase; letter-spacing:.8px; color:var(--muted); margin-top:5px; }
+.tile .sub{ font-size:11px; color:var(--ink); opacity:.75; margin-top:1px; }
+
 /* FAAB debt ring — a CSS conic-gradient donut, no chart library needed */
 .faab-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
 .faab-card{ border:1px solid var(--line); border-radius:10px; background:#fff;
@@ -172,6 +181,38 @@ table.lb tr.fa td{ background:rgba(43,181,232,.05); }
   border:1px solid var(--line); margin-bottom:16px; }
 .faab-pot b{ font-family:'Anton'; font-size:38px; color:var(--pink); display:block; line-height:1; }
 .faab-pot span{ font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+.burnbar-track{ width:100%; height:8px; border-radius:5px; background:#efe9fb; overflow:hidden; }
+.burnbar-fill{ height:100%; border-radius:5px; }
+
+/* contract cards — per-player keeper economics browse grid */
+.kr-section{ border:1px solid var(--line); border-radius:10px; background:#fff;
+  padding:16px 18px 18px; margin-bottom:16px; box-shadow:0 6px 18px rgba(123,92,255,.10); }
+.kr-section-head{ display:flex; align-items:baseline; justify-content:space-between; gap:14px; margin-bottom:10px; }
+.kr-section-head h3{ font-size:16px; margin:0; }
+.kr-section-head .tag{ font-family:'Oswald'; font-weight:600; font-size:10.5px; letter-spacing:.6px;
+  text-transform:uppercase; color:var(--purple); }
+.contract-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+.ccard{ border:1px solid var(--line); border-radius:10px; padding:12px 14px 13px; position:relative;
+  background:var(--panel2); overflow:hidden; }
+.ccard::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--pink); }
+.ccard.rookie::before{ background:var(--purple); }
+.ccard.ineligible::before{ background:var(--muted); }
+.ccard-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+.ccard h4{ font-family:'Anton'; font-weight:400; font-size:14px; color:var(--ink); margin:0; letter-spacing:.3px; }
+.ccard .pos{ font-size:11px; color:var(--muted); margin-top:1px; }
+.ccard .cost{ text-align:right; }
+.ccard .cost b{ font-family:'Anton'; font-size:18px; color:var(--pink); display:block; line-height:1; font-weight:400; }
+.ccard .cost small{ font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+.pips{ display:flex; gap:4px; margin:8px 0 7px; }
+.pip{ width:15px; height:6px; border-radius:3px; background:#e3dcf4; }
+.pip.on{ background:var(--pink); }
+.badges{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px; }
+.badge{ font-family:'Oswald'; font-weight:600; font-size:9.5px; letter-spacing:.3px; text-transform:uppercase;
+  padding:3px 7px; border-radius:999px; border:1px solid var(--line); color:var(--muted); background:#fff; }
+.badge.rookie{ background:#efeaff; border-color:#dcd2ff; color:var(--purple); }
+.badge.surplus-pos{ background:#e3f8f4; border-color:#bfe9e2; color:var(--teal); }
+.badge.surplus-neg{ background:#fdeaec; border-color:#f4c7cb; color:var(--red); }
+.ccard .note{ font-size:11.5px; color:var(--muted); margin-top:1px; }
 
 /* draft board */
 table.dboard{ width:100%; border-collapse:collapse; table-layout:fixed; font-family:'Oswald'; font-size:12px; }
@@ -239,6 +280,9 @@ table.dboard td.dbcell{ padding:3px 4px; }
   .kcard{ min-height:auto; padding:8px 9px; }
   .kcard h4{ font-size:13px; }
   .kcard .kp{ font-size:12px; }
+
+  /* contract cards: single column */
+  .contract-grid{ grid-template-columns:1fr; }
 
   /* draft board: tiny + horizontal scroll */
   table.dboard{ font-size:9px; }
