@@ -154,9 +154,9 @@ h3{ font-family:'Oswald', sans-serif !important; font-weight:600 !important; let
   font-family:'Anton', sans-serif !important; letter-spacing:.8px; text-transform:uppercase;
   font-size:14px;
 }
-[data-testid="stTabs"] button[aria-selected="true"]{ color:var(--accent) !important; }
-[data-testid="stTabs"] button[aria-selected="true"] p{ color:var(--accent) !important; }
-[data-testid="stTabs"] [data-baseweb="tab-highlight"]{ background-color:var(--accent) !important; }
+[data-testid="stTabs"] button[aria-selected="true"]{ color:var(--ink) !important; }
+[data-testid="stTabs"] button[aria-selected="true"] p{ color:var(--ink) !important; }
+[data-testid="stTabs"] [data-baseweb="tab-highlight"]{ background:var(--grad) !important; }
 
 /* sidebar nav radio -> flat pills */
 [data-testid="stSidebar"] [role="radiogroup"] label{ border:1px solid var(--line); border-radius:6px;
