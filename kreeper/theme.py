@@ -84,7 +84,8 @@ html, body, [class*="css"]{ font-family:'Oswald', sans-serif; color:var(--ink) !
 [data-testid="stHeader"]{ background:transparent; }
 [data-testid="stSidebar"]{ background:#0d0d11; border-right:1px solid var(--line); }
 
-/* expanders — themed card, not the bare default row */
+/* expanders — themed card, not the bare default row (used for any plain
+   st.expander elsewhere in the app, e.g. the sidebar's Source status) */
 [data-testid="stExpander"]{ border:1px solid var(--line); border-left:4px solid var(--accent);
   border-radius:10px; background:var(--panel); margin-bottom:10px; overflow:hidden; }
 [data-testid="stExpander"] summary{ padding:14px 18px !important; font-family:'Oswald', sans-serif !important;
@@ -92,14 +93,21 @@ html, body, [class*="css"]{ font-family:'Oswald', sans-serif; color:var(--ink) !
 [data-testid="stExpander"] summary:hover{ background:rgba(255,255,255,.03); }
 [data-testid="stExpander"] summary [data-testid="stIconMaterial"]{ display:none; }
 [data-testid="stExpander"] [data-testid="stExpanderDetails"]{ padding:0 18px 18px; }
-/* cycle the left accent through the card palette for consecutive expanders
-   (team lists, etc.) so the stack doesn't read as one flat grey column */
-[data-testid="stVerticalBlock"] > [data-testid="stExpander"]:nth-of-type(6n+1){ border-left-color:#ff5aa0; }
-[data-testid="stVerticalBlock"] > [data-testid="stExpander"]:nth-of-type(6n+2){ border-left-color:#4f9dff; }
-[data-testid="stVerticalBlock"] > [data-testid="stExpander"]:nth-of-type(6n+3){ border-left-color:#3fd67c; }
-[data-testid="stVerticalBlock"] > [data-testid="stExpander"]:nth-of-type(6n+4){ border-left-color:#f0b840; }
-[data-testid="stVerticalBlock"] > [data-testid="stExpander"]:nth-of-type(6n+5){ border-left-color:#a06bff; }
-[data-testid="stVerticalBlock"] > [data-testid="stExpander"]:nth-of-type(6n){ border-left-color:#5ecbf0; }
+
+/* team contract-card dropdowns — plain HTML <details>/<summary> instead of
+   st.expander, so each one can carry its own two-tone color: "Contracts"
+   stays white, the team name picks up that team's card-palette color.
+   (Streamlit wraps every widget in identical generic divs, so nth-of-type
+   can't target "the Nth expander" via CSS — raw HTML sidesteps that.) */
+details.team-details{ border:1px solid var(--line); border-left:4px solid var(--accent);
+  border-radius:10px; background:var(--panel); margin-bottom:10px; overflow:hidden; }
+details.team-details summary{ list-style:none; cursor:pointer; padding:14px 18px;
+  font-family:'Oswald', sans-serif; font-weight:600; font-size:14.5px; color:var(--ink);
+  transition:background .12s; }
+details.team-details summary::-webkit-details-marker{ display:none; }
+details.team-details summary:hover{ background:rgba(255,255,255,.03); }
+details.team-details .team-details-body{ padding:4px 18px 18px; }
+details.team-details .empty-note{ color:var(--muted); font-size:13px; padding:0 0 4px; margin:0; }
 
 /* headings — h2 carries the page's gradient as text color, not a filled bar */
 h1{ font-family:'Anton', sans-serif !important; letter-spacing:1px; text-transform:uppercase;
@@ -271,10 +279,15 @@ table.lb tr.fa td{ background:rgba(94,203,240,.06); }
 .ccard{ border:1px solid var(--line); border-radius:10px; padding:14px 16px 15px; position:relative;
   background:var(--panel2); overflow:hidden; transition:border-color .15s; }
 .ccard:hover{ border-color:rgba(255,255,255,.22); }
-.ccard::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--accent); }
-.ccard.rookie::before{ background:var(--purple); }
-.ccard.wall::before{ background:var(--red); }
-.ccard.ineligible::before{ background:var(--muted); }
+/* left accent = position, so a grid of cards reads by color at a glance */
+.ccard::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--muted); }
+.ccard.pos-QB::before{ background:var(--amber); }
+.ccard.pos-RB::before{ background:var(--teal); }
+.ccard.pos-WR::before{ background:var(--cyan); }
+.ccard.pos-TE::before{ background:var(--accent); }
+/* tier still reads via a corner ring + dimming, independent of position color */
+.ccard.wall{ box-shadow:inset 0 0 0 1px rgba(255,92,108,.5); }
+.ccard.ineligible{ opacity:.55; }
 .ccard-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
 .ccard h4{ font-family:'Anton'; font-weight:400; font-size:18px; color:var(--ink); margin:0;
   letter-spacing:.2px; line-height:1.15; }

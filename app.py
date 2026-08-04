@@ -801,23 +801,30 @@ def _leaderboard_html(df) -> str:
 
 def render_team_boxes() -> None:
     """Every team's kept players as contract cards (pips, badges, surplus —
-    same cards as Set My Keepers), one expander per team so eight rosters
-    don't turn Home into an endless scroll."""
+    same cards as Set My Keepers), one dropdown per team so eight rosters
+    don't turn Home into an endless scroll. Plain HTML <details>/<summary>
+    rather than st.expander so each team's name can carry its own color —
+    Streamlit wraps every widget in identical generic divs, so there's no
+    CSS way to color "the Nth expander" differently once it's a real widget."""
     data = current_keepers()
-    for oid, m in MANAGERS.items():
+    for i, (oid, m) in enumerate(MANAGERS.items()):
         picks = data.get(oid, [])
-        n = len(picks)
-        with st.expander(f"{m['name']} — {n} keeper{'' if n == 1 else 's'}" if n else f"{m['name']} — no keepers yet"):
-            if not picks:
-                st.caption("Nothing submitted yet.")
-                continue
+        color = theme.card_color(i)
+        if not picks:
+            body = '<p class="empty-note">Nothing submitted yet.</p>'
+        else:
             kept_ids = {s.get("player_id") for s in picks}
             df = build_candidate_rows(oid)
             df = df[df["player_id"].isin(kept_ids)]
-            if df.empty:
-                st.caption("Nothing to show.")
-            else:
-                render_contract_cards(m["name"], df)
+            body = ('<p class="empty-note">Nothing to show.</p>' if df.empty
+                     else _contract_cards_grid_html(df))
+        st.markdown(
+            f'<details class="team-details" style="border-left-color:{color};">'
+            f'<summary>Contracts — <span style="color:{color};">{m["name"]}</span></summary>'
+            f'<div class="team-details-body">{body}</div>'
+            f'</details>',
+            unsafe_allow_html=True,
+        )
 
 
 def render_home() -> None:
@@ -1067,6 +1074,11 @@ def asset_value(rank: int, rookie: bool, rookie_factor: float | None = None) -> 
         return base
     rf = config.mock_draft_rookie_factor() if rookie_factor is None else rookie_factor
     return max(1, round(base / max(0.15, rf)))
+
+
+def _pick_value(rnd: int) -> int:
+    """Points for a draft pick in a given round (valued at a mid-round slot)."""
+    return _draft_value((rnd - 1) * NT + NT // 2)
 
 
 def _ordinal(n: int) -> str:
@@ -1434,9 +1446,9 @@ def _contract_card_html(row: pd.Series) -> str:
     is_rookie = keep_year == 1 and row["Acq."] == "rookie→reg"
     eligible = bool(row["Eligible"])
     at_wall = eligible and keep_year_int == 3
-    css_cls = ("ccard rookie" if is_rookie else
-               "ccard wall" if at_wall else
-               "ccard" if eligible else "ccard ineligible")
+    tier_cls = ("rookie" if is_rookie else "wall" if at_wall else
+                "" if eligible else "ineligible")
+    css_cls = f'ccard pos-{row["Pos"]} {tier_cls}'.strip()
 
     cost_round = None
     m = re.match(r"Round (\d+)", str(row["Reg. Cost"]))
@@ -1490,15 +1502,19 @@ def _contract_card_html(row: pd.Series) -> str:
     )
 
 
-def render_contract_cards(name: str, df: pd.DataFrame) -> None:
+def _contract_cards_grid_html(df: pd.DataFrame) -> str:
+    return '<div class="contract-grid">' + "".join(_contract_card_html(r) for _, r in df.iterrows()) + '</div>'
+
+
+def render_contract_cards(name: str, df: pd.DataFrame, show_title: bool = True) -> None:
     eligible_n = int(df["Eligible"].sum())
-    cards = "".join(_contract_card_html(r) for _, r in df.iterrows())
-    st.markdown(
-        f'<div class="kr-section">'
+    head = (
         f'<div class="kr-section-head"><h3>Contracts — <span class="g">{name}</span></h3>'
         f'<span class="tag">{eligible_n} eligible</span></div>'
-        f'<div class="contract-grid">{cards}</div>'
-        f'</div>',
+        if show_title else ""
+    )
+    st.markdown(
+        f'<div class="kr-section">{head}{_contract_cards_grid_html(df)}</div>',
         unsafe_allow_html=True,
     )
 
@@ -2446,18 +2462,18 @@ elif page == "trades":
     with t3:
         render_trade_analyzer()
 elif page == "league":
-    t1, t2, t3, t4, t5 = st.tabs(["Title Odds", "Record Book", "Keeper Hit-Rate",
-                                   "Superlatives", "FAAB Pot"])
+    t1, t2, t3, t4, t5 = st.tabs(["FAAB Pot", "Title Odds", "Record Book",
+                                   "Keeper Hit-Rate", "Superlatives"])
     with t1:
-        render_odds()
-    with t2:
-        render_record_book()
-    with t3:
-        render_keeper_hitrate()
-    with t4:
-        render_superlatives()
-    with t5:
         render_faab()
+    with t2:
+        render_odds()
+    with t3:
+        render_record_book()
+    with t4:
+        render_keeper_hitrate()
+    with t5:
+        render_superlatives()
 elif page == "players":
     t1, t2, t3 = st.tabs(["Rookies", "Consensus ADP", "ADP Trends"])
     with t1:
