@@ -81,14 +81,14 @@ _COUNTDOWN_TEMPLATE = """
  *{margin:0;box-sizing:border-box;}
  html,body{background:transparent;overflow:hidden;font-family:'Oswald',sans-serif;}
  .cd{display:flex;flex-direction:column;align-items:center;gap:6px;
-   background:#fff;border:2px solid #ff4f9d;border-radius:16px;padding:14px 18px;
+   background:#fff;border:2px solid #2f7de0;border-radius:16px;padding:14px 18px;
    box-shadow:0 6px 22px rgba(123,92,255,.18);}
  .ttl{font-family:'Anton',sans-serif;text-transform:uppercase;letter-spacing:3px;
    font-size:15px;color:#7b5cff;}
  .units{display:flex;gap:16px;}
  .u{display:flex;flex-direction:column;align-items:center;min-width:60px;}
- .u .n{font-family:'Anton',sans-serif;font-size:42px;line-height:1;color:#ff4f9d;
-   text-shadow:0 0 12px rgba(255,79,157,.45);}
+ .u .n{font-family:'Anton',sans-serif;font-size:42px;line-height:1;color:#2f7de0;
+   text-shadow:0 0 12px rgba(47,125,224,.45);}
  .u .l{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#8b86a0;margin-top:5px;}
  .sub{font-size:12px;letter-spacing:1px;color:#6a6580;}
  .locked{font-family:'Anton',sans-serif;font-size:30px;color:#7b5cff;letter-spacing:2px;}
@@ -809,7 +809,7 @@ def render_team_boxes() -> None:
 
 def render_home() -> None:
     render_countdown()
-    st.markdown(f'<h2>{theme.crt("top")}Top 50 Keeper Values</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>Top 50 Keeper Values</h2>', unsafe_allow_html=True)
     st.caption("Best keeper bargains across every roster — draft value gained by keeping a "
                "player (cost round vs. consensus ADP round). Green = declared keeper · "
                "purple RK = rookie keeper · cyan = free agent. Real NFL rookies are on the Rookies tab.")
@@ -833,7 +833,7 @@ def render_home() -> None:
         st.info("No players match those filters (or no ADP data yet).")
     else:
         st.markdown(_leaderboard_html(lb), unsafe_allow_html=True)
-    st.markdown(f'<h2>{theme.crt("board")}Submitted Keepers by Team</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>Submitted Keepers by Team</h2>', unsafe_allow_html=True)
     render_team_boxes()
 
     # Export — grab every submitted keeper to paste into the year-to-year sheet.
@@ -854,7 +854,7 @@ def render_home() -> None:
         )
 
     # Recent updates — who changed their keepers and when (shared-URL audit trail).
-    st.markdown(f'<h3>{theme.crt("keepers")}Recent Updates</h3>', unsafe_allow_html=True)
+    st.markdown(f'<h3>Recent Updates</h3>', unsafe_allow_html=True)
     deadline, locked = keeper_lock()
     if deadline:
         st.caption((f"Submissions closed {deadline:%b %d, %Y · %-I:%M %p}."
@@ -913,7 +913,7 @@ def build_record_book():
 
 
 def render_record_book() -> None:
-    st.markdown(f'<h2>{theme.crt("top")}League Record Book</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>League Record Book</h2>', unsafe_allow_html=True)
     seasons, agg = build_record_book()
     if not seasons:
         st.info("No completed seasons on record yet.")
@@ -992,7 +992,7 @@ def _pick_value(rnd: int) -> int:
 
 
 def render_trade_analyzer() -> None:
-    st.markdown(f'<h2>{theme.crt("draft")}Trade Analyzer</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>Trade Analyzer</h2>', unsafe_allow_html=True)
     st.caption("Build a deal and grade it. Each player is valued by their talent "
                "(ADP draft position) plus any keeper bargain on top; picks by a "
                "draft-value curve. Higher total wins.")
@@ -1100,7 +1100,7 @@ def render_trade_analyzer() -> None:
 
 
 def render_keeper_landscape() -> None:
-    st.markdown(f'<h2>{theme.crt("board")}Keeper Landscape</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>Keeper Landscape</h2>', unsafe_allow_html=True)
     st.caption("Positional scarcity: of the top players at each position, who's "
                "likely kept (and by whom) vs. left in the draft pool. Thin pools "
                "= positions to target early; deep pools = wait.")
@@ -1150,7 +1150,7 @@ def render_keeper_landscape() -> None:
 
 
 def render_mock_draft() -> None:
-    st.markdown(f'<h2>{theme.crt("draft")}Projected Draft</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>Projected Draft</h2>', unsafe_allow_html=True)
     st.caption("A full projected board: each team's likely keepers (declared + "
                "best by value) sit in their pick slots, and every other pick is the "
                "best available by consensus ADP with our league's rookie premium.")
@@ -1194,7 +1194,7 @@ def render_mock_draft() -> None:
 
 
 def render_trade_targets() -> None:
-    st.markdown(f'<h2>{theme.crt("draft")}Keeper Trade Market</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>Keeper Trade Market</h2>', unsafe_allow_html=True)
     st.caption("Pick the round you want to keep someone at — these are the players "
                "across the league whose keeper cost is that round. The keeper round "
                "carries over on a trade, so you could deal for one and keep them "
@@ -1263,7 +1263,7 @@ def render_trade_targets() -> None:
 
 
 def render_rookies() -> None:
-    st.markdown(f'<h3>{theme.crt("rookies")}{SEASON} Top Rookies</h3>', unsafe_allow_html=True)
+    st.markdown(f'<h3>{SEASON} Top Rookies</h3>', unsafe_allow_html=True)
     st.caption("This year's NFL rookie class ranked by our consensus ADP — your rookie-keeper targets.")
     df = build_rookies_table(40)
     if df.empty:
@@ -1374,7 +1374,7 @@ def render_contract_cards(name: str, df: pd.DataFrame) -> None:
 
 
 def render_my_keepers() -> None:
-    st.markdown(f'<h3>{theme.crt("keepers")}Set Your Keepers</h3>', unsafe_allow_html=True)
+    st.markdown(f'<h3>Set Your Keepers</h3>', unsafe_allow_html=True)
     deadline, locked = keeper_lock()
     if locked:
         st.warning(f"Keeper submissions closed on **{deadline:%b %d, %Y · %-I:%M %p}**. "
@@ -1649,7 +1649,7 @@ def build_championship_odds():
 
 
 def render_odds() -> None:
-    st.markdown(f'<h2>{theme.crt("top")}{SEASON} Title Odds</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>{SEASON} Title Odds</h2>', unsafe_allow_html=True)
     st.caption("For fun — rosters reset at the draft, so this prices each team on "
                "what carries over: three seasons of results plus keeper strength "
                "and value. A Vegas-style line, juice included. Not a real "
@@ -1664,7 +1664,7 @@ def render_odds() -> None:
         body.append(
             f'<tr><td class="rk">{i+1}</td>'
             f'<td class="pl">{r["Team"]} {tag}</td>'
-            f'<td class="num" style="font-family:\'Anton\';font-size:17px;color:var(--pink);">{r["Odds"]}</td>'
+            f'<td class="num" style="font-family:\'Anton\';font-size:17px;color:var(--accent);">{r["Odds"]}</td>'
             f'<td class="num">{r["Win %"]}%</td>'
             f'<td class="num">{r["Record"]}</td>'
             f'<td class="num">{r["KeeperRk"]}/{n}</td>'
@@ -1684,7 +1684,7 @@ def render_odds() -> None:
 
 
 def render_draft_board() -> None:
-    st.markdown(f'<h3>{theme.crt("draft")}{SEASON} Draft Board</h3>', unsafe_allow_html=True)
+    st.markdown(f'<h3>{SEASON} Draft Board</h3>', unsafe_allow_html=True)
     try:
         board = get_board()
     except Exception as e:  # noqa: BLE001
@@ -1754,7 +1754,7 @@ def render_draft_board() -> None:
         'background:rgba(22,184,166,.35);margin-right:5px;"></span>keeper locked in '
         '(a name in parentheses = kept on a pick acquired via trade) &nbsp;&middot;&nbsp; '
         '<span style="display:inline-block;width:10px;height:10px;border-radius:2px;'
-        'background:rgba(255,79,157,.28);margin-right:5px;"></span>traded pick '
+        'background:rgba(47,125,224,.28);margin-right:5px;"></span>traded pick '
         '(new owner, &#9668; original owner) &nbsp;&middot;&nbsp; plain cell = pick owner. '
         'Keepers appear here for everyone as soon as they\'re saved.',
         unsafe_allow_html=True,
@@ -1762,7 +1762,7 @@ def render_draft_board() -> None:
 
 
 def render_adp() -> None:
-    st.markdown(f'<h3>{theme.crt("adp")}{SEASON} Consensus ADP</h3>', unsafe_allow_html=True)
+    st.markdown(f'<h3>{SEASON} Consensus ADP</h3>', unsafe_allow_html=True)
     st.caption("One consensus number per player, averaged across all sources: "
                + ", ".join(ADP_META.get("sources", [])) + ". The **Move** column shows each "
                "player's consensus-rank change over the selected window (▲ = drafted earlier).")
@@ -1804,7 +1804,7 @@ def render_adp() -> None:
 
 
 def render_adp_trends() -> None:
-    st.markdown(f'<h2>{theme.crt("adp")}ADP Risers & Fallers</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>ADP Risers & Fallers</h2>', unsafe_allow_html=True)
     win = st.selectbox("Window", [7, 14, 30], format_func=lambda d: f"Last {d} days", key="adp_win")
     mv = adp_consensus.adp_movement(SEASON, window_days=win)
     if not mv.get("moves"):
@@ -1875,7 +1875,7 @@ def _lottery_bar_panels(items: list, eyebrow: str, weight_label: str = "Weight",
 
 
 def render_lottery() -> None:
-    st.markdown(f'<h2>{theme.crt("draft")}Draft-Order Lottery</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>Draft-Order Lottery</h2>', unsafe_allow_html=True)
     weights = config.lottery_weights()
     st.caption(
         "One weighted lottery across all " + str(len(weights)) + " teams sets NEXT "
@@ -1959,7 +1959,7 @@ def render_lottery() -> None:
             st.rerun()
         return
 
-    st.markdown(f'<h3>{theme.crt("draft")}Next Season\'s Draft Order</h3>', unsafe_allow_html=True)
+    st.markdown(f'<h3>Next Season\'s Draft Order</h3>', unsafe_allow_html=True)
     cards = [
         f'<div class="kcard"><h4>Pick {i + 1}</h4><p>{config.manager_name(oid)}</p></div>'
         for i, oid in enumerate(drawn)
@@ -1977,7 +1977,7 @@ def render_lottery() -> None:
 
 
 def render_draft_capital() -> None:
-    st.markdown(f'<h2>{theme.crt("draft")}Draft Capital & Keeper Cost</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>Draft Capital & Keeper Cost</h2>', unsafe_allow_html=True)
     st.caption("What each team brings to the draft after keepers: picks they'll "
                "actually make, future-pick stash, and a win-now vs. rebuild lean.")
     rows = []
@@ -2015,7 +2015,7 @@ def render_draft_capital() -> None:
 
 
 def render_roster_needs() -> None:
-    st.markdown(f'<h2>{theme.crt("board")}Roster Needs</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>Roster Needs</h2>', unsafe_allow_html=True)
     st.caption("After likely keepers, the starting spots each team still has to draft. "
                "set · one short · multiple holes.")
     from collections import Counter
@@ -2100,7 +2100,7 @@ def build_keeper_hitrate():
 
 
 def render_keeper_hitrate() -> None:
-    st.markdown(f'<h2>{theme.crt("top")}Keeper Hit-Rate</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>Keeper Hit-Rate</h2>', unsafe_allow_html=True)
     st.caption("Did past keepers pay off? A keep \"hits\" if the player finished a "
                "startable positional rank that season (QB/TE top-12, RB top-24, WR top-30).")
     per_owner, decisions = build_keeper_hitrate()
@@ -2131,7 +2131,7 @@ def render_keeper_hitrate() -> None:
 
 
 def render_faab() -> None:
-    st.markdown(f'<h2>{theme.crt("top")}FAAB Pot</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>FAAB Pot</h2>', unsafe_allow_html=True)
     st.caption("The consolation-bracket champion wins the league's total "
                "**unspent** FAAB budget at year end (see the Draft-Order "
                "Lottery tab for how that champion is decided). Every dollar "
@@ -2163,7 +2163,7 @@ def render_faab() -> None:
     ]
     st.markdown(
         '<div class="tiles">' + "".join(
-            f'<div class="tile"><div class="num pink">{num}</div>'
+            f'<div class="tile"><div class="num accent">{num}</div>'
             f'<div class="lbl">{lbl}</div><div class="sub">{sub}</div></div>'
             for num, lbl, sub in tiles
         ) + '</div>',
@@ -2189,7 +2189,7 @@ def render_faab() -> None:
         )
     st.markdown('<div class="faab-grid">' + "".join(cards) + "</div>", unsafe_allow_html=True)
 
-    st.markdown(f'<h3>{theme.crt("board")}Dead Money</h3>', unsafe_allow_html=True)
+    st.markdown(f'<h3>Dead Money</h3>', unsafe_allow_html=True)
     st.caption("FAAB spent on a waiver add that's since been dropped — money "
                "that bought nothing still on your roster. “Live” is spend on "
                "players you still have.")
@@ -2215,12 +2215,12 @@ def render_faab() -> None:
 
 
 def render_superlatives() -> None:
-    st.markdown(f'<h2>{theme.crt("rookies")}Superlatives</h2>', unsafe_allow_html=True)
+    st.markdown(f'<h2>Superlatives</h2>', unsafe_allow_html=True)
     cards = []
 
     def card(title, who, sub):
         cards.append(f'<div class="kcard"><h4>{title}</h4>'
-                     f'<div style="font-family:\'Anton\';font-size:18px;color:var(--pink);">{who}</div>'
+                     f'<div style="font-family:\'Anton\';font-size:18px;color:var(--accent);">{who}</div>'
                      f'<div style="font-size:12px;opacity:.8;">{sub}</div></div>')
 
     lb = build_value_leaderboard(400)

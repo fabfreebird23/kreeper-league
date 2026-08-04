@@ -4,22 +4,6 @@ custom HTML surfaces (leaderboard, team cards, draft board) and Sleeper headshot
 """
 from __future__ import annotations
 
-import base64
-import pathlib
-
-_ASSETS = pathlib.Path(__file__).resolve().parent.parent / "assets"
-
-
-def _b64(path: pathlib.Path) -> str:
-    return "data:image/png;base64," + base64.b64encode(path.read_bytes()).decode()
-
-
-# Classic basketball sneaker (one colorway per section), embedded as base64
-_SNEAKERS = {
-    k: _b64(_ASSETS / f"sneaker_{k}.png")
-    for k in ("top", "board", "draft", "adp", "keepers", "rookies")
-}
-
 SLEEPER_IMG = "https://sleepercdn.com/content/nfl/players/thumb/{pid}.jpg"
 SLEEPER_DEFAULT = "https://sleepercdn.com/images/v2/icons/player_default.webp"
 ESPN_IMG = "https://a.espncdn.com/i/headshots/nfl/players/full/{eid}.png"
@@ -35,7 +19,7 @@ def set_espn_ids(mapping: dict) -> None:
     _ESPN_BY_PID.update({str(k): str(v) for k, v in mapping.items() if v})
 
 # Pastel palette
-PINK = "#ff4f9d"
+ACCENT = "#2f7de0"
 PURPLE = "#7b5cff"
 TEAL = "#16b8a6"
 CYAN = "#2bb5e8"
@@ -48,7 +32,7 @@ CSS = """
 
 :root{
   --bg:#f4f0fb; --panel:#ffffff; --panel2:#f7f3fe;
-  --pink:#ff4f9d; --purple:#7b5cff; --teal:#16b8a6; --cyan:#2bb5e8; --amber:#f5a524; --red:#e5484d;
+  --accent:#2f7de0; --purple:#7b5cff; --teal:#16b8a6; --cyan:#2bb5e8; --amber:#f5a524; --red:#e5484d;
   --ink:#2b2540; --muted:#8a83a6; --line:#e4ddf2;
 }
 
@@ -56,7 +40,7 @@ CSS = """
 .stApp{
   background-color:#fbf3ec;
   background-image:
-    radial-gradient(74% 56% at 3% -8%, rgba(255,116,134,.30), transparent 58%),
+    radial-gradient(74% 56% at 3% -8%, rgba(53,120,224,.26), transparent 58%),
     radial-gradient(70% 52% at 105% -6%, rgba(54,196,206,.26), transparent 58%),
     radial-gradient(72% 40% at 50% 86%, rgba(255,176,92,.24), transparent 66%),
     radial-gradient(130% 130% at 50% 42%, transparent 56%, rgba(150,90,120,.09)),
@@ -75,12 +59,12 @@ html, body, [class*="css"]{ font-family:'Oswald', sans-serif; color:var(--ink); 
 .stApp::after{ content:""; position:fixed; left:-25%; right:-25%; bottom:-2vh; height:48vh;
   z-index:-1; pointer-events:none; opacity:.55;
   background-image:
-    repeating-linear-gradient(90deg, rgba(255,116,134,.55) 0 1px, transparent 1px 7%),
+    repeating-linear-gradient(90deg, rgba(53,120,224,.45) 0 1px, transparent 1px 7%),
     repeating-linear-gradient(0deg, rgba(54,196,206,.45) 0 1px, transparent 1px 20%);
   transform:perspective(32vh) rotateX(65deg); transform-origin:bottom center;
   -webkit-mask-image:linear-gradient(to top,#000 4%, transparent 72%);
   mask-image:linear-gradient(to top,#000 4%, transparent 72%);
-  filter:drop-shadow(0 0 5px rgba(255,140,120,.35)); }
+  filter:drop-shadow(0 0 5px rgba(53,120,224,.30)); }
 
 [data-testid="stHeader"]{ background:transparent; }
 [data-testid="stSidebar"]{ background:rgba(255,255,255,.72); backdrop-filter:blur(4px);
@@ -88,11 +72,10 @@ html, body, [class*="css"]{ font-family:'Oswald', sans-serif; color:var(--ink); 
 
 /* headings */
 h1,h2,h3{ font-family:'Anton', sans-serif !important; letter-spacing:1px; text-transform:uppercase; }
-h1{ color:var(--pink); }
+h1{ color:var(--accent); }
 h2{ color:var(--purple); }
 h3{ color:var(--ink); }
 
-/* graffiti wordmark — pink with teal retro offset */
 /* ThunderCats wordmark — liquid-chrome steel letters + red-disc cat emblem */
 .tc-wrap{ display:inline-flex; align-items:center; gap:8px; }
 .tc-emblem{ flex:0 0 auto; filter:drop-shadow(1px 2px 3px rgba(8,14,30,.5)); }
@@ -116,24 +99,24 @@ h3{ color:var(--ink); }
   font-family:'Anton', sans-serif !important; letter-spacing:.8px; text-transform:uppercase;
   font-size:14px;
 }
-[data-testid="stTabs"] button[aria-selected="true"]{ color:var(--pink) !important; }
-[data-testid="stTabs"] button[aria-selected="true"] p{ color:var(--pink) !important; }
-[data-testid="stTabs"] [data-baseweb="tab-highlight"]{ background-color:var(--pink) !important; }
+[data-testid="stTabs"] button[aria-selected="true"]{ color:var(--accent) !important; }
+[data-testid="stTabs"] button[aria-selected="true"] p{ color:var(--accent) !important; }
+[data-testid="stTabs"] [data-baseweb="tab-highlight"]{ background-color:var(--accent) !important; }
 
 /* sidebar nav radio -> pastel pills */
 [data-testid="stSidebar"] [role="radiogroup"] label{ border:1px solid var(--line); border-radius:6px;
   padding:6px 10px; margin-bottom:6px; background:#fff; transition:.15s; }
-[data-testid="stSidebar"] [role="radiogroup"] label:hover{ border-color:var(--pink); }
+[data-testid="stSidebar"] [role="radiogroup"] label:hover{ border-color:var(--accent); }
 [data-testid="stSidebar"] [role="radiogroup"] label p{ font-weight:600; text-transform:uppercase; letter-spacing:.5px; font-size:13px;}
 
 .stButton>button{ font-family:'Anton'; letter-spacing:1px; text-transform:uppercase;
-  background:var(--pink); color:#fff; border:none; border-radius:4px; }
+  background:var(--accent); color:#fff; border:none; border-radius:4px; }
 .stButton>button:hover{ background:var(--purple); color:#fff; }
 
 /* ---- shared custom tables ---- */
 .neonwrap{ overflow-x:auto; border:1px solid var(--line); border-radius:10px;
   background:rgba(255,255,255,.78); backdrop-filter:blur(2px);
-  box-shadow:0 10px 30px rgba(123,92,255,.12), 0 0 0 1px rgba(255,79,157,.06); }
+  box-shadow:0 10px 30px rgba(123,92,255,.12), 0 0 0 1px rgba(47,125,224,.06); }
 table.lb{ width:100%; border-collapse:collapse; font-family:'Oswald'; font-size:14px; }
 table.lb th{ background:#f1ebfb; color:var(--muted); text-transform:uppercase; letter-spacing:1px;
   font-size:11px; text-align:left; padding:8px 10px; border-bottom:2px solid var(--line); position:sticky; top:0; }
@@ -141,7 +124,7 @@ table.lb td{ padding:6px 10px; border-bottom:1px solid #efeaf8; }
 table.lb tr:hover td{ background:#faf7ff; }
 table.lb tr.kept td{ background:linear-gradient(90deg, rgba(22,184,166,.18), rgba(22,184,166,.04)); }
 table.lb tr.kept td:first-child{ box-shadow:inset 3px 0 0 var(--teal); }
-.lb .rk{ font-family:'Anton'; color:var(--pink); width:34px; text-align:center; }
+.lb .rk{ font-family:'Anton'; color:var(--accent); width:34px; text-align:center; }
 .lb .pl{ font-weight:600; }
 .lb .pos{ color:var(--muted); font-size:11px; font-weight:600; }
 .lb .val{ font-family:'Anton'; color:var(--teal); text-align:right; }
@@ -155,11 +138,11 @@ table.lb tr.fa td{ background:rgba(43,181,232,.05); }
 .hs{ width:30px; height:30px; border-radius:50%; object-fit:cover; vertical-align:middle;
   background:#efeaf8; border:1px solid var(--line); margin-right:8px; }
 .posdot{ display:inline-block; width:6px;height:6px;border-radius:50%;margin-right:5px;vertical-align:middle;}
-.p-QB{background:var(--amber);} .p-RB{background:var(--teal);} .p-WR{background:var(--cyan);} .p-TE{background:var(--pink);}
+.p-QB{background:var(--amber);} .p-RB{background:var(--teal);} .p-WR{background:var(--cyan);} .p-TE{background:var(--accent);}
 
 /* team cards */
 .kcards{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
-.kcard{ border:1px solid var(--line); border-top:3px solid var(--pink); border-radius:10px;
+.kcard{ border:1px solid var(--line); border-top:3px solid var(--accent); border-radius:10px;
   background:#fff; padding:10px 12px; min-height:96px; box-shadow:0 6px 18px rgba(123,92,255,.10); }
 .kcard h4{ font-family:'Anton'; font-size:15px; margin:0 0 6px; color:var(--purple); letter-spacing:.5px; }
 .kcard .kp{ display:flex; align-items:center; font-size:13px; padding:2px 0; }
@@ -173,7 +156,7 @@ table.lb tr.fa td{ background:rgba(43,181,232,.05); }
 .tile{ background:#fff; border:1px solid var(--line); border-radius:10px; padding:12px 14px;
   box-shadow:0 6px 18px rgba(123,92,255,.08); }
 .tile .num{ font-family:'Anton'; font-weight:400; font-size:24px; color:var(--ink); line-height:1; }
-.tile .num.pink{ color:var(--pink); }
+.tile .num.accent{ color:var(--accent); }
 .tile .lbl{ font-size:10px; text-transform:uppercase; letter-spacing:.8px; color:var(--muted); margin-top:5px; }
 .tile .sub{ font-size:11px; color:var(--ink); opacity:.75; margin-top:1px; }
 
@@ -186,13 +169,13 @@ table.lb tr.fa td{ background:rgba(43,181,232,.05); }
   display:flex; align-items:center; justify-content:center; }
 .faab-ring-hole{ width:64px; height:64px; border-radius:50%; background:#fff;
   display:flex; flex-direction:column; align-items:center; justify-content:center; }
-.faab-ring-hole b{ font-family:'Anton'; font-size:16px; color:var(--pink); line-height:1; }
+.faab-ring-hole b{ font-family:'Anton'; font-size:16px; color:var(--accent); line-height:1; }
 .faab-ring-hole small{ font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
 .faab-card .rem{ font-size:11px; color:var(--muted); margin-top:2px; }
 .faab-pot{ text-align:center; padding:18px 12px; border-radius:12px;
-  background:linear-gradient(135deg, rgba(255,79,157,.10), rgba(43,181,232,.10));
+  background:linear-gradient(135deg, rgba(47,125,224,.10), rgba(43,181,232,.10));
   border:1px solid var(--line); margin-bottom:16px; }
-.faab-pot b{ font-family:'Anton'; font-size:38px; color:var(--pink); display:block; line-height:1; }
+.faab-pot b{ font-family:'Anton'; font-size:38px; color:var(--accent); display:block; line-height:1; }
 .faab-pot span{ font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
 .burnbar-track{ width:100%; height:8px; border-radius:5px; background:#efe9fb; overflow:hidden; }
 .burnbar-fill{ height:100%; border-radius:5px; }
@@ -207,18 +190,18 @@ table.lb tr.fa td{ background:rgba(43,181,232,.05); }
 .contract-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
 .ccard{ border:1px solid var(--line); border-radius:10px; padding:12px 14px 13px; position:relative;
   background:var(--panel2); overflow:hidden; }
-.ccard::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--pink); }
+.ccard::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--accent); }
 .ccard.rookie::before{ background:var(--purple); }
 .ccard.ineligible::before{ background:var(--muted); }
 .ccard-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
 .ccard h4{ font-family:'Anton'; font-weight:400; font-size:14px; color:var(--ink); margin:0; letter-spacing:.3px; }
 .ccard .pos{ font-size:11px; color:var(--muted); margin-top:1px; }
 .ccard .cost{ text-align:right; }
-.ccard .cost b{ font-family:'Anton'; font-size:18px; color:var(--pink); display:block; line-height:1; font-weight:400; }
+.ccard .cost b{ font-family:'Anton'; font-size:18px; color:var(--accent); display:block; line-height:1; font-weight:400; }
 .ccard .cost small{ font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
 .pips{ display:flex; gap:4px; margin:8px 0 7px; }
 .pip{ width:15px; height:6px; border-radius:3px; background:#e3dcf4; }
-.pip.on{ background:var(--pink); }
+.pip.on{ background:var(--accent); }
 .badges{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px; }
 .badge{ font-family:'Oswald'; font-weight:600; font-size:9.5px; letter-spacing:.3px; text-transform:uppercase;
   padding:3px 7px; border-radius:999px; border:1px solid var(--line); color:var(--muted); background:#fff; }
@@ -236,7 +219,7 @@ table.lb tr.fa td{ background:rgba(43,181,232,.05); }
 .lottery-row-bar{ flex:1; display:flex; align-items:center; gap:10px; min-width:0; }
 .lottery-bar-track{ flex:1; height:22px; border-radius:6px; background:var(--panel2);
   border:1px solid var(--line); overflow:hidden; position:relative; }
-.lottery-bar-fill{ height:100%; border-radius:5px; background:var(--pink);
+.lottery-bar-fill{ height:100%; border-radius:5px; background:var(--accent);
   display:flex; align-items:center; justify-content:flex-end; padding-right:8px;
   font-family:var(--mono, monospace); font-size:11.5px; font-weight:700; color:#fff; white-space:nowrap; }
 .lottery-bar-fill.dim{ background:var(--muted); }
@@ -252,14 +235,11 @@ table.dboard th{ background:#f1ebfb; color:var(--ink); text-align:center; font-s
 table.dboard td.dbcell{ padding:3px 4px; }
 .dbpick{ color:#b6aecd; font-size:9px; white-space:nowrap; }
 .db-base{ background:#faf7ff; color:#9089ab; }
-.db-traded{ background:rgba(255,79,157,.16); color:#b21e6b; }
+.db-traded{ background:rgba(47,125,224,.16); color:#1a4a8f; }
 .db-keep{ background:rgba(22,184,166,.20); color:#0c7a6e; box-shadow:inset 0 0 0 1px rgba(22,184,166,.45); }
 .db-conflict{ background:rgba(229,72,77,.18); color:#b3232a; box-shadow:inset 0 0 0 1px rgba(229,72,77,.45); }
 .db-rd{ background:#f1ebfb; color:var(--purple); font-family:'Anton'; text-align:center; white-space:nowrap; }
 
-/* classic basketball sneaker icon for section headers */
-.sneak{ display:inline-block; vertical-align:middle; height:52px; margin:0 14px 6px 0;
-  filter:drop-shadow(2px 4px 4px rgba(80,40,70,.32)); }
 .lb .pos{ white-space:nowrap; }
 
 /* top navigation bar */
@@ -271,8 +251,8 @@ table.dboard td.dbcell{ padding:3px 4px; }
 .navlink{ font-family:'Anton'; text-transform:uppercase; letter-spacing:1px; font-size:13px;
   color:var(--ink) !important; text-decoration:none !important; padding:6px 13px; border-radius:9px;
   border:1.5px solid var(--line); background:#fff; transition:.15s; white-space:nowrap; }
-.navlink:hover{ border-color:var(--pink); color:var(--pink) !important; }
-.navlink.active{ background:var(--pink); color:#fff !important; border-color:var(--pink); }
+.navlink:hover{ border-color:var(--accent); color:var(--accent) !important; }
+.navlink.active{ background:var(--accent); color:#fff !important; border-color:var(--accent); }
 
 /* ---------------- mobile ---------------- */
 @media (max-width: 640px){
@@ -284,7 +264,6 @@ table.dboard td.dbcell{ padding:3px 4px; }
   h1{ font-size:1.5rem !important; }
   h2{ font-size:1.25rem !important; }
   h3{ font-size:1.15rem !important; }
-  .sneak{ height:30px; margin:0 8px 2px 0; }
   .block-container{ padding-left:.6rem !important; padding-right:.6rem !important; padding-top:2.5rem !important; }
   /* flow the tall scroll panels with the page (no nested scrollbox) */
   .neonwrap{ max-height:none !important; }
@@ -327,12 +306,6 @@ table.dboard td.dbcell{ padding:3px 4px; }
 }
 </style>
 """
-
-
-def crt(key: str = "top") -> str:
-    """Render the classic basketball sneaker header icon (a colorway per section)."""
-    img = _SNEAKERS.get(key, _SNEAKERS["top"])
-    return f'<img class="sneak" src="{img}" alt="">'
 
 
 def headshot(pid: str) -> str:
