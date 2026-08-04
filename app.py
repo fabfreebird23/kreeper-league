@@ -857,33 +857,30 @@ def render_home() -> None:
 
 
 def _home_quick_glance() -> None:
-    """Two liquid-fill quick-glance stats — FAAB pot and the title-odds
-    favorite — for whichever phases don't already show that content as the
-    main event below (in-season and pre-season both already render one or
-    both of these in full)."""
+    """Three liquid-fill quick-glance stats — FAAB pot, the title-odds
+    favorite, and the biggest keeper steal — for whichever phases don't
+    already show that content as the main event below (in-season and
+    pre-season both already render the first two in full)."""
     lid = LEAGUE["sleeper_league_id"]
     pot = faab.projected_pot(lid)
     pot_pct = pot["pot"] / max(1, pot["total_budget"])
     odds_rows = build_championship_odds()
-    stats = [theme.liquid_stat_html(
-        pot_pct, f'${pot["pot"]}', "left", "FAAB Pot",
-        f'${pot["total_spent"]} spent of ${pot["total_budget"]}', accent=theme.ACCENT,
-    )]
+    tiles = [(pot_pct, f'${pot["pot"]}', "left", "FAAB Pot",
+              f'${pot["total_spent"]} spent of ${pot["total_budget"]}', theme.ACCENT)]
     if odds_rows:
         fav = odds_rows[0]
-        stats.append(theme.liquid_stat_html(
-            fav["Win %"] / 100, fav["Odds"], "win", "Title Favorite",
-            f'{fav["Team"]} · {fav["Win %"]}%', accent=theme.TEAL,
-        ))
-    st.markdown(
-        '<div class="glance-panel"><div class="glance-panel-in">'
-        '<div class="liquid-stats">' + "".join(stats) + '</div></div></div>',
-        unsafe_allow_html=True,
-    )
+        tiles.append((fav["Win %"] / 100, fav["Odds"], "win", "Title Favorite",
+                      f'{fav["Team"]} · {fav["Win %"]}%', theme.TEAL))
+    lb = build_value_leaderboard(400)
+    if not lb.empty:
+        top = lb.sort_values("Value", ascending=False).iloc[0]
+        val = int(top["Value"])
+        tiles.append((min(1.0, val / 20), f'+{val}', "value", "Biggest Steal",
+                      f'{top["Player"]} · {top["Team"]}', theme.PURPLE))
+    _glance_box(tiles)
 
 
 def _render_home_pre_draft() -> None:
-    st.caption("Keepers are locked — here's what everyone's bringing into the draft.")
     _home_quick_glance()
     render_draft_capital()
     st.markdown(f'<h2>Submitted Keepers by <span class="g">Team</span></h2>', unsafe_allow_html=True)
@@ -1014,18 +1011,16 @@ def build_record_book():
 
 
 def _glance_box(tiles: list) -> None:
-    """A gradient-bordered headline strip — same box as the Home quick-glance
-    panel (FAAB Pot / Title Favorite), reused here for a page's top-line stat.
-    `tiles` is [(value_html, label, sub), ...]."""
-    cells = "".join(
-        f'<div class="tile"><div class="num accent">{v}</div>'
-        f'<div class="lbl">{lbl}</div><div class="sub">{sub}</div></div>'
-        for v, lbl, sub in tiles
+    """A gradient-bordered headline strip of liquid-fill stat rings — same
+    box as Home's FAAB Pot / Title Favorite, reused for a page's top-line
+    stats. `tiles` is [(pct, value_html, ring_label, label, sub, accent), ...]."""
+    stats = "".join(
+        theme.liquid_stat_html(pct, value, ring_label, label, sub, accent=accent)
+        for pct, value, ring_label, label, sub, accent in tiles
     )
     st.markdown(
         f'<div class="glance-panel"><div class="glance-panel-in">'
-        f'<div class="tiles" style="margin-bottom:0;">{cells}</div>'
-        f'</div></div>',
+        f'<div class="liquid-stats">{stats}</div></div></div>',
         unsafe_allow_html=True,
     )
 
@@ -1039,11 +1034,18 @@ def render_record_book() -> None:
 
     champ_season = max(seasons, key=lambda s: s["season"])
     titles_leader = max(agg.items(), key=lambda kv: kv[1]["titles"], default=None)
-    _glance_box([
-        (champ_season["champ"] or "—", "Reigning Champion", f'{champ_season["season"]} season'),
-        (config.manager_name(titles_leader[0]) if titles_leader else "—", "Most Titles",
-         f'{titles_leader[1]["titles"]} title(s)' if titles_leader else ""),
-    ])
+    best_wp = max(agg.items(), key=lambda kv: kv[1]["w"] / max(1, kv[1]["w"] + kv[1]["l"]), default=None)
+    tiles = [
+        (1.0, champ_season["champ"] or "—", "champ", "Reigning Champion",
+         f'{champ_season["season"]} season', theme.PURPLE),
+        (min(1.0, titles_leader[1]["titles"] / max(1, titles_leader[1]["seasons"])) if titles_leader else 0.0,
+         config.manager_name(titles_leader[0]) if titles_leader else "—", "titles", "Most Titles",
+         f'{titles_leader[1]["titles"]} title(s)' if titles_leader else "", theme.ACCENT),
+    ]
+    if best_wp:
+        wp = best_wp[1]["w"] / max(1, best_wp[1]["w"] + best_wp[1]["l"])
+        tiles.append((wp, f'{wp*100:.0f}%', "win%", "Best Win%", config.manager_name(best_wp[0]), theme.TEAL))
+    _glance_box(tiles)
 
     st.markdown("##### Champions")
     champ_rows = "".join(
@@ -1835,10 +1837,15 @@ def render_odds() -> None:
     rows = build_championship_odds()
     if rows:
         fav, dog = rows[0], rows[-1]
-        _glance_box([
-            (fav["Odds"], "Favorite", f'{fav["Team"]} · {fav["Win %"]}%'),
-            (dog["Odds"], "Longshot", f'{dog["Team"]} · {dog["Win %"]}%'),
-        ])
+        tiles = [
+            (fav["Win %"] / 100, fav["Odds"], "win", "Favorite", f'{fav["Team"]} · {fav["Win %"]}%', theme.TEAL),
+            (dog["Win %"] / 100, dog["Odds"], "win", "Longshot", f'{dog["Team"]} · {dog["Win %"]}%', theme.RED),
+        ]
+        if len(rows) > 1:
+            chal = rows[1]
+            tiles.append((chal["Win %"] / 100, chal["Odds"], "win", "Closest Contender",
+                          f'{chal["Team"]} · {chal["Win %"]}%', theme.PURPLE))
+        _glance_box(tiles)
     body = []
     n = len(rows)
     for i, r in enumerate(rows):
@@ -2158,7 +2165,6 @@ def render_lottery() -> None:
 
 def render_draft_capital() -> None:
     st.markdown(f'<h2>Draft <span class="g">Capital</span> &amp; Keeper Cost</h2>', unsafe_allow_html=True)
-    st.caption("What each team brings to the draft after keepers.")
     rows = []
     for o in MANAGERS:
         kr = team_keeper_rows(o)
@@ -2187,7 +2193,6 @@ def render_draft_capital() -> None:
             '<th>Lean</th></tr>')
     st.markdown('<div class="neonwrap"><table class="lb"><thead>' + head
                 + '</thead><tbody>' + body + '</tbody></table></div>', unsafe_allow_html=True)
-    st.caption("Ned's lean: whichever one loses harder.")
 
 
 def render_roster_needs() -> None:
@@ -2229,11 +2234,18 @@ def render_roster_needs() -> None:
 
     neediest = pos_gap.most_common(1)
     best_team = max(team_filled, key=lambda x: x[1], default=None)
+    total_filled = sum(f for _, f in team_filled)
+    total_slots = n_start * max(1, len(team_filled))
+    fill_pct = total_filled / max(1, total_slots)
     _glance_box([
-        (neediest[0][0] if neediest else "—", "Neediest Position",
-         f'{neediest[0][1]} open league-wide' if neediest else ""),
-        (best_team[0] if best_team else "—", "Most Draft-Ready",
-         f'{best_team[1]}/{n_start} starters set' if best_team else ""),
+        (min(1.0, neediest[0][1] / max(1, NT)) if neediest else 0.0,
+         neediest[0][0] if neediest else "—", "gap", "Neediest Position",
+         f'{neediest[0][1]} open league-wide' if neediest else "", theme.RED),
+        ((best_team[1] / n_start) if best_team else 0.0,
+         best_team[0] if best_team else "—", "set", "Most Draft-Ready",
+         f'{best_team[1]}/{n_start} starters set' if best_team else "", theme.TEAL),
+        (fill_pct, f'{fill_pct*100:.0f}%', "filled", "League Fill Rate",
+         f'{total_filled}/{total_slots} starter slots', theme.ACCENT),
     ])
 
     head = ('<tr><th>Team</th>' + "".join(f"<th>{p}</th>" for p in cols_pos)
@@ -2298,12 +2310,18 @@ def render_keeper_hitrate() -> None:
     best_owner = max(per_owner.items(), key=lambda kv: kv[1]["hit"] / max(1, kv[1]["tot"]))
     misses = [d for d in decisions if not d["hit"]]
     coldest = max(misses, key=lambda d: d["fin"]) if misses else None
+    best_rate = best_owner[1]["hit"] / max(1, best_owner[1]["tot"])
+    cold_pct = max(0.0, 1 - coldest["fin"] / 100) if coldest else 0.0
+    total_hit = sum(d["hit"] for d in per_owner.values())
+    total_tot = sum(d["tot"] for d in per_owner.values())
+    league_rate = total_hit / max(1, total_tot)
     _glance_box([
-        (config.manager_name(best_owner[0]), "Best Hit-Rate",
-         f'{round(100 * best_owner[1]["hit"] / max(1, best_owner[1]["tot"]))}% · '
-         f'{best_owner[1]["hit"]}/{best_owner[1]["tot"]}'),
-        (coldest["name"] if coldest else "—", "Coldest Keep",
-         f'{coldest["pos"]}{coldest["fin"]}, {coldest["season"]}' if coldest else ""),
+        (best_rate, config.manager_name(best_owner[0]), "rate", "Best Hit-Rate",
+         f'{round(100 * best_rate)}% · {best_owner[1]["hit"]}/{best_owner[1]["tot"]}', theme.TEAL),
+        (cold_pct, coldest["name"] if coldest else "—", "miss", "Coldest Keep",
+         f'{coldest["pos"]}{coldest["fin"]}, {coldest["season"]}' if coldest else "", theme.RED),
+        (league_rate, f'{round(100 * league_rate)}%', "rate", "League Hit-Rate",
+         f'{total_hit}/{total_tot} decisions', theme.ACCENT),
     ])
 
     rows = []
