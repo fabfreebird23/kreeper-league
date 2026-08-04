@@ -17,7 +17,7 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
-from kreeper import config, draftboard, engine, history, lottery, sleeper, storage, theme
+from kreeper import config, draftboard, engine, faab, history, lottery, sleeper, storage, theme
 from kreeper.adp import consensus as adp_consensus
 from kreeper.names import normalize_name
 
@@ -2039,6 +2039,66 @@ def render_keeper_hitrate() -> None:
         for d in worst))
 
 
+def render_faab() -> None:
+    st.markdown(f'<h2>{theme.crt("top")}FAAB Pot</h2>', unsafe_allow_html=True)
+    st.caption("The consolation-bracket champion wins the league's total "
+               "**unspent** FAAB budget at year end (see the Draft-Order "
+               "Lottery tab for how that champion is decided). Every dollar "
+               "you spend on a waiver claim is a dollar out of that pot — "
+               "so your running FAAB spend is framed here as **debt** "
+               "against it, not as budget remaining.")
+
+    lid = LEAGUE["sleeper_league_id"]
+    budgets = faab.team_budgets(lid)
+    pot = faab.projected_pot(lid)
+
+    st.markdown(
+        f'<div class="faab-pot"><b>${pot["pot"]}</b>'
+        f'<span>up for grabs · ${pot["total_spent"]} spent of ${pot["total_budget"]} '
+        f'league-wide ({pot["teams"]} teams &times; ${pot["total_budget"] // max(1, pot["teams"])})</span></div>',
+        unsafe_allow_html=True,
+    )
+
+    def ring_color(pct: float) -> str:
+        if pct >= 75:
+            return "var(--red)"
+        if pct >= 40:
+            return "var(--amber)"
+        return "var(--teal)"
+
+    cards = []
+    for owner_id, b in sorted(budgets.items(), key=lambda kv: -kv[1]["spent"]):
+        pct = round(100 * b["spent"] / max(1, b["total"]))
+        color = ring_color(pct)
+        cards.append(
+            f'<div class="faab-card"><h4>{config.manager_name(owner_id)}</h4>'
+            f'<div class="faab-ring" style="background:conic-gradient({color} {pct}%, #ede6f7 0);">'
+            f'<div class="faab-ring-hole"><b>${b["spent"]}</b><small>owed</small></div></div>'
+            f'<div class="rem">${b["remaining"]} left of ${b["total"]}</div></div>'
+        )
+    st.markdown('<div class="faab-grid">' + "".join(cards) + "</div>", unsafe_allow_html=True)
+
+    st.markdown(f'<h3>{theme.crt("board")}Dead Money</h3>', unsafe_allow_html=True)
+    st.caption("FAAB spent on a waiver add that's since been dropped — money "
+               "that bought nothing still on your roster. “Live” is spend on "
+               "players you still have.")
+    dm = faab.dead_money(lid)
+    rows = sorted(dm.items(), key=lambda kv: -kv[1]["dead"])
+    body = "".join(
+        f'<tr><td class="pl">{config.manager_name(o)}</td>'
+        f'<td class="num" style="color:var(--red);font-weight:700;">${rec["dead"]}</td>'
+        f'<td class="num" style="color:var(--teal);">${rec["live"]}</td>'
+        f'<td class="num">{len(rec["moves"])}</td></tr>'
+        for o, rec in rows
+    )
+    st.markdown(
+        '<div class="neonwrap"><table class="lb"><thead><tr>'
+        '<th>Team</th><th>Dead $</th><th>Live $</th><th>Waiver Adds</th>'
+        f'</tr></thead><tbody>{body}</tbody></table></div>',
+        unsafe_allow_html=True,
+    )
+
+
 def render_superlatives() -> None:
     st.markdown(f'<h2>{theme.crt("rookies")}Superlatives</h2>', unsafe_allow_html=True)
     cards = []
@@ -2176,7 +2236,8 @@ elif page == "trades":
     with t2:
         render_trade_analyzer()
 elif page == "league":
-    t1, t2, t3, t4 = st.tabs(["🎲 Title Odds", "🏆 Record Book", "🎯 Keeper Hit-Rate", "🏅 Superlatives"])
+    t1, t2, t3, t4, t5 = st.tabs(["🎲 Title Odds", "🏆 Record Book", "🎯 Keeper Hit-Rate",
+                                   "🏅 Superlatives", "💰 FAAB Pot"])
     with t1:
         render_odds()
     with t2:
@@ -2185,6 +2246,8 @@ elif page == "league":
         render_keeper_hitrate()
     with t4:
         render_superlatives()
+    with t5:
+        render_faab()
 elif page == "players":
     t1, t2, t3 = st.tabs(["🆕 Rookies", "📊 Consensus ADP", "📈 ADP Trends"])
     with t1:

@@ -155,6 +155,24 @@ table.lb tr.fa td{ background:rgba(43,181,232,.05); }
 .kcard .empty{ color:var(--muted); font-style:italic; font-size:12px; }
 .kcard .rk-tag{ color:var(--amber); font-size:9px; font-weight:700; margin-left:4px; }
 
+/* FAAB debt ring — a CSS conic-gradient donut, no chart library needed */
+.faab-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+.faab-card{ border:1px solid var(--line); border-radius:10px; background:#fff;
+  padding:12px; text-align:center; box-shadow:0 6px 18px rgba(123,92,255,.10); }
+.faab-card h4{ font-family:'Anton'; font-size:14px; margin:0 0 8px; color:var(--purple); }
+.faab-ring{ width:84px; height:84px; border-radius:50%; margin:0 auto 8px;
+  display:flex; align-items:center; justify-content:center; }
+.faab-ring-hole{ width:64px; height:64px; border-radius:50%; background:#fff;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.faab-ring-hole b{ font-family:'Anton'; font-size:16px; color:var(--pink); line-height:1; }
+.faab-ring-hole small{ font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+.faab-card .rem{ font-size:11px; color:var(--muted); margin-top:2px; }
+.faab-pot{ text-align:center; padding:18px 12px; border-radius:12px;
+  background:linear-gradient(135deg, rgba(255,79,157,.10), rgba(43,181,232,.10));
+  border:1px solid var(--line); margin-bottom:16px; }
+.faab-pot b{ font-family:'Anton'; font-size:38px; color:var(--pink); display:block; line-height:1; }
+.faab-pot span{ font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+
 /* draft board */
 table.dboard{ width:100%; border-collapse:collapse; table-layout:fixed; font-family:'Oswald'; font-size:12px; }
 table.dboard th{ background:#f1ebfb; color:var(--ink); text-align:center; font-size:11px; padding:5px;

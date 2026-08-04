@@ -86,6 +86,14 @@ def get_matchups(league_id: str, week: int) -> List[Dict[str, Any]]:
                  lambda: _get(f"league/{league_id}/matchups/{week}") or [])
 
 
+def get_transactions(league_id: str, week: int) -> List[Dict[str, Any]]:
+    """Waiver/free-agent/trade activity for one week (leg): [{type, status,
+    adds, drops, settings: {waiver_bid}, ...}, ...]. Used for FAAB tracking
+    (see kreeper/faab.py)."""
+    return _disk(f"transactions_{league_id}_{week}", 900,
+                 lambda: _get(f"league/{league_id}/transactions/{week}") or [])
+
+
 def get_winners_bracket(league_id: str) -> List[Dict[str, Any]]:
     return _disk(f"bracket_{league_id}", 86400, lambda: _get(f"league/{league_id}/winners_bracket") or [])
 
