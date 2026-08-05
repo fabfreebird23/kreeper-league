@@ -359,17 +359,17 @@ table.dboard td.dbcell{ padding:3px 4px; }
 
 /* fixed bottom bar — floating pill segmented control, the site's only nav.
    Leave room for it at the foot of the page so content never sits under it. */
-[data-testid="stAppViewContainer"] .block-container{ padding-bottom:96px !important; }
+[data-testid="stAppViewContainer"] .block-container{ padding-bottom:112px !important; }
 .bottom-bar-wrap{ position:fixed; left:0; right:0; bottom:18px; display:flex;
   justify-content:center; z-index:1000; pointer-events:none; }
 .bottom-bar{ pointer-events:auto; display:flex; gap:2px; background:rgba(18,18,22,.94);
   backdrop-filter:blur(16px); border:1px solid var(--line); border-radius:999px;
-  padding:6px; box-shadow:0 12px 36px rgba(0,0,0,.5); }
+  padding:8px; box-shadow:0 12px 36px rgba(0,0,0,.5); }
 .navlink, [data-testid="stMarkdownContainer"] a.navlink{
-  font-family:'Oswald'; font-weight:600; letter-spacing:.5px; font-size:12.5px;
+  font-family:'Oswald'; font-weight:600; letter-spacing:.5px; font-size:14px;
   text-transform:uppercase; color:var(--ink) !important; text-decoration:none !important;
   background:none; border:none !important; border-image:none !important; border-radius:999px !important;
-  white-space:nowrap; opacity:.6; padding:10px 20px !important; transition:opacity .2s, background .25s ease; }
+  white-space:nowrap; opacity:.6; padding:13px 24px !important; transition:opacity .2s, background .25s ease; }
 .navlink:hover{ opacity:.85; }
 .navlink.active{ opacity:1; background:var(--grad) !important; color:#fff !important; }
 
@@ -379,7 +379,7 @@ table.dboard td.dbcell{ padding:3px 4px; }
 .bb-scrim{ position:fixed; inset:0; background:rgba(0,0,0,0); pointer-events:none;
   transition:background .25s; z-index:998; }
 .bb-scrim.on{ background:rgba(0,0,0,.45); pointer-events:auto; }
-.bb-pop{ position:fixed; left:50%; bottom:76px; transform:translate(-50%,10px) scale(.96);
+.bb-pop{ position:fixed; left:50%; bottom:90px; transform:translate(-50%,10px) scale(.96);
   width:min(340px, calc(100% - 32px)); background:var(--panel2); border:1px solid var(--line);
   border-radius:16px; padding:8px; box-shadow:0 16px 44px rgba(0,0,0,.55); opacity:0;
   pointer-events:none; transition:opacity .2s ease, transform .2s ease; z-index:999; }
@@ -410,11 +410,11 @@ table.dboard td.dbcell{ padding:3px 4px; }
   #MainMenu, footer{ display:none !important; }
   .neon-logo{ font-size:40px !important; }
   .neon-tag{ font-size:8px; letter-spacing:3px; }
-  [data-testid="stAppViewContainer"] .block-container{ padding-bottom:84px !important; }
+  [data-testid="stAppViewContainer"] .block-container{ padding-bottom:96px !important; }
   .bottom-bar-wrap{ bottom:10px; }
-  .bottom-bar{ gap:0; padding:4px; }
+  .bottom-bar{ gap:0; padding:5px; }
   .khome .neon-logo{ font-size:24px !important; }
-  .navlink{ font-size:10px; padding:9px 11px !important; letter-spacing:.3px; }
+  .navlink{ font-size:11.5px; padding:11px 13px !important; letter-spacing:.3px; }
   h1{ font-size:1.5rem !important; }
   h2{ font-size:1.25rem !important; }
   h3{ font-size:1.15rem !important; }
