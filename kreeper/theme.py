@@ -360,7 +360,7 @@ table.dboard td.dbcell{ padding:3px 4px; }
 /* fixed bottom bar — floating pill segmented control, the site's only nav.
    Leave room for it at the foot of the page so content never sits under it. */
 [data-testid="stAppViewContainer"] .block-container{ padding-bottom:112px !important; }
-.bottom-bar-wrap{ position:fixed; left:0; right:0; bottom:18px; display:flex;
+.bottom-bar-wrap{ position:fixed; left:0; right:0; bottom:max(18px, env(safe-area-inset-bottom)); display:flex;
   justify-content:center; z-index:1000; pointer-events:none; }
 .bottom-bar{ pointer-events:auto; display:flex; gap:2px; background:rgba(18,18,22,.94);
   backdrop-filter:blur(16px); border:1px solid var(--line); border-radius:999px;
@@ -411,7 +411,7 @@ table.dboard td.dbcell{ padding:3px 4px; }
   .neon-logo{ font-size:40px !important; }
   .neon-tag{ font-size:8px; letter-spacing:3px; }
   [data-testid="stAppViewContainer"] .block-container{ padding-bottom:108px !important; }
-  .bottom-bar-wrap{ bottom:10px; }
+  .bottom-bar-wrap{ bottom:max(10px, env(safe-area-inset-bottom)); }
   .bottom-bar{ gap:0; padding:6px; }
   .khome .neon-logo{ font-size:24px !important; }
   .navlink{ font-size:14px; padding:14px 16px !important; letter-spacing:.3px; }
