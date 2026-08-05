@@ -835,12 +835,20 @@ def render_team_boxes() -> None:
 # phases (which are inferred live from Sleeper) — so it gets its own
 # milestone node on the stepper rather than a phase of its own.
 _DRAFT_DATE_LABEL = "Aug 13"
+_PHASE_ORDER = ["keepers_open", "pre_draft", "draft_event", "pre_season", "in_season", "offseason"]
+
+
+def _current_phase() -> str:
+    """The phase driving Home + the top-bar chip. `?preview_phase=<phase>`
+    overrides it for previewing how the site looks at each stage of the
+    season — see render_home for the banner that flags when it's active."""
+    forced = st.query_params.get("preview_phase")
+    return forced if forced in phase.PHASES else phase.current_phase()
 
 
 def _phase_stepper_html(current: str) -> str:
     deadline = config.keeper_deadline()
     keeper_sub = deadline.strftime("%b %-d") if deadline else ""
-    order = ["keepers_open", "pre_draft", "draft_event", "pre_season", "in_season", "offseason"]
     labels = {
         "keepers_open": ("Keepers", keeper_sub),
         "pre_draft": ("Draft Prep", ""),
@@ -849,9 +857,9 @@ def _phase_stepper_html(current: str) -> str:
         "in_season": ("In-Season", ""),
         "offseason": ("Offseason", ""),
     }
-    cur_idx = order.index(current) if current in order else 1
+    cur_idx = _PHASE_ORDER.index(current) if current in _PHASE_ORDER else 1
     cells = []
-    for i, key in enumerate(order):
+    for i, key in enumerate(_PHASE_ORDER):
         label, sub = labels[key]
         state = "done" if i < cur_idx else ("now" if i == cur_idx else "")
         dot = "" if state == "done" else ("●" if state == "now" else str(i + 1))
@@ -860,6 +868,25 @@ def _phase_stepper_html(current: str) -> str:
             f'<div class="lbl">{label}</div><div class="sub">{sub}</div></div>'
         )
     return '<div class="stepper">' + "".join(cells) + '</div>'
+
+
+def _topbar_chip_html(current: str) -> str:
+    """Compact liquid-wave phase indicator for the top bar (persistent on
+    every page) — same wave asset as the Home stepper and the logo, just a
+    quick-glance echo of it rather than a replacement."""
+    deadline = config.keeper_deadline()
+    info = {
+        "keepers_open": ("Keepers Open", f"Due {deadline.strftime('%b %-d')}" if deadline else ""),
+        "pre_draft": ("Draft Prep", f"Draft is {_DRAFT_DATE_LABEL}"),
+        "pre_season": ("Pre-Season", ""),
+        "in_season": ("In-Season", ""),
+        "offseason": ("Offseason", ""),
+    }
+    label, sub = info.get(current, ("Draft Prep", ""))
+    idx = _PHASE_ORDER.index(current) if current in _PHASE_ORDER else 1
+    pct = idx / (len(_PHASE_ORDER) - 1)
+    inner = theme.liquid_stat_html(pct, "", "", label, sub, size=28, accent="#4f9dff")
+    return f'<div class="topbar-chip">{inner}</div>'
 
 
 def render_home() -> None:
@@ -874,11 +901,9 @@ def render_home() -> None:
     the real state."""
     forced = st.query_params.get("preview_phase")
     if forced in phase.PHASES:
-        ph = forced
         st.info(f"👁️ Previewing the **{forced.replace('_', ' ')}** phase — "
                 f"remove `?preview_phase=` from the URL to see the real one.")
-    else:
-        ph = phase.current_phase()
+    ph = _current_phase()
 
     st.markdown(
         '<div class="glance-panel"><div class="glance-panel-in">'
@@ -2527,6 +2552,7 @@ def render_superlatives() -> None:
 st.markdown(
     f'<div class="kbar">'
     f'<a class="khome" href="?p=home" target="_self">{theme.logo_html(40, None)}</a>'
+    f'{_topbar_chip_html(_current_phase())}'
     f'</div>',
     unsafe_allow_html=True,
 )
@@ -2559,8 +2585,8 @@ with st.sidebar:
     st.caption(f"{ned()}")
 
 # Sub-tab trees for the three sections that have them — plain (key, label)
-# lists so the same data drives both the on-page sub-tab row (render_subnav)
-# and the bottom-bar popover (render_bottom_bar) without duplicating labels.
+# lists that drive the bottom-bar popover (render_bottom_bar), the sole nav
+# now that on-page tab rows have been removed in favor of it.
 PRESEASON_GROUPS = [("keepers", "Keepers"), ("draft", "Draft"), ("players", "Players")]
 PRESEASON_LEAVES = {
     "keepers": [("setkeepers", "Set My Keepers"), ("landscape", "Keeper Landscape"), ("needs", "Roster Needs")],
@@ -2572,34 +2598,17 @@ LEAGUE_LEAVES = [("faab", "FAAB Pot"), ("odds", "Title Odds"), ("superlatives", 
                   ("record", "Record Book"), ("hitrate", "Keeper Hit-Rate"), ("lottery", "Draft-Order Lottery")]
 
 
-def render_subnav(param: str, current: str, items: list, **fixed_params) -> None:
-    """A query-param-driven tab row styled like native st.tabs() — used
-    instead of the real thing so every sub-page is a deep-linkable URL the
-    bottom-bar popover (and anyone else) can jump straight to."""
-    def href(k):
-        parts = dict(fixed_params)
-        parts[param] = k
-        return "&".join(f"{kk}={vv}" for kk, vv in parts.items())
-    links = "".join(
-        f'<a class="subtab{" active" if k == current else ""}" href="?{href(k)}" target="_self">{label}</a>'
-        for k, label in items
-    )
-    st.markdown(f'<div class="subtabs">{links}</div>', unsafe_allow_html=True)
-
-
 if page == "home":
     render_home()
 elif page == "preseason":
     g = st.query_params.get("g", "keepers")
     if g not in PRESEASON_LEAVES:
         g = "keepers"
-    render_subnav("g", g, PRESEASON_GROUPS, p="preseason")
 
     leaves = PRESEASON_LEAVES[g]
     t = st.query_params.get("t", leaves[0][0])
     if t not in dict(leaves):
         t = leaves[0][0]
-    render_subnav("t", t, leaves, p="preseason", g=g)
 
     if g == "keepers":
         {"setkeepers": render_my_keepers, "landscape": render_keeper_landscape,
@@ -2618,14 +2627,12 @@ elif page == "inseason":
     t = st.query_params.get("t", "recent")
     if t not in dict(INSEASON_LEAVES):
         t = "recent"
-    render_subnav("t", t, INSEASON_LEAVES, p="inseason")
     {"recent": render_recent_trades, "market": render_trade_targets,
      "analyzer": render_trade_analyzer}[t]()
 elif page == "league":
     t = st.query_params.get("t", "faab")
     if t not in dict(LEAGUE_LEAVES):
         t = "faab"
-    render_subnav("t", t, LEAGUE_LEAVES, p="league")
     {"faab": render_faab, "odds": render_odds, "superlatives": render_superlatives,
      "record": render_record_book, "hitrate": render_keeper_hitrate,
      "lottery": render_lottery}[t]()

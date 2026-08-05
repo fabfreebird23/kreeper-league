@@ -363,11 +363,22 @@ table.dboard td.dbcell{ padding:3px 4px; }
 
 .lb .pos{ white-space:nowrap; }
 
-/* top bar — logo only now; section nav lives in the fixed bottom bar */
-.kbar{ display:flex; align-items:center; gap:28px; flex-wrap:wrap;
+/* top bar — logo + phase chip; section nav lives in the fixed bottom bar */
+.kbar{ display:flex; align-items:center; justify-content:space-between; gap:28px; flex-wrap:wrap;
   padding-bottom:14px; margin-bottom:18px; border-bottom:1px solid var(--line); }
 .khome{ text-decoration:none !important; line-height:1; }
 .khome .neon-logo{ font-size:30px; margin:0; }
+
+/* compact liquid-wave phase indicator, top-right, persistent on every page */
+.topbar-chip{ background:var(--panel2); border:1px solid var(--line); border-radius:999px;
+  padding:6px 16px 6px 6px; }
+.topbar-chip .liquid-stat{ gap:10px; }
+.topbar-chip .liq-ring{ margin-bottom:0; }
+.topbar-chip .txt .lbl{ font-size:11.5px; font-weight:600; letter-spacing:.4px; color:var(--ink); }
+.topbar-chip .txt .sub{ font-size:9.5px; color:var(--muted); margin-top:1px; max-width:none; }
+@media (max-width: 640px){
+  .topbar-chip .txt .sub{ display:none; }
+}
 
 /* fixed bottom bar — floating pill segmented control, the site's only nav.
    Leave room for it at the foot of the page so content never sits under it. */
@@ -411,17 +422,6 @@ table.dboard td.dbcell{ padding:3px 4px; }
 .bb-pop-item.leaf-active{ background:linear-gradient(90deg, rgba(255,90,160,.16), rgba(160,107,255,.12)); }
 .bb-pop-item.leaf-active .lbl{ background:var(--grad); -webkit-background-clip:text;
   background-clip:text; -webkit-text-fill-color:transparent; }
-
-/* sub-tab rows — query-param-driven links styled like native st.tabs(),
-   used wherever a section needs deep-linkable tabs (so the popover above
-   can jump straight to a leaf instead of just the section root) */
-.subtabs{ display:flex; gap:26px; flex-wrap:wrap; border-bottom:1px solid var(--line);
-  margin-bottom:18px; padding-bottom:0; }
-.subtab, [data-testid="stMarkdownContainer"] a.subtab{
-  font-family:'Anton', sans-serif !important; letter-spacing:.8px; text-transform:uppercase;
-  font-size:14px; color:var(--muted) !important; text-decoration:none !important;
-  padding:0 0 12px; border-bottom:2px solid transparent; border-image:none; white-space:nowrap; }
-.subtab.active{ color:var(--ink) !important; border-bottom:2px solid; border-image:var(--grad) 1; }
 
 /* ---------------- mobile ---------------- */
 @media (max-width: 640px){
