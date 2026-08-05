@@ -400,19 +400,22 @@ table.dboard td.dbcell{ padding:3px 4px; }
 .bb-pop-item.leaf-active .lbl{ background:var(--grad); -webkit-background-clip:text;
   background-clip:text; -webkit-text-fill-color:transparent; }
 
+/* Community Cloud's own floating bottom-right badge (crown for signed-out
+   visitors, "Manage app"/profile avatar for the owner) — platform chrome
+   injected outside the app, always bottom-right regardless of viewport, so
+   this is unscoped rather than mobile-only. Caught by class/href patterns
+   since it doesn't carry the app's own testids. */
+[class*="viewerBadge"], [class*="profileContainer"], [class*="profilePreview"],
+[data-testid="manage-app-button"], a[href*="share.streamlit.io"]{ display:none !important; }
+
 /* ---------------- mobile ---------------- */
 @media (max-width: 640px){
-  /* hide Streamlit's own chrome on mobile — the in-app toolbar/hamburger,
-     and Community Cloud's own bottom-right badge (crown for signed-out
-     visitors, "Manage app"/profile avatar when signed in as owner — that's
-     platform chrome injected outside the app, caught by these class/href
-     patterns rather than the app's own testids). The bottom bar is the
-     site's only nav on mobile and this stuff just eats space over it. */
+  /* hide Streamlit's own in-app chrome (toolbar/hamburger) on mobile —
+     the bottom bar is the site's only nav there and this stuff just eats
+     space over it. */
   [data-testid="stToolbar"], [data-testid="stDecoration"],
   [data-testid="stStatusWidget"], [data-testid="stAppDeployButton"],
-  #MainMenu, footer,
-  [class*="viewerBadge"], [class*="profileContainer"], [class*="profilePreview"],
-  [data-testid="manage-app-button"], a[href*="share.streamlit.io"]{ display:none !important; }
+  #MainMenu, footer{ display:none !important; }
   .neon-logo{ font-size:40px !important; }
   .neon-tag{ font-size:8px; letter-spacing:3px; }
   [data-testid="stAppViewContainer"] .block-container{ padding-bottom:84px !important; }
