@@ -402,12 +402,17 @@ table.dboard td.dbcell{ padding:3px 4px; }
 
 /* ---------------- mobile ---------------- */
 @media (max-width: 640px){
-  /* hide Streamlit's own chrome (hamburger menu, "Manage app", status
-     widget) on mobile — the bottom bar is the site's only nav there and
-     this bar just eats space / distracts from it */
+  /* hide Streamlit's own chrome on mobile — the in-app toolbar/hamburger,
+     and Community Cloud's own bottom-right badge (crown for signed-out
+     visitors, "Manage app"/profile avatar when signed in as owner — that's
+     platform chrome injected outside the app, caught by these class/href
+     patterns rather than the app's own testids). The bottom bar is the
+     site's only nav on mobile and this stuff just eats space over it. */
   [data-testid="stToolbar"], [data-testid="stDecoration"],
   [data-testid="stStatusWidget"], [data-testid="stAppDeployButton"],
-  #MainMenu{ display:none !important; }
+  #MainMenu, footer,
+  [class*="viewerBadge"], [class*="profileContainer"], [class*="profilePreview"],
+  [data-testid="manage-app-button"], a[href*="share.streamlit.io"]{ display:none !important; }
   .neon-logo{ font-size:40px !important; }
   .neon-tag{ font-size:8px; letter-spacing:3px; }
   [data-testid="stAppViewContainer"] .block-container{ padding-bottom:84px !important; }
