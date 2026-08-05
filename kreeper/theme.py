@@ -400,14 +400,6 @@ table.dboard td.dbcell{ padding:3px 4px; }
 .bb-pop-item.leaf-active .lbl{ background:var(--grad); -webkit-background-clip:text;
   background-clip:text; -webkit-text-fill-color:transparent; }
 
-/* Community Cloud's own floating bottom-right badge (crown for signed-out
-   visitors, "Manage app"/profile avatar for the owner) — platform chrome
-   injected outside the app, always bottom-right regardless of viewport, so
-   this is unscoped rather than mobile-only. Caught by class/href patterns
-   since it doesn't carry the app's own testids. */
-[class*="viewerBadge"], [class*="profileContainer"], [class*="profilePreview"],
-[data-testid="manage-app-button"], a[href*="share.streamlit.io"]{ display:none !important; }
-
 /* ---------------- mobile ---------------- */
 @media (max-width: 640px){
   /* hide Streamlit's own in-app chrome (toolbar/hamburger) on mobile —

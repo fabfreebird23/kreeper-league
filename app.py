@@ -2678,10 +2678,28 @@ def render_bottom_bar() -> None:
     # components.html runs real JS in a same-origin iframe, which lets us
     # reach through to window.parent.document and inject the bar directly
     # into the real page — that's also the only way position:fixed ends up
-    # anchored to the actual viewport instead of a tiny iframe box.
+    # anchored to the actual viewport instead of a tiny iframe box. On
+    # Community Cloud there's an *extra* hop: this script's own iframe sits
+    # inside the app's iframe, which itself sits inside Cloud's outer page
+    # (window.parent would only reach the app iframe there) — window.top
+    # always reaches the true outer page regardless of nesting depth, and
+    # is equivalent to window.parent when run locally with no nesting.
+    # Community Cloud also floats its own badge (crown for signed-out
+    # visitors, "Manage app"/profile avatar for the owner) fixed
+    # bottom-right in that same outer page — CSS from st.markdown lives
+    # inside the app iframe and can never reach it, so it's hidden here too.
     components.html(
         "<script>(function(){"
-        "const doc = window.parent.document;"
+        "const doc = window.top.document;"
+        "if (!doc.getElementById('kreeper-hide-cloud-chrome')) {"
+        "  const s = doc.createElement('style');"
+        "  s.id = 'kreeper-hide-cloud-chrome';"
+        "  s.textContent = '[class*=\"viewerBadge\"], [class*=\"profileContainer\"], "
+        "[class*=\"profilePreview\"], [data-testid=\"manage-app-button\"], "
+        "a[href=\"https://streamlit.io/cloud\"], a[href*=\"share.streamlit.io\"]"
+        "{ display:none !important; }';"
+        "  doc.head.appendChild(s);"
+        "}"
         "const old = doc.getElementById('kreeper-bottom-bar-root');"
         "if (old) old.remove();"
         "const root = doc.createElement('div');"
