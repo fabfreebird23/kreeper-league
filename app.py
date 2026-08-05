@@ -846,30 +846,6 @@ def _current_phase() -> str:
     return forced if forced in phase.PHASES else phase.current_phase()
 
 
-def _phase_stepper_html(current: str) -> str:
-    deadline = config.keeper_deadline()
-    keeper_sub = deadline.strftime("%b %-d") if deadline else ""
-    labels = {
-        "keepers_open": ("Keepers", keeper_sub),
-        "pre_draft": ("Draft Prep", ""),
-        "draft_event": ("Draft", _DRAFT_DATE_LABEL),
-        "pre_season": ("Pre-Season", ""),
-        "in_season": ("In-Season", ""),
-        "offseason": ("Offseason", ""),
-    }
-    cur_idx = _PHASE_ORDER.index(current) if current in _PHASE_ORDER else 1
-    cells = []
-    for i, key in enumerate(_PHASE_ORDER):
-        label, sub = labels[key]
-        state = "done" if i < cur_idx else ("now" if i == cur_idx else "")
-        dot = "" if state == "done" else ("●" if state == "now" else str(i + 1))
-        cells.append(
-            f'<div class="step {state}"><div class="line"></div><div class="dot">{dot}</div>'
-            f'<div class="lbl">{label}</div><div class="sub">{sub}</div></div>'
-        )
-    return '<div class="stepper">' + "".join(cells) + '</div>'
-
-
 def _topbar_chip_html(current: str) -> str:
     """Compact liquid-wave phase indicator for the top bar (persistent on
     every page) — same wave asset as the Home stepper and the logo, just a
@@ -904,12 +880,6 @@ def render_home() -> None:
         st.info(f"👁️ Previewing the **{forced.replace('_', ' ')}** phase — "
                 f"remove `?preview_phase=` from the URL to see the real one.")
     ph = _current_phase()
-
-    st.markdown(
-        '<div class="glance-panel"><div class="glance-panel-in">'
-        + _phase_stepper_html(ph) + '</div></div>',
-        unsafe_allow_html=True,
-    )
 
     if ph == "pre_draft":
         _render_home_pre_draft()
@@ -2596,8 +2566,8 @@ PRESEASON_LEAVES = {
 INSEASON_GROUPS = [("trades", "Trades"), ("league", "League"), ("history", "History")]
 INSEASON_LEAVES = {
     "trades": [("recent", "Recent Trades"), ("market", "Trade Market"), ("analyzer", "Trade Analyzer")],
-    "league": [("faab", "FAAB Pot"), ("odds", "Title Odds"), ("superlatives", "Superlatives")],
-    "history": [("record", "Record Book"), ("hitrate", "Keeper Hit-Rate"), ("lottery", "Draft-Order Lottery")],
+    "league": [("faab", "FAAB Pot"), ("odds", "Title Odds"), ("superlatives", "Superlatives"), ("lottery", "Draft-Order Lottery")],
+    "history": [("record", "Record Book"), ("hitrate", "Keeper Hit-Rate")],
 }
 
 
@@ -2640,10 +2610,10 @@ elif page == "inseason":
         {"recent": render_recent_trades, "market": render_trade_targets,
          "analyzer": render_trade_analyzer}[t]()
     elif g == "league":
-        {"faab": render_faab, "odds": render_odds, "superlatives": render_superlatives}[t]()
-    else:
-        {"record": render_record_book, "hitrate": render_keeper_hitrate,
+        {"faab": render_faab, "odds": render_odds, "superlatives": render_superlatives,
          "lottery": render_lottery}[t]()
+    else:
+        {"record": render_record_book, "hitrate": render_keeper_hitrate}[t]()
 
 
 def _group_popover_html(pop_id: str, section_label: str, groups: list,

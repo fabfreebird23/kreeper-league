@@ -242,29 +242,6 @@ table.lb tr.fa td{ background:rgba(94,203,240,.06); }
 .liquid-stat .txt .lbl{ font-size:10.5px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); }
 .liquid-stat .txt .sub{ font-size:13px; color:var(--ink); margin-top:3px; max-width:180px; }
 
-/* season-phase stepper — horizontal progress across the year */
-.stepper{ display:flex; align-items:flex-start; }
-.step{ flex:1; position:relative; text-align:center; }
-.step .dot{ width:32px; height:32px; border-radius:50%; margin:0 auto 9px; display:flex;
-  align-items:center; justify-content:center; font-family:'Anton', sans-serif; font-size:12px;
-  background:var(--panel2); border:2px solid var(--line); color:var(--muted); position:relative; z-index:2; }
-.step .line{ position:absolute; top:16px; left:-50%; width:100%; height:2px; background:var(--line); z-index:1; }
-.step:first-child .line{ display:none; }
-.step .lbl{ font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:.4px; color:var(--muted); }
-.step .sub{ font-size:9.5px; color:var(--muted); opacity:.7; margin-top:2px; }
-.step.done .dot{ background:var(--teal); border-color:var(--teal); color:#04231d; }
-.step.done .dot::after{ content:"✓"; }
-.step.done .line{ background:var(--teal); }
-.step.now .dot{ background:var(--grad); border-color:transparent; color:#fff;
-  box-shadow:0 0 0 4px rgba(160,107,255,.18); animation:step-pulse 2.2s ease-in-out infinite; }
-.step.now .lbl{ color:var(--ink); }
-@keyframes step-pulse{ 0%,100%{ box-shadow:0 0 0 4px rgba(160,107,255,.18);} 50%{ box-shadow:0 0 0 8px rgba(160,107,255,.06);} }
-@media (prefers-reduced-motion: reduce){ .step.now .dot{ animation:none; } }
-@media (max-width: 640px){
-  .step .lbl{ font-size:8.5px; }
-  .step .sub{ display:none; }
-  .step .dot{ width:26px; height:26px; font-size:10px; }
-}
 .faab-pot{ text-align:center; padding:18px 12px; border-radius:12px; border:1px solid transparent;
   background:linear-gradient(var(--panel2),var(--panel2)) padding-box, var(--grad) border-box;
   margin-bottom:16px; }
