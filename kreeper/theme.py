@@ -363,29 +363,75 @@ table.dboard td.dbcell{ padding:3px 4px; }
 
 .lb .pos{ white-space:nowrap; }
 
-/* top navigation bar — plain uppercase links, gradient underline on the
-   active section (matches the sub-nav treatment from the gradient-glass mock) */
+/* top bar — logo only now; section nav lives in the fixed bottom bar */
 .kbar{ display:flex; align-items:center; gap:28px; flex-wrap:wrap;
-  padding-bottom:0; margin-bottom:18px; border-bottom:1px solid var(--line); }
+  padding-bottom:14px; margin-bottom:18px; border-bottom:1px solid var(--line); }
 .khome{ text-decoration:none !important; line-height:1; }
 .khome .neon-logo{ font-size:30px; margin:0; }
-.topnav{ display:flex; gap:26px; flex-wrap:wrap; align-self:stretch; align-items:center; }
+
+/* fixed bottom bar — floating pill segmented control, the site's only nav.
+   Leave room for it at the foot of the page so content never sits under it. */
+[data-testid="stAppViewContainer"] .block-container{ padding-bottom:96px !important; }
+.bottom-bar-wrap{ position:fixed; left:0; right:0; bottom:18px; display:flex;
+  justify-content:center; z-index:1000; pointer-events:none; }
+.bottom-bar{ pointer-events:auto; display:flex; gap:2px; background:rgba(18,18,22,.94);
+  backdrop-filter:blur(16px); border:1px solid var(--line); border-radius:999px;
+  padding:6px; box-shadow:0 12px 36px rgba(0,0,0,.5); }
 .navlink, [data-testid="stMarkdownContainer"] a.navlink{
-  font-family:'Oswald'; font-weight:600; letter-spacing:.8px; font-size:12.5px;
+  font-family:'Oswald'; font-weight:600; letter-spacing:.5px; font-size:12.5px;
   text-transform:uppercase; color:var(--ink) !important; text-decoration:none !important;
-  background:none; border:none; border-radius:0; white-space:nowrap; opacity:.55;
-  padding:8px 0 13px; border-bottom:2px solid transparent; transition:opacity .15s; }
+  background:none; border:none !important; border-image:none !important; border-radius:999px !important;
+  white-space:nowrap; opacity:.6; padding:10px 20px !important; transition:opacity .2s, background .25s ease; }
 .navlink:hover{ opacity:.85; }
-.navlink.active{ opacity:1; border-bottom:2px solid; border-image:var(--grad) 1; }
+.navlink.active{ opacity:1; background:var(--grad) !important; color:#fff !important; }
+
+/* bottom-bar popover — Pre-Season / League drill down into their sub-pages
+   from a sheet anchored above the bar, instead of jumping straight to the
+   page and landing at the top of a long nested-tabs stack. */
+.bb-scrim{ position:fixed; inset:0; background:rgba(0,0,0,0); pointer-events:none;
+  transition:background .25s; z-index:998; }
+.bb-scrim.on{ background:rgba(0,0,0,.45); pointer-events:auto; }
+.bb-pop{ position:fixed; left:50%; bottom:76px; transform:translate(-50%,10px) scale(.96);
+  width:min(340px, calc(100% - 32px)); background:var(--panel2); border:1px solid var(--line);
+  border-radius:16px; padding:8px; box-shadow:0 16px 44px rgba(0,0,0,.55); opacity:0;
+  pointer-events:none; transition:opacity .2s ease, transform .2s ease; z-index:999; }
+.bb-pop.on{ opacity:1; pointer-events:auto; transform:translate(-50%,0) scale(1); }
+.bb-pop-panel{ display:none; }
+.bb-pop-panel.on{ display:block; }
+.bb-pop-head{ display:flex; align-items:center; gap:8px; padding:8px 10px 10px; }
+.bb-pop-back{ font-size:11px; color:var(--muted); cursor:pointer; }
+.bb-pop-back:hover{ color:var(--ink); }
+.bb-pop-title{ font-family:'Anton', sans-serif; font-size:12px; text-transform:uppercase;
+  letter-spacing:.5px; color:var(--muted); }
+.bb-pop-item{ display:flex; align-items:center; justify-content:space-between; padding:12px 12px;
+  border-radius:10px; font-size:13.5px; font-weight:600; color:var(--ink) !important;
+  text-decoration:none !important; cursor:pointer; transition:background .15s; }
+.bb-pop-item:hover{ background:rgba(255,255,255,.05); }
+.bb-pop-item .chev{ color:var(--muted); font-size:11px; }
+.bb-pop-item.leaf-active{ background:linear-gradient(90deg, rgba(255,90,160,.16), rgba(160,107,255,.12)); }
+.bb-pop-item.leaf-active .lbl{ background:var(--grad); -webkit-background-clip:text;
+  background-clip:text; -webkit-text-fill-color:transparent; }
+
+/* sub-tab rows — query-param-driven links styled like native st.tabs(),
+   used wherever a section needs deep-linkable tabs (so the popover above
+   can jump straight to a leaf instead of just the section root) */
+.subtabs{ display:flex; gap:26px; flex-wrap:wrap; border-bottom:1px solid var(--line);
+  margin-bottom:18px; padding-bottom:0; }
+.subtab, [data-testid="stMarkdownContainer"] a.subtab{
+  font-family:'Anton', sans-serif !important; letter-spacing:.8px; text-transform:uppercase;
+  font-size:14px; color:var(--muted) !important; text-decoration:none !important;
+  padding:0 0 12px; border-bottom:2px solid transparent; border-image:none; white-space:nowrap; }
+.subtab.active{ color:var(--ink) !important; border-bottom:2px solid; border-image:var(--grad) 1; }
 
 /* ---------------- mobile ---------------- */
 @media (max-width: 640px){
   .neon-logo{ font-size:40px !important; }
   .neon-tag{ font-size:8px; letter-spacing:3px; }
-  .kbar{ gap:14px; }
-  .topnav{ gap:14px; }
+  [data-testid="stAppViewContainer"] .block-container{ padding-bottom:84px !important; }
+  .bottom-bar-wrap{ bottom:10px; }
+  .bottom-bar{ gap:0; padding:4px; }
   .khome .neon-logo{ font-size:24px !important; }
-  .navlink{ font-size:11px; padding:6px 0 10px; letter-spacing:.4px; }
+  .navlink{ font-size:10px; padding:9px 11px !important; letter-spacing:.3px; }
   h1{ font-size:1.5rem !important; }
   h2{ font-size:1.25rem !important; }
   h3{ font-size:1.15rem !important; }

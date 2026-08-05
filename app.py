@@ -23,14 +23,18 @@ from kreeper.names import normalize_name
 
 st.set_page_config(page_title="The Kreeper League — Keeper Hub", page_icon=None, layout="wide")
 
-# Routing via a `?p=` query param so the nav links are real, shareable, static links.
+# Routing via a `?p=` query param so the nav links are real, shareable, static
+# links. Four top-level sections grouped by where they fall in the season,
+# not by content type — Home stays its own phase-aware thing (see
+# render_home / kreeper/phase.py); the rest live under Pre-Season, In-Season,
+# or League. Named "preseason"/"inseason" (no underscore) so they're never
+# confused with kreeper.phase's "pre_season"/"in_season" phase constants —
+# those drive Home's content and are a separate concept from this static nav.
 SECTIONS = [
     ("home", "Home"),
-    ("keepers", "Keepers"),
-    ("draft", "Draft"),
-    ("trades", "Trades"),
+    ("preseason", "Pre-Season"),
+    ("inseason", "In-Season"),
     ("league", "League"),
-    ("players", "Players"),
 ]
 _VALID = {k for k, _ in SECTIONS}
 page = st.query_params.get("p", "home")
@@ -2517,16 +2521,13 @@ def render_superlatives() -> None:
 
 # ---------------------------------------------------------------- sidebar + nav
 # ----------------------------------------------------------------- navigation
-# Consolidated sections; each groups related pages under sub-tabs.
-# Top bar on every page: clickable KREEPER logo (-> Home) + section links.
-navlinks = "".join(
-    f'<a class="navlink{" active" if k == page else ""}" href="?p={k}" target="_self">{label}</a>'
-    for k, label in SECTIONS
-)
+# Top bar on every page: just the clickable KREEPER logo (-> Home) now — the
+# section links live in the fixed bottom bar instead (render_bottom_bar,
+# called at the end of the script so it always paints last / on top).
 st.markdown(
     f'<div class="kbar">'
     f'<a class="khome" href="?p=home" target="_self">{theme.logo_html(40, None)}</a>'
-    f'<div class="topnav">{navlinks}</div></div>',
+    f'</div>',
     unsafe_allow_html=True,
 )
 
@@ -2557,52 +2558,170 @@ with st.sidebar:
     st.divider()
     st.caption(f"{ned()}")
 
+# Sub-tab trees for the three sections that have them — plain (key, label)
+# lists so the same data drives both the on-page sub-tab row (render_subnav)
+# and the bottom-bar popover (render_bottom_bar) without duplicating labels.
+PRESEASON_GROUPS = [("keepers", "Keepers"), ("draft", "Draft"), ("players", "Players")]
+PRESEASON_LEAVES = {
+    "keepers": [("setkeepers", "Set My Keepers"), ("landscape", "Keeper Landscape"), ("needs", "Roster Needs")],
+    "draft": [("board", "Draft Board"), ("projected", "Projected Draft"), ("capital", "Draft Capital & Keeper Cost")],
+    "players": [("adp", "ADP"), ("trends", "ADP Trends")],
+}
+INSEASON_LEAVES = [("recent", "Recent Trades"), ("market", "Trade Market"), ("analyzer", "Trade Analyzer")]
+LEAGUE_LEAVES = [("faab", "FAAB Pot"), ("odds", "Title Odds"), ("superlatives", "Superlatives"),
+                  ("record", "Record Book"), ("hitrate", "Keeper Hit-Rate"), ("lottery", "Draft-Order Lottery")]
+
+
+def render_subnav(param: str, current: str, items: list, **fixed_params) -> None:
+    """A query-param-driven tab row styled like native st.tabs() — used
+    instead of the real thing so every sub-page is a deep-linkable URL the
+    bottom-bar popover (and anyone else) can jump straight to."""
+    def href(k):
+        parts = dict(fixed_params)
+        parts[param] = k
+        return "&".join(f"{kk}={vv}" for kk, vv in parts.items())
+    links = "".join(
+        f'<a class="subtab{" active" if k == current else ""}" href="?{href(k)}" target="_self">{label}</a>'
+        for k, label in items
+    )
+    st.markdown(f'<div class="subtabs">{links}</div>', unsafe_allow_html=True)
+
+
 if page == "home":
     render_home()
-elif page == "keepers":
-    t1, t2, t3 = st.tabs(["Set My Keepers", "Keeper Landscape", "Roster Needs"])
-    with t1:
-        render_my_keepers()
-    with t2:
-        render_keeper_landscape()
-    with t3:
-        render_roster_needs()
-elif page == "draft":
-    t1, t2, t3, t4 = st.tabs(["Draft Board", "Projected Draft", "Draft Capital", "Draft-Order Lottery"])
-    with t1:
-        render_draft_board()
-    with t2:
-        render_mock_draft()
-    with t3:
-        render_draft_capital()
-    with t4:
-        render_lottery()
-elif page == "trades":
-    t1, t2, t3 = st.tabs(["Recent Trades", "Trade Market", "Trade Analyzer"])
-    with t1:
-        render_recent_trades()
-    with t2:
-        render_trade_targets()
-    with t3:
-        render_trade_analyzer()
+elif page == "preseason":
+    g = st.query_params.get("g", "keepers")
+    if g not in PRESEASON_LEAVES:
+        g = "keepers"
+    render_subnav("g", g, PRESEASON_GROUPS, p="preseason")
+
+    leaves = PRESEASON_LEAVES[g]
+    t = st.query_params.get("t", leaves[0][0])
+    if t not in dict(leaves):
+        t = leaves[0][0]
+    render_subnav("t", t, leaves, p="preseason", g=g)
+
+    if g == "keepers":
+        {"setkeepers": render_my_keepers, "landscape": render_keeper_landscape,
+         "needs": render_roster_needs}[t]()
+    elif g == "draft":
+        {"board": render_draft_board, "projected": render_mock_draft,
+         "capital": render_draft_capital}[t]()
+    else:
+        if t == "adp":
+            render_rookies()
+            st.divider()
+            render_adp()
+        else:
+            render_adp_trends()
+elif page == "inseason":
+    t = st.query_params.get("t", "recent")
+    if t not in dict(INSEASON_LEAVES):
+        t = "recent"
+    render_subnav("t", t, INSEASON_LEAVES, p="inseason")
+    {"recent": render_recent_trades, "market": render_trade_targets,
+     "analyzer": render_trade_analyzer}[t]()
 elif page == "league":
-    t1, t2, t3, t4, t5 = st.tabs(["FAAB Pot", "Title Odds", "Record Book",
-                                   "Keeper Hit-Rate", "Superlatives"])
-    with t1:
-        render_faab()
-    with t2:
-        render_odds()
-    with t3:
-        render_record_book()
-    with t4:
-        render_keeper_hitrate()
-    with t5:
-        render_superlatives()
-elif page == "players":
-    t1, t2, t3 = st.tabs(["Rookies", "Consensus ADP", "ADP Trends"])
-    with t1:
-        render_rookies()
-    with t2:
-        render_adp()
-    with t3:
-        render_adp_trends()
+    t = st.query_params.get("t", "faab")
+    if t not in dict(LEAGUE_LEAVES):
+        t = "faab"
+    render_subnav("t", t, LEAGUE_LEAVES, p="league")
+    {"faab": render_faab, "odds": render_odds, "superlatives": render_superlatives,
+     "record": render_record_book, "hitrate": render_keeper_hitrate,
+     "lottery": render_lottery}[t]()
+
+
+def render_bottom_bar() -> None:
+    """Fixed floating pill bar — the site's only nav. Home / In-Season are
+    plain links; Pre-Season / League pop a sheet above the bar so you can
+    jump straight to a leaf sub-page instead of landing at the section root."""
+    cur_g = st.query_params.get("g", "keepers")
+    if cur_g not in PRESEASON_LEAVES:
+        cur_g = "keepers"
+    cur_t = st.query_params.get("t", "")
+
+    def leaf_links(leaves, **params):
+        return "".join(
+            f'<a class="bb-pop-item{" leaf-active" if page == params["p"] and (params.get("g") == cur_g if "g" in params else True) and cur_t == k else ""}" '
+            f'href="?{"&".join(f"{kk}={vv}" for kk, vv in {**params, "t": k}.items())}" target="_self">'
+            f'<span class="lbl">{label}</span></a>'
+            for k, label in leaves
+        )
+
+    ps_leaf_panels = "".join(
+        f'<div class="bb-pop-panel{" on" if gk == cur_g else ""}" data-panel="ps-{gk}">'
+        f'<div class="bb-pop-head"><span class="bb-pop-back" data-show="ps-root">&larr; Pre-Season</span>'
+        f'<span class="bb-pop-title">{glabel}</span></div>'
+        + leaf_links(PRESEASON_LEAVES[gk], p="preseason", g=gk)
+        + '</div>'
+        for gk, glabel in PRESEASON_GROUPS
+    )
+    ps_root_items = "".join(
+        f'<div class="bb-pop-item" data-show="ps-{gk}"><span class="lbl">{glabel}</span>'
+        f'<span class="chev">{len(PRESEASON_LEAVES[gk])} &rsaquo;</span></div>'
+        for gk, glabel in PRESEASON_GROUPS
+    )
+    ps_pop = (
+        '<div class="bb-pop" id="bb-pop-preseason">'
+        f'<div class="bb-pop-panel" data-panel="ps-root"><div class="bb-pop-head">'
+        '<span class="bb-pop-title">Pre-Season</span></div>' + ps_root_items + '</div>'
+        + ps_leaf_panels + '</div>'
+    )
+    league_pop = (
+        '<div class="bb-pop" id="bb-pop-league">'
+        '<div class="bb-pop-panel on" data-panel="lg-root"><div class="bb-pop-head">'
+        '<span class="bb-pop-title">League</span></div>'
+        + leaf_links(LEAGUE_LEAVES, p="league") + '</div></div>'
+    )
+
+    active = lambda k: " active" if page == k else ""
+    bar_html = (
+        '<div class="bb-scrim" id="bb-scrim"></div>'
+        + ps_pop + league_pop +
+        '<div class="bottom-bar-wrap"><div class="bottom-bar">'
+        f'<a class="navlink{active("home")}" href="?p=home" target="_self">Home</a>'
+        f'<div class="navlink{active("preseason")}" data-toggle="bb-pop-preseason">Pre-Season</div>'
+        f'<a class="navlink{active("inseason")}" href="?p=inseason" target="_self">In-Season</a>'
+        f'<div class="navlink{active("league")}" data-toggle="bb-pop-league">League</div>'
+        '</div></div>'
+    )
+    # st.markdown silently strips <script> tags, so the popover's click
+    # handlers can't live there (see render_countdown for the same issue).
+    # components.html runs real JS in a same-origin iframe, which lets us
+    # reach through to window.parent.document and inject the bar directly
+    # into the real page — that's also the only way position:fixed ends up
+    # anchored to the actual viewport instead of a tiny iframe box.
+    components.html(
+        "<script>(function(){"
+        "const doc = window.parent.document;"
+        "const old = doc.getElementById('kreeper-bottom-bar-root');"
+        "if (old) old.remove();"
+        "const root = doc.createElement('div');"
+        "root.id = 'kreeper-bottom-bar-root';"
+        f"root.innerHTML = {json.dumps(bar_html)};"
+        "doc.body.appendChild(root);"
+        "const scrim = doc.getElementById('bb-scrim');"
+        "function closeAll(){ doc.querySelectorAll('.bb-pop').forEach(p=>p.classList.remove('on')); scrim.classList.remove('on'); }"
+        "doc.querySelectorAll('[data-toggle]').forEach(function(btn){"
+        "  btn.addEventListener('click', function(e){"
+        "    e.stopPropagation();"
+        "    const pop = doc.getElementById(btn.dataset.toggle);"
+        "    const wasOn = pop.classList.contains('on');"
+        "    closeAll();"
+        "    if (!wasOn){ pop.classList.add('on'); scrim.classList.add('on'); }"
+        "  });"
+        "});"
+        "doc.querySelectorAll('[data-show]').forEach(function(el){"
+        "  el.addEventListener('click', function(){"
+        "    const pop = el.closest('.bb-pop');"
+        "    pop.querySelectorAll('.bb-pop-panel').forEach(p=>p.classList.remove('on'));"
+        "    pop.querySelector('[data-panel=\"'+el.dataset.show+'\"]').classList.add('on');"
+        "  });"
+        "});"
+        "scrim.addEventListener('click', closeAll);"
+        "})();</script>",
+        height=0,
+    )
+
+
+render_bottom_bar()
