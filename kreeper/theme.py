@@ -402,6 +402,12 @@ table.dboard td.dbcell{ padding:3px 4px; }
 
 /* ---------------- mobile ---------------- */
 @media (max-width: 640px){
+  /* hide Streamlit's own chrome (hamburger menu, "Manage app", status
+     widget) on mobile — the bottom bar is the site's only nav there and
+     this bar just eats space / distracts from it */
+  [data-testid="stToolbar"], [data-testid="stDecoration"],
+  [data-testid="stStatusWidget"], [data-testid="stAppDeployButton"],
+  #MainMenu{ display:none !important; }
   .neon-logo{ font-size:40px !important; }
   .neon-tag{ font-size:8px; letter-spacing:3px; }
   [data-testid="stAppViewContainer"] .block-container{ padding-bottom:84px !important; }
