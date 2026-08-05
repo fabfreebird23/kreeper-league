@@ -24,17 +24,17 @@ from kreeper.names import normalize_name
 st.set_page_config(page_title="The Kreeper League — Keeper Hub", page_icon=None, layout="wide")
 
 # Routing via a `?p=` query param so the nav links are real, shareable, static
-# links. Four top-level sections grouped by where they fall in the season,
+# links. Three top-level sections grouped by where they fall in the season,
 # not by content type — Home stays its own phase-aware thing (see
-# render_home / kreeper/phase.py); the rest live under Pre-Season, In-Season,
-# or League. Named "preseason"/"inseason" (no underscore) so they're never
-# confused with kreeper.phase's "pre_season"/"in_season" phase constants —
-# those drive Home's content and are a separate concept from this static nav.
+# render_home / kreeper/phase.py); the rest live under Pre-Season or
+# In-Season (League + History folded into In-Season as sub-groups). Named
+# "preseason"/"inseason" (no underscore) so they're never confused with
+# kreeper.phase's "pre_season"/"in_season" phase constants — those drive
+# Home's content and are a separate concept from this static nav.
 SECTIONS = [
     ("home", "Home"),
     ("preseason", "Pre-Season"),
     ("inseason", "In-Season"),
-    ("league", "League"),
 ]
 _VALID = {k for k, _ in SECTIONS}
 page = st.query_params.get("p", "home")
@@ -2593,9 +2593,12 @@ PRESEASON_LEAVES = {
     "draft": [("board", "Draft Board"), ("projected", "Projected Draft"), ("capital", "Draft Capital & Keeper Cost")],
     "players": [("adp", "ADP"), ("trends", "ADP Trends")],
 }
-INSEASON_LEAVES = [("recent", "Recent Trades"), ("market", "Trade Market"), ("analyzer", "Trade Analyzer")]
-LEAGUE_LEAVES = [("faab", "FAAB Pot"), ("odds", "Title Odds"), ("superlatives", "Superlatives"),
-                  ("record", "Record Book"), ("hitrate", "Keeper Hit-Rate"), ("lottery", "Draft-Order Lottery")]
+INSEASON_GROUPS = [("trades", "Trades"), ("league", "League"), ("history", "History")]
+INSEASON_LEAVES = {
+    "trades": [("recent", "Recent Trades"), ("market", "Trade Market"), ("analyzer", "Trade Analyzer")],
+    "league": [("faab", "FAAB Pot"), ("odds", "Title Odds"), ("superlatives", "Superlatives")],
+    "history": [("record", "Record Book"), ("hitrate", "Keeper Hit-Rate"), ("lottery", "Draft-Order Lottery")],
+}
 
 
 if page == "home":
@@ -2624,72 +2627,80 @@ elif page == "preseason":
         else:
             render_adp_trends()
 elif page == "inseason":
-    t = st.query_params.get("t", "recent")
-    if t not in dict(INSEASON_LEAVES):
-        t = "recent"
-    {"recent": render_recent_trades, "market": render_trade_targets,
-     "analyzer": render_trade_analyzer}[t]()
-elif page == "league":
-    t = st.query_params.get("t", "faab")
-    if t not in dict(LEAGUE_LEAVES):
-        t = "faab"
-    {"faab": render_faab, "odds": render_odds, "superlatives": render_superlatives,
-     "record": render_record_book, "hitrate": render_keeper_hitrate,
-     "lottery": render_lottery}[t]()
+    g = st.query_params.get("g", "trades")
+    if g not in INSEASON_LEAVES:
+        g = "trades"
+
+    leaves = INSEASON_LEAVES[g]
+    t = st.query_params.get("t", leaves[0][0])
+    if t not in dict(leaves):
+        t = leaves[0][0]
+
+    if g == "trades":
+        {"recent": render_recent_trades, "market": render_trade_targets,
+         "analyzer": render_trade_analyzer}[t]()
+    elif g == "league":
+        {"faab": render_faab, "odds": render_odds, "superlatives": render_superlatives}[t]()
+    else:
+        {"record": render_record_book, "hitrate": render_keeper_hitrate,
+         "lottery": render_lottery}[t]()
 
 
-def render_bottom_bar() -> None:
-    """Fixed floating pill bar — the site's only nav. Home / In-Season are
-    plain links; Pre-Season / League pop a sheet above the bar so you can
-    jump straight to a leaf sub-page instead of landing at the section root."""
-    cur_g = st.query_params.get("g", "keepers")
-    if cur_g not in PRESEASON_LEAVES:
-        cur_g = "keepers"
+def _group_popover_html(pop_id: str, section_label: str, groups: list,
+                         leaves_by_group: dict, page_key: str) -> str:
+    """A group->leaf drill-down sheet for one bottom-bar section — tap a
+    group (e.g. "Draft") to see its leaves, or back out to pick another
+    group. Shared by Pre-Season and In-Season, the two sections with more
+    than one level of sub-pages."""
+    cur_g = st.query_params.get("g", groups[0][0])
+    if cur_g not in leaves_by_group:
+        cur_g = groups[0][0]
     cur_t = st.query_params.get("t", "")
 
     def leaf_links(leaves, **params):
         return "".join(
-            f'<a class="bb-pop-item{" leaf-active" if page == params["p"] and (params.get("g") == cur_g if "g" in params else True) and cur_t == k else ""}" '
+            f'<a class="bb-pop-item{" leaf-active" if page == params["p"] and params.get("g") == cur_g and cur_t == k else ""}" '
             f'href="?{"&".join(f"{kk}={vv}" for kk, vv in {**params, "t": k}.items())}" target="_self">'
             f'<span class="lbl">{label}</span></a>'
             for k, label in leaves
         )
 
-    ps_leaf_panels = "".join(
-        f'<div class="bb-pop-panel{" on" if gk == cur_g else ""}" data-panel="ps-{gk}">'
-        f'<div class="bb-pop-head"><span class="bb-pop-back" data-show="ps-root">&larr; Pre-Season</span>'
+    leaf_panels = "".join(
+        f'<div class="bb-pop-panel{" on" if gk == cur_g else ""}" data-panel="{pop_id}-{gk}">'
+        f'<div class="bb-pop-head"><span class="bb-pop-back" data-show="{pop_id}-root">&larr; {section_label}</span>'
         f'<span class="bb-pop-title">{glabel}</span></div>'
-        + leaf_links(PRESEASON_LEAVES[gk], p="preseason", g=gk)
+        + leaf_links(leaves_by_group[gk], p=page_key, g=gk)
         + '</div>'
-        for gk, glabel in PRESEASON_GROUPS
+        for gk, glabel in groups
     )
-    ps_root_items = "".join(
-        f'<div class="bb-pop-item" data-show="ps-{gk}"><span class="lbl">{glabel}</span>'
-        f'<span class="chev">{len(PRESEASON_LEAVES[gk])} &rsaquo;</span></div>'
-        for gk, glabel in PRESEASON_GROUPS
+    root_items = "".join(
+        f'<div class="bb-pop-item" data-show="{pop_id}-{gk}"><span class="lbl">{glabel}</span>'
+        f'<span class="chev">{len(leaves_by_group[gk])} &rsaquo;</span></div>'
+        for gk, glabel in groups
     )
-    ps_pop = (
-        '<div class="bb-pop" id="bb-pop-preseason">'
-        f'<div class="bb-pop-panel" data-panel="ps-root"><div class="bb-pop-head">'
-        '<span class="bb-pop-title">Pre-Season</span></div>' + ps_root_items + '</div>'
-        + ps_leaf_panels + '</div>'
+    return (
+        f'<div class="bb-pop" id="bb-pop-{pop_id}">'
+        f'<div class="bb-pop-panel" data-panel="{pop_id}-root"><div class="bb-pop-head">'
+        f'<span class="bb-pop-title">{section_label}</span></div>' + root_items + '</div>'
+        + leaf_panels + '</div>'
     )
-    league_pop = (
-        '<div class="bb-pop" id="bb-pop-league">'
-        '<div class="bb-pop-panel on" data-panel="lg-root"><div class="bb-pop-head">'
-        '<span class="bb-pop-title">League</span></div>'
-        + leaf_links(LEAGUE_LEAVES, p="league") + '</div></div>'
-    )
+
+
+def render_bottom_bar() -> None:
+    """Fixed floating pill bar — the site's only nav. Home is a plain link;
+    Pre-Season / In-Season pop a sheet above the bar so you can jump
+    straight to a leaf sub-page instead of landing at the section root."""
+    ps_pop = _group_popover_html("preseason", "Pre-Season", PRESEASON_GROUPS, PRESEASON_LEAVES, "preseason")
+    is_pop = _group_popover_html("inseason", "In-Season", INSEASON_GROUPS, INSEASON_LEAVES, "inseason")
 
     active = lambda k: " active" if page == k else ""
     bar_html = (
         '<div class="bb-scrim" id="bb-scrim"></div>'
-        + ps_pop + league_pop +
+        + ps_pop + is_pop +
         '<div class="bottom-bar-wrap"><div class="bottom-bar">'
         f'<a class="navlink{active("home")}" href="?p=home" target="_self">Home</a>'
         f'<div class="navlink{active("preseason")}" data-toggle="bb-pop-preseason">Pre-Season</div>'
-        f'<a class="navlink{active("inseason")}" href="?p=inseason" target="_self">In-Season</a>'
-        f'<div class="navlink{active("league")}" data-toggle="bb-pop-league">League</div>'
+        f'<div class="navlink{active("inseason")}" data-toggle="bb-pop-inseason">In-Season</div>'
         '</div></div>'
     )
     # st.markdown silently strips <script> tags, so the popover's click
