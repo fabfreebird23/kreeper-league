@@ -410,11 +410,11 @@ table.dboard td.dbcell{ padding:3px 4px; }
   #MainMenu, footer{ display:none !important; }
   .neon-logo{ font-size:40px !important; }
   .neon-tag{ font-size:8px; letter-spacing:3px; }
-  [data-testid="stAppViewContainer"] .block-container{ padding-bottom:96px !important; }
+  [data-testid="stAppViewContainer"] .block-container{ padding-bottom:108px !important; }
   .bottom-bar-wrap{ bottom:10px; }
-  .bottom-bar{ gap:0; padding:5px; }
+  .bottom-bar{ gap:0; padding:6px; }
   .khome .neon-logo{ font-size:24px !important; }
-  .navlink{ font-size:11.5px; padding:11px 13px !important; letter-spacing:.3px; }
+  .navlink{ font-size:14px; padding:14px 16px !important; letter-spacing:.3px; }
   h1{ font-size:1.5rem !important; }
   h2{ font-size:1.25rem !important; }
   h3{ font-size:1.15rem !important; }
