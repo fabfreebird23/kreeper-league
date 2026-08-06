@@ -380,22 +380,24 @@ table.dboard td.dbcell{ padding:3px 4px; }
   transition:background .25s; z-index:998; }
 .bb-scrim.on{ background:rgba(0,0,0,.45); pointer-events:auto; }
 .bb-pop{ position:fixed; left:50%; bottom:90px; transform:translate(-50%,10px) scale(.96);
-  width:min(340px, calc(100% - 32px)); background:var(--panel2); border:1px solid var(--line);
+  width:min(340px, calc(100% - 32px)); max-height:min(70vh, 480px); overflow-y:auto;
+  background:var(--panel2); border:1px solid var(--line);
   border-radius:16px; padding:8px; box-shadow:0 16px 44px rgba(0,0,0,.55); opacity:0;
   pointer-events:none; transition:opacity .2s ease, transform .2s ease; z-index:999; }
 .bb-pop.on{ opacity:1; pointer-events:auto; transform:translate(-50%,0) scale(1); }
-.bb-pop-panel{ display:none; }
-.bb-pop-panel.on{ display:block; }
 .bb-pop-head{ display:flex; align-items:center; gap:8px; padding:8px 10px 10px; }
-.bb-pop-back{ font-size:11px; color:var(--muted); cursor:pointer; }
-.bb-pop-back:hover{ color:var(--ink); }
 .bb-pop-title{ font-family:'Anton', sans-serif; font-size:12px; text-transform:uppercase;
   letter-spacing:.5px; color:var(--muted); }
+/* group label above each cluster of leaves — not interactive, just an
+   in-place divider so every leaf across every group is one tap, no
+   drill-down/back step to pick a group first. */
+.bb-pop-group-label{ font-family:'Anton', sans-serif; font-size:10.5px; text-transform:uppercase;
+  letter-spacing:.6px; color:var(--purple); padding:14px 12px 4px; }
+.bb-pop-group-label:first-of-type{ padding-top:4px; }
 .bb-pop-item{ display:flex; align-items:center; justify-content:space-between; padding:12px 12px;
   border-radius:10px; font-size:13.5px; font-weight:600; color:var(--ink) !important;
   text-decoration:none !important; cursor:pointer; transition:background .15s; }
 .bb-pop-item:hover{ background:rgba(255,255,255,.05); }
-.bb-pop-item .chev{ color:var(--muted); font-size:11px; }
 .bb-pop-item.leaf-active{ background:linear-gradient(90deg, rgba(255,90,160,.16), rgba(160,107,255,.12)); }
 .bb-pop-item.leaf-active .lbl{ background:var(--grad); -webkit-background-clip:text;
   background-clip:text; -webkit-text-fill-color:transparent; }
