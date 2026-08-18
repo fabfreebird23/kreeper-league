@@ -249,6 +249,38 @@ table.lb tr.fa td{ background:rgba(94,203,240,.06); }
   background-clip:text; -webkit-text-fill-color:transparent; display:block; line-height:1; }
 .faab-pot span{ font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
 
+/* FAAB burn-down chart */
+.burn-wrap{ background:var(--panel2); border:1px solid var(--line); border-radius:12px;
+  padding:14px 16px 10px; margin-bottom:16px; }
+.burn-svg{ width:100%; height:auto; display:block; }
+.burn-legend{ display:flex; flex-wrap:wrap; gap:12px; margin-top:10px; padding-top:10px;
+  border-top:1px solid var(--line); }
+.burn-key{ display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted);
+  white-space:nowrap; }
+.burn-key.on{ color:var(--ink); font-weight:600; }
+.burn-key b{ font-family:'Anton', sans-serif; font-weight:400; color:var(--ink); }
+.burn-dot{ width:9px; height:9px; border-radius:2px; flex:0 0 auto; }
+
+/* standings — the playoff cut line sits UNDER the last qualifying row */
+tr.playoff-cut td{ border-bottom:2px solid var(--accent) !important; }
+
+/* weekly scoreboard cards */
+.matchups{ display:grid; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); gap:12px; }
+.matchup{ background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:12px 14px; }
+.mu-row{ display:flex; align-items:center; justify-content:space-between; gap:10px;
+  padding:5px 0; font-size:13.5px; color:var(--muted); }
+.mu-row.win{ color:var(--ink); font-weight:700; }
+.mu-row.win .mu-pts{ color:var(--teal); }
+.mu-team{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mu-pts{ font-family:'Anton', sans-serif; font-size:15px; flex:0 0 auto; }
+.mu-note{ margin-top:6px; padding-top:6px; border-top:1px solid var(--line);
+  font-size:9.5px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); text-align:right; }
+
+/* power ranking movement arrows */
+.pr-up{ color:var(--teal); font-weight:700; }
+.pr-down{ color:var(--red); font-weight:700; }
+.pr-flat{ color:var(--muted); }
+
 /* rules / bylaws page */
 .rule-block{ background:var(--panel2); border:1px solid var(--line); border-radius:12px;
   padding:6px 18px 14px; margin-bottom:16px; }
@@ -653,6 +685,86 @@ def liquid_stat_html(pct: float, value_html: str, ring_label: str, label: str, s
     return (f'<div class="liquid-stat">{ring}'
             f'<div class="txt"><div class="lbl">{label}</div>'
             + (f'<div class="sub">{sub}</div>' if sub else '') + '</div></div>')
+
+
+_BURN_PALETTE = ["#4f9dff", "#ff5aa0", "#3fd67c", "#ffb020",
+                 "#a06bff", "#5ecbf0", "#ff8a3d", "#f0637c"]
+
+
+def burndown_svg(data: dict, names: dict, highlight: str | None = None,
+                  width: int = 720, height: int = 300) -> str:
+    """Cumulative FAAB spend as a hand-built line chart — one line per team,
+    rising toward the budget ceiling as the pot fills.
+
+    `data` is kreeper.faab.burndown()'s shape; `names` maps owner_id ->
+    display name. `highlight` (an owner_id) draws that team thicker and
+    leaves everyone else dimmed, so a single line can be followed out of a
+    tangle of eight.
+
+    Hand-built rather than a charting lib to stay on the site's own palette
+    and inherit its CSS — same reason the liquid rings are hand-built.
+    """
+    weeks, budget, teams = data["weeks"], data["budget"], data["teams"]
+    if not weeks or not teams:
+        return ""
+
+    pad_l, pad_r, pad_t, pad_b = 44, 12, 14, 26
+    plot_w = width - pad_l - pad_r
+    plot_h = height - pad_t - pad_b
+    n = max(1, len(weeks) - 1)
+    ceiling = max(budget, max((t["total"] for t in teams), default=0)) or 1
+
+    def x(i):
+        return pad_l + (plot_w * i / n)
+
+    def y(v):
+        return pad_t + plot_h - (plot_h * min(v, ceiling) / ceiling)
+
+    parts = [f'<svg class="burn-svg" viewBox="0 0 {width} {height}" '
+             f'preserveAspectRatio="xMidYMid meet" role="img" '
+             f'aria-label="Cumulative FAAB spend by week">']
+
+    # horizontal gridlines + dollar axis
+    for frac in (0, 0.25, 0.5, 0.75, 1.0):
+        gy = y(ceiling * frac)
+        parts.append(f'<line x1="{pad_l}" y1="{gy:.1f}" x2="{width - pad_r}" y2="{gy:.1f}" '
+                     f'stroke="rgba(255,255,255,.08)" stroke-width="1"/>')
+        parts.append(f'<text x="{pad_l - 8}" y="{gy + 3.5:.1f}" text-anchor="end" '
+                     f'font-size="9" fill="#8a8a95">${int(ceiling * frac)}</text>')
+    # the budget ceiling itself, called out
+    parts.append(f'<line x1="{pad_l}" y1="{y(budget):.1f}" x2="{width - pad_r}" y2="{y(budget):.1f}" '
+                 f'stroke="rgba(255,255,255,.28)" stroke-width="1" stroke-dasharray="4 4"/>')
+
+    # week axis — label sparsely so they never collide
+    step = max(1, len(weeks) // 8)
+    for i, wk in enumerate(weeks):
+        if i % step == 0 or i == len(weeks) - 1:
+            parts.append(f'<text x="{x(i):.1f}" y="{height - 8}" text-anchor="middle" '
+                         f'font-size="9" fill="#8a8a95">{wk}</text>')
+
+    for idx, t in enumerate(teams):
+        color = _BURN_PALETTE[idx % len(_BURN_PALETTE)]
+        is_hi = highlight is not None and t["owner"] == highlight
+        dim = highlight is not None and not is_hi
+        pts = " ".join(f"{x(i):.1f},{y(v):.1f}" for i, v in enumerate(t["points"]))
+        parts.append(
+            f'<polyline points="{pts}" fill="none" stroke="{color}" '
+            f'stroke-width="{3 if is_hi else 1.8}" stroke-linejoin="round" stroke-linecap="round" '
+            f'opacity="{0.28 if dim else 1}"/>'
+        )
+        if t["points"]:
+            parts.append(f'<circle cx="{x(len(t["points"]) - 1):.1f}" cy="{y(t["points"][-1]):.1f}" '
+                         f'r="{3.5 if is_hi else 2.5}" fill="{color}" '
+                         f'opacity="{0.28 if dim else 1}"/>')
+    parts.append("</svg>")
+
+    legend = "".join(
+        f'<span class="burn-key{" on" if highlight == t["owner"] else ""}">'
+        f'<span class="burn-dot" style="background:{_BURN_PALETTE[i % len(_BURN_PALETTE)]};"></span>'
+        f'{names.get(t["owner"], "?")} <b>${t["total"]}</b></span>'
+        for i, t in enumerate(teams)
+    )
+    return f'<div class="burn-wrap">{"".join(parts)}<div class="burn-legend">{legend}</div></div>'
 
 
 def inject(st) -> None:

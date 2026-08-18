@@ -215,3 +215,80 @@ def test_entry_pot_pays_runner_up_double_and_champion_the_balance():
     assert pot["total"] == 2000                       # 250 x 8
     assert pot["runner_up"] == {"owner": "o3", "amount": 500}   # doubles their buy-in
     assert pot["champion"] == {"owner": "o1", "amount": 1500}   # the balance
+
+
+# ------------------------------------------------------------- burn-down
+def test_weekly_spend_buckets_bids_by_week_and_owner():
+    rosters = _rosters({1: ("A", 30, []), 2: ("B", 0, [])})
+    txs = {
+        1: [_waiver_tx(1, {"100": 1}, 20)],
+        3: [_waiver_tx(3, {"200": 1}, 10), _waiver_tx(3, {"300": 2}, 5)],
+    }
+    with patch("kreeper.sleeper.get_rosters", return_value=rosters), \
+         patch("kreeper.sleeper.get_transactions", side_effect=_transactions_fn(txs)):
+        spend = faab.weekly_spend("fake")
+    assert spend["A"] == {1: 20, 3: 10}
+    assert spend["B"] == {3: 5}
+
+
+def test_weekly_spend_ignores_failed_and_zero_bid_claims():
+    rosters = _rosters({1: ("A", 0, [])})
+    txs = {1: [_waiver_tx(1, {"100": 1}, 25, status="failed"),
+               _waiver_tx(1, {"200": 1}, 0)]}
+    with patch("kreeper.sleeper.get_rosters", return_value=rosters), \
+         patch("kreeper.sleeper.get_transactions", side_effect=_transactions_fn(txs)):
+        spend = faab.weekly_spend("fake")
+    assert spend["A"] == {}
+
+
+def test_burndown_is_cumulative_and_sorted_by_total():
+    rosters = _rosters({1: ("A", 30, []), 2: ("B", 0, [])})
+    txs = {1: [_waiver_tx(1, {"100": 1}, 20)],
+           3: [_waiver_tx(3, {"200": 1}, 10), _waiver_tx(3, {"300": 2}, 5)]}
+    league = {"settings": {"waiver_budget": 100, "playoff_week_start": 5}}
+    with patch("kreeper.sleeper.get_rosters", return_value=rosters), \
+         patch("kreeper.sleeper.get_league", return_value=league), \
+         patch("kreeper.sleeper.get_transactions", side_effect=_transactions_fn(txs)):
+        curve = faab.burndown("fake")
+    assert curve["weeks"] == [1, 2, 3, 4]
+    assert curve["budget"] == 100
+    a = next(t for t in curve["teams"] if t["owner"] == "A")
+    # cumulative: $20 in wk1, flat wk2, +$10 in wk3, flat wk4
+    assert a["points"] == [20, 20, 30, 30]
+    assert a["total"] == 30
+    assert curve["teams"][0]["owner"] == "A"    # biggest spender first
+
+
+def test_burndown_includes_playoff_week_spending():
+    """Waivers stay open through the playoffs. Cutting the chart at
+    playoff_week_start dropped that spend and made the chart disagree with
+    the pot total shown on the same page — six of eight teams spent in weeks
+    13-16 in the real 2025 season."""
+    rosters = _rosters({1: ("A", 40, [])})
+    txs = {1: [_waiver_tx(1, {"100": 1}, 10)],
+           15: [_waiver_tx(15, {"200": 1}, 30)]}   # deep playoff-week claim
+    league = {"settings": {"waiver_budget": 100, "playoff_week_start": 13}}
+    with patch("kreeper.sleeper.get_rosters", return_value=rosters), \
+         patch("kreeper.sleeper.get_league", return_value=league), \
+         patch("kreeper.sleeper.get_transactions", side_effect=_transactions_fn(txs)):
+        curve = faab.burndown("fake")
+    assert curve["weeks"][-1] >= 15
+    a = curve["teams"][0]
+    assert a["total"] == 40           # not 10 — the week-15 claim counts
+    assert a["points"][-1] == 40
+
+
+def test_burndown_total_reconciles_with_team_budgets():
+    """The chart's final value per team must equal the authoritative spend
+    the pot is computed from, or the same page contradicts itself."""
+    rosters = _rosters({1: ("A", 40, []), 2: ("B", 5, [])})
+    txs = {2: [_waiver_tx(2, {"100": 1}, 40)],
+           14: [_waiver_tx(14, {"200": 2}, 5)]}
+    league = {"settings": {"waiver_budget": 100, "playoff_week_start": 13}}
+    with patch("kreeper.sleeper.get_rosters", return_value=rosters), \
+         patch("kreeper.sleeper.get_league", return_value=league), \
+         patch("kreeper.sleeper.get_transactions", side_effect=_transactions_fn(txs)):
+        curve = faab.burndown("fake")
+        budgets = faab.team_budgets("fake")
+    for t in curve["teams"]:
+        assert t["total"] == budgets[t["owner"]]["spent"], t["owner"]

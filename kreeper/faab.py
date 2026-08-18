@@ -124,6 +124,65 @@ def _all_transactions(league_id: str) -> List[Dict[str, Any]]:
     return out
 
 
+def weekly_spend(league_id: Optional[str] = None) -> Dict[str, Dict[int, int]]:
+    """owner_id -> {week: dollars spent that week}. Only COMPLETED waiver
+    claims with a real bid count — failed claims and $0 free-agent adds
+    never move money, so counting them would overstate the pot.
+    """
+    league_id = league_id or config.league()["sleeper_league_id"]
+    r2o = _roster_to_owner(league_id)
+    out: Dict[str, Dict[int, int]] = {o: {} for o in r2o.values() if o}
+
+    for tx in _all_transactions(league_id):
+        if tx.get("type") != "waiver" or tx.get("status") != "complete":
+            continue
+        bid = int((tx.get("settings") or {}).get("waiver_bid", 0) or 0)
+        if bid <= 0:
+            continue
+        week = int(tx.get("leg") or 0)
+        for rid in (tx.get("adds") or {}).values():
+            owner = r2o.get(int(rid))
+            if owner is None:
+                continue
+            out[owner][week] = out[owner].get(week, 0) + bid
+    return out
+
+
+def burndown(league_id: Optional[str] = None,
+             weeks: Optional[int] = None) -> Dict[str, Any]:
+    """Cumulative FAAB spend per team, week by week — the pot filling up.
+
+    {"weeks": [1..N], "budget": int,
+     "teams": [{owner, points: [cumulative $ after each week], total}, ...]}
+    sorted biggest spender first. A flat line is a team sitting on their
+    budget; the gap between a line and the ceiling is what they still have
+    to spend.
+    """
+    league_id = league_id or config.league()["sleeper_league_id"]
+    budgets = team_budgets(league_id)
+    budget = max((b["total"] for b in budgets.values()), default=100)
+    per_week = weekly_spend(league_id)
+    if weeks is None:
+        # Span the whole season, NOT just the regular season — waivers stay
+        # open through the playoffs and real money moves there (in 2025 six
+        # of eight teams spent in weeks 13-16). Cutting at
+        # playoff_week_start silently dropped that spend and left the chart
+        # disagreeing with the pot total on the same page.
+        last_spend = max((wk for by in per_week.values() for wk in by), default=0)
+        settings = sleeper.get_league(league_id).get("settings", {}) or {}
+        reg = max(1, int(settings.get("playoff_week_start") or 15) - 1)
+        weeks = max(reg, last_spend)
+    teams = []
+    for owner, by_week in per_week.items():
+        running, pts = 0, []
+        for wk in range(1, weeks + 1):
+            running += by_week.get(wk, 0)
+            pts.append(running)
+        teams.append({"owner": owner, "points": pts, "total": running})
+    teams.sort(key=lambda t: -t["total"])
+    return {"weeks": list(range(1, weeks + 1)), "budget": budget, "teams": teams}
+
+
 def dead_money(league_id: Optional[str] = None) -> Dict[str, Dict[str, Any]]:
     """owner_id -> {dead, live, moves}. "Dead" money is FAAB spent on a
     completed waiver claim for a player who is NOT on that team's CURRENT

@@ -17,7 +17,8 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
-from kreeper import config, draftboard, engine, faab, history, lottery, phase, sleeper, storage, theme
+from kreeper import (config, draftboard, engine, faab, history, lottery, phase, season,
+                     sleeper, storage, theme)
 from kreeper.adp import consensus as adp_consensus
 from kreeper.names import normalize_name
 
@@ -51,6 +52,11 @@ NT = int(LEAGUE["num_teams"])
 DRAFT_ROUNDS = int(LEAGUE["draft_rounds"])
 MAX_REG = int(LEAGUE.get("max_regular_keepers", 3))
 MAX_ROOKIE = int(LEAGUE.get("max_rookie_keepers", 2))
+# Championship-bracket size. Sleeper carries this in league settings; falling
+# back to half the league matches how both brackets are actually sized here
+# (4 championship + 4 consolation).
+_LG_SETTINGS = sleeper.get_league(LEAGUE["sleeper_league_id"]).get("settings", {}) or {}
+PLAYOFF_TEAMS = int(_LG_SETTINGS.get("playoff_teams") or NT // 2)
 # Realistic draft pool: every pick in the draft (teams x rounds). ADP risers /
 # fallers are scoped to this so we only see players we'd actually draft.
 DRAFT_SCOPE_RANK = NT * DRAFT_ROUNDS
@@ -2461,6 +2467,205 @@ def render_keeper_hitrate() -> None:
         for d in worst))
 
 
+@st.cache_data(ttl=600, show_spinner=False)
+def get_standings():
+    return season.standings()
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def get_season_results():
+    return season.season_results()
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def get_power_rankings():
+    return season.power_rankings()
+
+
+@st.cache_data(ttl=600, show_spinner=False)
+def get_luck():
+    return season.luck()
+
+
+@st.cache_data(ttl=900, show_spinner="Simulating the rest of the season…")
+def get_playoff_odds():
+    return season.playoff_odds(playoff_teams=PLAYOFF_TEAMS)
+
+
+def _no_season_yet(what: str) -> bool:
+    """Shared empty state for every results-driven page. True (and renders a
+    note) when no regular-season game has been played yet — these pages are
+    all honest about having nothing to say rather than showing a table of
+    zeroes that looks like real standings."""
+    table = get_standings()
+    if any(r["weeks_played"] for r in table):
+        return False
+    st.info(f"🏈 {what} shows up here once Week 1 is in the books.")
+    return True
+
+
+def render_standings() -> None:
+    st.markdown('<h2>Standings &amp; <span class="g">Scoreboard</span></h2>', unsafe_allow_html=True)
+    st.caption("Live from real weekly results. Sorted by record, then points for — "
+               "the same tiebreak Sleeper uses.")
+    if _no_season_yet("The standings table"):
+        return
+
+    table = get_standings()
+    played = max(r["weeks_played"] for r in table)
+    total = season.regular_season_weeks()
+    leader = table[0]
+    top_scorer = max(table, key=lambda r: r["points_for"])
+    _glance_box([
+        (played / max(1, total), f"{played}", "of " + str(total), "Weeks Played",
+         f"{total - played} to play", theme.PURPLE),
+        (1.0, f'{leader["wins"]}-{leader["losses"]}', "rec", "First Place",
+         config.manager_name(leader["owner"]), theme.TEAL),
+        (1.0, f'{top_scorer["points_for"]:.0f}', "pf", "Most Points",
+         config.manager_name(top_scorer["owner"]), theme.AMBER),
+    ])
+
+    body = []
+    for r in table:
+        rec = f'{r["wins"]}-{r["losses"]}' + (f'-{r["ties"]}' if r["ties"] else "")
+        cut = " playoff-cut" if r["rank"] == PLAYOFF_TEAMS else ""
+        badge = ('<span class="kept-badge">IN</span>' if r["rank"] <= PLAYOFF_TEAMS else "")
+        streak = r["streak"]
+        scolor = ("var(--teal)" if streak.startswith("W")
+                  else "var(--red)" if streak.startswith("L") else "var(--muted)")
+        body.append(
+            f'<tr class="{cut.strip()}"><td class="rk">{r["rank"]}</td>'
+            f'<td class="pl">{config.manager_name(r["owner"])} {badge}</td>'
+            f'<td class="num" style="font-family:\'Anton\';font-size:15px;">{rec}</td>'
+            f'<td class="num">{r["points_for"]:.1f}</td>'
+            f'<td class="num">{r["points_against"]:.1f}</td>'
+            f'<td class="num" style="color:{scolor};font-weight:700;">{streak}</td></tr>'
+        )
+    st.markdown(
+        '<div class="neonwrap"><table class="lb"><thead><tr>'
+        '<th>#</th><th>Team</th><th>Record</th><th>PF</th><th>PA</th><th>Streak</th>'
+        f'</tr></thead><tbody>{"".join(body)}</tbody></table></div>',
+        unsafe_allow_html=True,
+    )
+    st.caption(f"Top {PLAYOFF_TEAMS} make the championship bracket — the line sits under "
+               f"#{PLAYOFF_TEAMS}. Everyone below plays the consolation bracket "
+               f"(and the last-place finisher buys the draft meal).")
+
+    st.markdown('<h3>Weekly Scoreboard</h3>', unsafe_allow_html=True)
+    results = get_season_results()
+    if not results:
+        return
+    weeks = sorted(results, reverse=True)
+    pick = st.selectbox("Week", weeks, format_func=lambda w: f"Week {w}",
+                        label_visibility="collapsed")
+    cards = []
+    for g in results[pick]:
+        for side, opp in ((g["home"], g["away"]), (g["away"], g["home"])):
+            side["_won"] = (not g["tie"]) and g["winner"] == side["owner"]
+        rows = "".join(
+            f'<div class="mu-row{" win" if s["_won"] else ""}">'
+            f'<span class="mu-team">{config.manager_name(s["owner"])}</span>'
+            f'<span class="mu-pts">{s["points"]:.1f}</span></div>'
+            for s in (g["home"], g["away"])
+        )
+        note = "TIE" if g["tie"] else f'by {g["margin"]:.1f}'
+        cards.append(f'<div class="matchup">{rows}<div class="mu-note">{note}</div></div>')
+    st.markdown('<div class="matchups">' + "".join(cards) + '</div>', unsafe_allow_html=True)
+
+
+def render_power() -> None:
+    st.markdown('<h2>Power <span class="g">Rankings</span></h2>', unsafe_allow_html=True)
+    st.caption("Driven by what's actually happened: 45% win rate, 35% scoring, 20% recent form. "
+               "Separate from Title Odds, which is a pre-season keeper-strength model.")
+    if _no_season_yet("Power rankings"):
+        return
+
+    ranks = get_power_rankings()
+    risers = [r for r in ranks if r["rank_delta"] > 0]
+    best_riser = max(risers, key=lambda r: r["rank_delta"], default=None)
+    hottest = max(ranks, key=lambda r: r["recent_avg"], default=None)
+    tiles = [(1.0, f'#{ranks[0]["rank"]}', "power", "Strongest Team",
+              config.manager_name(ranks[0]["owner"]), theme.TEAL)]
+    if hottest:
+        tiles.append((1.0, f'{hottest["recent_avg"]:.0f}', "avg", "Hottest (last 3)",
+                      config.manager_name(hottest["owner"]), theme.AMBER))
+    if best_riser:
+        tiles.append((1.0, f'+{best_riser["rank_delta"]}', "spots", "Most Underrated",
+                      f'{config.manager_name(best_riser["owner"])} · standings say '
+                      f'#{best_riser["rank"] + best_riser["rank_delta"]}', theme.PURPLE))
+    _glance_box(tiles)
+
+    body = []
+    for r in ranks:
+        d = r["rank_delta"]
+        arrow = (f'<span class="pr-up">&#9650; {d}</span>' if d > 0
+                 else f'<span class="pr-down">&#9660; {abs(d)}</span>' if d < 0
+                 else '<span class="pr-flat">&ndash;</span>')
+        body.append(
+            f'<tr><td class="rk">{r["rank"]}</td>'
+            f'<td class="pl">{config.manager_name(r["owner"])}</td>'
+            f'<td class="num" style="font-family:\'Anton\';color:var(--accent);">{r["score"]}</td>'
+            f'<td class="num">{r["win_pct"] * 100:.0f}%</td>'
+            f'<td class="num">{r["points_for"]:.1f}</td>'
+            f'<td class="num">{r["recent_avg"]:.1f}</td>'
+            f'<td class="num">{arrow}</td></tr>'
+        )
+    st.markdown(
+        '<div class="neonwrap"><table class="lb"><thead><tr>'
+        '<th>#</th><th>Team</th><th>Power</th><th>Win%</th><th>PF</th>'
+        '<th>Last 3</th><th>vs. Standings</th>'
+        f'</tr></thead><tbody>{"".join(body)}</tbody></table></div>',
+        unsafe_allow_html=True,
+    )
+    st.caption("“vs. Standings” compares power rank to where the record has them — "
+               "green means the record undersells them.")
+
+    st.markdown('<h3>Playoff Odds</h3>', unsafe_allow_html=True)
+    st.caption(f"10,000 simulations of every remaining game, drawn from each team's own "
+               f"scoring average and volatility. Top {PLAYOFF_TEAMS} make it.")
+    odds = get_playoff_odds()
+    if odds:
+        obody = []
+        for r in odds:
+            pct = r["odds"]
+            color = ("var(--teal)" if pct >= 75 else "var(--amber)" if pct >= 25 else "var(--red)")
+            obody.append(
+                f'<tr><td class="pl">{config.manager_name(r["owner"])}</td>'
+                f'<td class="num" style="font-family:\'Anton\';font-size:16px;color:{color};">{pct:.0f}%</td>'
+                f'<td class="num">{r["current_wins"]}</td>'
+                f'<td class="num">{r["proj_wins"]:.1f}</td>'
+                f'<td style="min-width:120px;"><div class="burnbar-track">'
+                f'<div class="burnbar-fill" style="width:{pct:.0f}%;background:{color};"></div>'
+                f'</div></td></tr>'
+            )
+        st.markdown(
+            '<div class="neonwrap"><table class="lb"><thead><tr>'
+            '<th>Team</th><th>Playoff Odds</th><th>Wins Now</th><th>Proj. Wins</th><th></th>'
+            f'</tr></thead><tbody>{"".join(obody)}</tbody></table></div>',
+            unsafe_allow_html=True,
+        )
+
+    st.markdown('<h3>Luck</h3>', unsafe_allow_html=True)
+    st.caption("Expected wins = what your scores would've earned against the whole league "
+               "each week. Positive luck means the schedule has been kind.")
+    rows = sorted(get_luck(), key=lambda r: -r["luck"])
+    lbody = "".join(
+        f'<tr><td class="pl">{config.manager_name(r["owner"])}</td>'
+        f'<td class="num">{r["wins"]}</td>'
+        f'<td class="num">{r["expected_wins"]:.2f}</td>'
+        f'<td class="num" style="font-weight:700;color:'
+        f'{"var(--teal)" if r["luck"] > 0 else "var(--red)" if r["luck"] < 0 else "var(--muted)"};">'
+        f'{r["luck"]:+.2f}</td></tr>'
+        for r in rows
+    )
+    st.markdown(
+        '<div class="neonwrap"><table class="lb"><thead><tr>'
+        '<th>Team</th><th>Actual W</th><th>Expected W</th><th>Luck</th>'
+        f'</tr></thead><tbody>{lbody}</tbody></table></div>',
+        unsafe_allow_html=True,
+    )
+
+
 def _payout_row(label: str, who: str, amount, sub: str, accent: str) -> str:
     money = f"${amount:,.0f}" if isinstance(amount, (int, float)) else amount
     return (f'<div class="payout-row"><div class="po-amt" style="color:{accent};">{money}</div>'
@@ -2544,6 +2749,18 @@ def render_faab() -> None:
         ) + '</div>',
         unsafe_allow_html=True,
     )
+
+    curve = faab.burndown(lid)
+    if any(t["total"] for t in curve["teams"]):
+        st.markdown('<h3>The Pot, Week by Week</h3>', unsafe_allow_html=True)
+        st.caption("Cumulative FAAB spend. Every dollar spent is a dollar in the pot — "
+                   "a flat line is a team sitting on their budget.")
+        names = {o: config.manager_name(o).split()[0] for o in MANAGERS}
+        focus = st.selectbox(
+            "Highlight a team", ["Everyone"] + [config.manager_name(o) for o in MANAGERS],
+            label_visibility="collapsed")
+        hi = NAME_TO_ID.get(focus)
+        st.markdown(theme.burndown_svg(curve, names, highlight=hi), unsafe_allow_html=True)
 
     def ring_color(pct: float) -> str:
         if pct >= 75:
@@ -2692,7 +2909,9 @@ PRESEASON_LEAVES = {
 INSEASON_GROUPS = [("trades", "Trades"), ("league", "League"), ("history", "History")]
 INSEASON_LEAVES = {
     "trades": [("recent", "Recent Trades"), ("market", "Trade Market"), ("analyzer", "Trade Analyzer")],
-    "league": [("faab", "FAAB Pot"), ("odds", "Title Odds"), ("superlatives", "Superlatives"), ("lottery", "Draft-Order Lottery"), ("rules", "Rules & Bylaws")],
+    "league": [("standings", "Standings & Scoreboard"), ("power", "Power Rankings"),
+                ("faab", "FAAB Pot"), ("odds", "Title Odds"), ("superlatives", "Superlatives"),
+                ("lottery", "Draft-Order Lottery"), ("rules", "Rules & Bylaws")],
     "history": [("record", "Record Book"), ("hitrate", "Keeper Hit-Rate")],
 }
 
@@ -2736,7 +2955,8 @@ elif page == "inseason":
         {"recent": render_recent_trades, "market": render_trade_targets,
          "analyzer": render_trade_analyzer}[t]()
     elif g == "league":
-        {"faab": render_faab, "odds": render_odds, "superlatives": render_superlatives,
+        {"standings": render_standings, "power": render_power,
+         "faab": render_faab, "odds": render_odds, "superlatives": render_superlatives,
          "lottery": render_lottery, "rules": render_rules}[t]()
     else:
         {"record": render_record_book, "hitrate": render_keeper_hitrate}[t]()
