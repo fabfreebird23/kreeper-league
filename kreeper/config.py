@@ -68,6 +68,15 @@ def lottery_weights() -> list:
     return [float(n - i) for i in range(n)]
 
 
+def entry_fee() -> float:
+    """Per-team buy-in for the year-end entry pot (payouts.entry_fee).
+    Defaults to 0 if unset, so a missing config can't fabricate a payout."""
+    try:
+        return float((load().get("payouts") or {}).get("entry_fee", 0) or 0)
+    except (ValueError, TypeError):
+        return 0.0
+
+
 def keeper_timezone_name() -> str:
     return str(league().get("keeper_timezone") or "America/Indiana/Indianapolis")
 

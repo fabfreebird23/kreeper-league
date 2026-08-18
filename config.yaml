@@ -47,21 +47,41 @@ mock_draft_rookie_factor: 0.4
 
 # Draft-order lottery. Next season's draft ORDER (not selection order — rank 1
 # in the lottery drafts 1st, rank N drafts last) is set by one combined
-# weighted draw across all num_teams teams:
+# weighted draw across all num_teams teams. Reseeded by league vote (2026-08,
+# see the Rules page) to run off PLACEMENT, worst-to-best, within each
+# bracket — the whole point being the actual last-place team (who's on the
+# hook for the draft-night meal) gets the single best lottery odds, not
+# whoever happened to win the consolation bracket:
 #   * Consolation-bracket ("Chase for the Pick") teams occupy lottery ranks
-#     1..(num_teams/2) — best odds. The CONSOLATION BRACKET CHAMPION gets the
-#     single best odds; the last-place finisher in that bracket gets the
-#     weakest odds of that group.
+#     1..(num_teams/2) — best odds. The bracket's LAST-PLACE finisher gets
+#     the single best odds; the bracket CHAMPION gets the weakest odds of
+#     that group.
 #   * Championship-bracket (playoff) teams occupy the remaining ranks — worse
-#     odds, same direction: the league champion gets the best odds of that
-#     group, the 4th-place playoff finisher the worst overall.
+#     odds, same inverted direction: the 4th-place playoff finisher (lost in
+#     round 1) gets the best odds of that group; the league CHAMPION gets the
+#     single worst odds overall.
 #   * `weights` has one entry per team, HIGHEST-first, mapped onto lottery
-#     ranks 1..N in order (rank 1 = weights[0] = best odds).
+#     ranks 1..N in order (rank 1 = weights[0] = best odds). Unchanged by the
+#     2026 vote — only which placement maps to which rank changed.
 #   * Placements are computed from real per-round scores (kreeper/lottery.py),
 #     never from Sleeper's own bracket w/l fields — those were found to be
 #     wrong for a multi-week playoff round in this league's real 2025 data.
 lottery:
   weights: [25, 22, 19, 14, 10, 6, 3, 1]
+
+# Year-end payouts (house rules — 2026 vote, see the Rules page). Two
+# separate pots:
+#   * Entry pot = entry_fee x num_teams. League champion (winners-bracket
+#     placement 1) takes the balance after 2nd place is paid; 2nd place
+#     (placement 2) doubles their buy-in. Nobody else is paid from this pot.
+#   * FAAB pot = total FAAB SPENT league-wide this season (not unspent).
+#     The winner of the winners-bracket's 3rd-place game (the two round-1
+#     losers play each other — that's bracket placement 3) gets back
+#     everything THEY personally spent, out of that pool; 5th place (the
+#     consolation-bracket CHAMPION, i.e. the best of the non-playoff teams)
+#     gets whatever's left. See kreeper/faab.py.
+payouts:
+  entry_fee: 250
 
 # Managers — Sleeper user_id -> display info. `name` is the friendly name shown in the app.
 managers:

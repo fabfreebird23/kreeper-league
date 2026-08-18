@@ -1,33 +1,39 @@
 """Draft-order lottery for The Kreeper League.
 
-House rule (config.yaml has the full text + weights):
+House rule (config.yaml has the full text + weights). Reseeded by league vote
+2026-08 — see the Rules page for the actual passed motion:
   One combined weighted draw across all `num_teams` teams sets next season's
   DRAFT ORDER directly (lottery rank 1 drafts 1st overall, rank N drafts
   last — this league's lottery sets a position, not a "choose your slot"
   selection order).
 
   * Consolation-bracket ("Chase for the Pick") teams occupy the best-odds
-    ranks. The bracket CHAMPION (won both their bracket games) gets the
-    single best odds; the last-place finisher in that bracket gets the
-    weakest odds of that group.
+    ranks. The bracket's LAST-PLACE finisher gets the single best odds
+    (they're the team on the hook for the draft-night meal); the bracket
+    CHAMPION gets the weakest odds of that group.
   * Championship-bracket (playoff) teams occupy the remaining, worse-odds
-    ranks, in the same direction: the league champion gets the best odds of
-    that group, the 4th-place playoff finisher the worst odds overall.
+    ranks, same inverted direction: the 4th-place playoff finisher (lost in
+    round 1) gets the best odds of that group; the league CHAMPION gets the
+    single worst odds overall.
 
-  Both brackets work the same way — bracket placement maps directly onto
-  lottery rank, no inversion. (An earlier version of this module inverted
-  the consolation bracket, on the theory that "worst team should get the
-  best odds." That was wrong: Sleeper's bracket API had the wrong winner
-  recorded in both round-1 games of the real 2025 consolation bracket —
-  confirmed by cross-checking actual matchup scores — which made the
-  inverted version look validated against real history by coincidence. See
-  `_resolve_bracket_placements` below: placements are computed directly from
-  real per-round scores, never from the bracket API's own w/l fields, so
-  this can't recur.)
+  Both brackets invert the SAME way — worst placement in a bracket gets that
+  bracket's best odds. (2025 and earlier ran the opposite direction —
+  bracket placement mapped straight onto lottery rank, champion-of-each-
+  bracket getting the best odds of their group. That direction is NOT a
+  historical bug to guard against; it was simply the rule before this vote.
+  A distinct, unrelated bug did bite an even-earlier inverted attempt in
+  2025: Sleeper's bracket API had the wrong winner recorded in both round-1
+  games of the real consolation bracket, confirmed by cross-checking actual
+  matchup scores. See `_resolve_bracket_placements` below: placements are
+  computed directly from real per-round scores, never from the bracket
+  API's own w/l fields, so that specific failure mode can't recur — this
+  has nothing to do with which direction the current rule inverts.)
 
-Validated against this league's real 2025 result (see tests/test_lottery.py
-and the derivation this was built from — kreeper-league conversation, the
-2025 season).
+Validated against this league's real 2025 result under the PRE-2026-vote
+(non-inverted) direction (see tests/test_lottery.py and the derivation this
+was built from — kreeper-league conversation, the 2025 season). The 2026+
+inverted direction is new and not yet validated against a real completed
+season.
 
 Pure logic module — no Streamlit here.
 """
@@ -169,11 +175,11 @@ def final_tiers(league_id: Optional[str] = None) -> Optional[Dict[str, Dict[str,
     "bracket_placement"}} for every team. Returns None if either bracket
     isn't fully decided yet — callers should treat that as "not ready".
 
-    Placement maps directly onto lottery rank for BOTH brackets, no
-    inversion: the consolation-bracket CHAMPION gets the single best odds;
-    the championship-bracket champion gets the best odds of the (worse)
-    playoff group. See the module docstring for why an earlier inverted
-    version was wrong.
+    Placement is INVERTED onto lottery rank within each bracket (2026 vote):
+    the consolation bracket's LAST-place finisher gets the single best odds;
+    the championship bracket's last-place (4th) finisher gets the best odds
+    of the (worse) playoff group, and the league champion the worst odds
+    overall. See the module docstring.
     """
     league_id = league_id or config.league()["sleeper_league_id"]
     wb = sleeper.get_winners_bracket(league_id)
@@ -193,20 +199,23 @@ def final_tiers(league_id: Optional[str] = None) -> Optional[Dict[str, Dict[str,
         )
 
     out: Dict[str, Dict[str, Any]] = {}
-    # Consolation bracket, ranks 1..n_consol — bracket champion (placement 1)
-    # gets the single best odds; straight, no inversion.
+    # Consolation bracket, ranks 1..n_consol — INVERTED: the bracket's
+    # last-place finisher (placement n_consol) takes rank 1 / the best odds;
+    # the bracket champion (placement 1) falls to rank n_consol.
     for literal_placement in range(1, n_consol + 1):
+        lottery_rank = n_consol - literal_placement + 1
         owner = r2o.get(lb_places.get(literal_placement))
         out[owner] = {
-            "weight": weights[literal_placement - 1],
+            "weight": weights[lottery_rank - 1],
             "tier": "consolation",
-            "rank": literal_placement,
+            "rank": lottery_rank,
             "bracket_placement": literal_placement,
         }
     # Championship bracket, ranks (n_consol+1)..(n_consol+n_playoff) — same
-    # direction: champion (placement 1) gets the best odds of this group.
+    # inversion: the 4th-place playoff finisher takes the best odds of this
+    # group, the league champion (placement 1) the worst odds overall.
     for literal_placement in range(1, n_playoff + 1):
-        lottery_rank = n_consol + literal_placement
+        lottery_rank = n_consol + (n_playoff - literal_placement + 1)
         owner = r2o.get(wb_places.get(literal_placement))
         out[owner] = {
             "weight": weights[lottery_rank - 1],
@@ -273,19 +282,24 @@ def _expected_weight_given_group(
     members: List[Tuple[str, float]], group_weights: List[float]
 ) -> Dict[str, float]:
     """members: [(owner, positive_strength), ...] for exactly len(group_weights)
-    teams. group_weights are that bracket's weights, BEST first (e.g. the
-    consolation group's [25, 22, 19, 14]). Returns owner -> expected lottery
-    weight, using `position_probabilities` so the STRONGEST member of the
-    group is most likely to WIN that bracket (and so claim its best weight)
-    — not the weakest. This is what makes "closest to the cutoff" project
-    better odds within the consolation group than "the very worst team
-    overall": the whole point of that bracket is a real mini-tournament, and
-    the strongest of the four bad teams is the one most likely to win it."""
+    teams. group_weights are that bracket's lottery weights, BEST first (e.g.
+    the consolation group's [25, 22, 19, 14]). Returns owner -> expected
+    lottery weight.
+
+    `position_probabilities` still models the STRONGEST member of the group as
+    most likely to WIN that bracket — that part is just how a mini-tournament
+    plays out and hasn't changed. What changed with the 2026 vote is the
+    payoff: winning your bracket now claims that group's WORST weight, so
+    finish position i (i=0 = bracket champion) maps to group_weights
+    reversed. Net effect on projections: within the consolation group the
+    very worst team now projects the BEST odds, where it used to be the team
+    closest to the playoff cutoff."""
     if not members:
         return {}
     power = {o: max(1e-6, s) for o, s in members}
     probs = position_probabilities(power)
-    return {o: sum(probs[o][i] * group_weights[i] for i in range(len(group_weights))) for o, _ in members}
+    payoff = list(reversed(group_weights))  # bracket champion -> worst weight
+    return {o: sum(probs[o][i] * payoff[i] for i in range(len(payoff))) for o, _ in members}
 
 
 def live_projection(

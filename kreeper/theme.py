@@ -248,6 +248,30 @@ table.lb tr.fa td{ background:rgba(94,203,240,.06); }
 .faab-pot b{ font-family:'Anton'; font-size:38px; background:var(--grad); -webkit-background-clip:text;
   background-clip:text; -webkit-text-fill-color:transparent; display:block; line-height:1; }
 .faab-pot span{ font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+
+/* rules / bylaws page */
+.rule-block{ background:var(--panel2); border:1px solid var(--line); border-radius:12px;
+  padding:6px 18px 14px; margin-bottom:16px; }
+.rule-block h4{ font-family:'Anton', sans-serif; text-transform:uppercase; letter-spacing:.8px;
+  font-size:15px; color:var(--ink); margin:14px 0 10px; }
+.rule-row{ display:grid; grid-template-columns:minmax(120px, 190px) 1fr; gap:16px;
+  padding:10px 0; border-top:1px solid var(--line); }
+.rule-row .rule-k{ font-size:12.5px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.4px; color:var(--accent); line-height:1.35; }
+.rule-row .rule-v{ font-size:13.5px; color:var(--ink); opacity:.9; line-height:1.5; }
+@media (max-width: 640px){
+  .rule-row{ grid-template-columns:1fr; gap:3px; }
+}
+
+/* year-end payout rows — who gets paid what, out of each pot */
+.payouts{ display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px;
+  margin-bottom:18px; }
+.payout-row{ display:flex; align-items:center; gap:14px; background:var(--panel2);
+  border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
+.payout-row .po-amt{ font-family:'Anton'; font-size:26px; line-height:1; white-space:nowrap; }
+.payout-row .po-lbl{ font-size:9.5px; text-transform:uppercase; letter-spacing:1.2px; color:var(--muted); }
+.payout-row .po-who{ font-size:14px; font-weight:600; color:var(--ink); margin-top:2px; line-height:1.2; }
+.payout-row .po-sub{ font-size:11px; color:var(--muted); margin-top:2px; line-height:1.3; }
 .burnbar-track{ width:100%; height:8px; border-radius:5px; background:var(--bg); overflow:hidden; }
 .burnbar-fill{ height:100%; border-radius:5px; }
 

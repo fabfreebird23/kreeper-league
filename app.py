@@ -2200,6 +2200,83 @@ def render_lottery() -> None:
         st.rerun()
 
 
+# League bylaws. Kept here as plain data (not a config file) because it's
+# prose the league votes on, not behavior the app reads — the code that
+# actually implements these lives in kreeper/lottery.py, kreeper/faab.py and
+# kreeper/engine.py, and each rule below points at where.
+_RULES_SECTIONS = [
+    ("Keepers", [
+        ("Keeper slots", "5 total per team — 3 regular keepers plus 2 rookie keepers."),
+        ("3-year clock", "A regular keeper can be kept at most 3 seasons. Year 1 costs the "
+                          "round they were drafted; year 2 moves up 3 rounds (or their ADP "
+                          "round, manager's choice); year 3 costs their ADP round."),
+        ("Rookie keepers", "Exempt from the 3-year clock and keepable for their whole career "
+                            "while in a rookie slot. They cost your LAST rounds (14, then 13, …)."),
+        ("Rookie → regular", "Converting a rookie keeper to a regular keeper costs a last-round "
+                              "pick and RESETS the 3-year clock to year 1."),
+        ("Undrafted pickups", "Keep at your latest available round. A player who was drafted in a "
+                               "prior season (then dropped) keeps at their most recent drafted round."),
+        ("Trades carry provenance", "A traded keeper brings its round AND its year-clock to the new "
+                                     "owner — the chain follows the player, not the manager."),
+        ("Must own the pick", "A keeper has to land on a pick you actually own. If you traded away "
+                               "the cost round, it slots at your next-highest owned pick."),
+    ]),
+    ("Draft-Order Lottery", [
+        ("Reseeded 2026", "Lottery odds now run off placement WORST-to-best within each bracket, so "
+                           "the last-place team (who buys the draft meal) gets the single best odds. "
+                           "Previously the bracket champions got the best odds."),
+        ("Ball weights", "25 / 22 / 19 / 14 / 10 / 6 / 3 / 1 — unchanged by the reseed; only which "
+                          "placement maps to which weight changed."),
+        ("Order", "Consolation bracket last place gets the best odds, up through the consolation "
+                   "champion; then the 4th-place playoff finisher, up through the league champion, "
+                   "who gets the worst odds overall."),
+        ("Sets position directly", "Lottery rank 1 drafts 1st overall — this is a draft POSITION, "
+                                    "not a 'choose your slot' selection order."),
+    ]),
+    ("Money & Payouts", [
+        ("Buy-in", f"${config.entry_fee():,.0f} per team "
+                    f"(${config.entry_fee() * len(MANAGERS):,.0f} total entry pot)."),
+        ("Entry pot", "Runner-up doubles their buy-in; the league champion takes the balance."),
+        ("FAAB pot", "Every dollar SPENT league-wide goes into the pot (changed 2026 — it used to be "
+                      "the unspent total)."),
+        ("3rd place game", "The two teams that lose in round 1 of the championship bracket play each "
+                            "other. The winner gets back exactly what they personally spent in FAAB."),
+        ("5th place", "The consolation-bracket champion takes whatever remains in the FAAB pot after "
+                       "that refund."),
+    ]),
+    ("Trades & Governance", [
+        ("Trade vetoes", "A trade is vetoed on a majority of the NON-AFFECTED parties (amended 2026 — "
+                          "article 1, section 4)."),
+        ("Rule proposals", "Rules must be proposed by the keeper deadline and are voted on at the "
+                            "draft for that league year."),
+        ("One per manager", "One rule submission per general manager, per year."),
+        ("Draft meal", "The last-place team buys the draft-night meal — and gets to pick it."),
+    ]),
+]
+
+
+def render_rules() -> None:
+    st.markdown('<h2>Rules &amp; <span class="g">Bylaws</span></h2>', unsafe_allow_html=True)
+    st.caption("The house rules this app enforces. Motions passed at the 2026 draft are marked "
+               "**2026** — see Draft-Order Lottery and FAAB Pot for those in action.")
+
+    deadline = config.keeper_deadline()
+    if deadline:
+        st.info(f"📌 Rule proposals are due by the keeper deadline "
+                f"(**{deadline.strftime('%b %-d, %Y')}**) and voted on at the draft.")
+
+    for title, items in _RULES_SECTIONS:
+        rows = "".join(
+            f'<div class="rule-row"><div class="rule-k">{k}</div>'
+            f'<div class="rule-v">{v}</div></div>'
+            for k, v in items
+        )
+        st.markdown(
+            f'<div class="rule-block"><h4>{title}</h4>{rows}</div>',
+            unsafe_allow_html=True,
+        )
+
+
 def render_draft_capital() -> None:
     st.markdown(f'<h2>Draft <span class="g">Capital</span> &amp; Keeper Cost</h2>', unsafe_allow_html=True)
     rows = []
@@ -2384,9 +2461,56 @@ def render_keeper_hitrate() -> None:
         for d in worst))
 
 
+def _payout_row(label: str, who: str, amount, sub: str, accent: str) -> str:
+    money = f"${amount:,.0f}" if isinstance(amount, (int, float)) else amount
+    return (f'<div class="payout-row"><div class="po-amt" style="color:{accent};">{money}</div>'
+            f'<div class="po-txt"><div class="po-lbl">{label}</div>'
+            f'<div class="po-who">{who}</div><div class="po-sub">{sub}</div></div></div>')
+
+
+def _render_payouts(lid: str, pot: dict) -> None:
+    """Year-end money: the FAAB pot split + the cash entry pot. Both need a
+    finished season to name winners, so before that they show the rule and
+    the running pot totals instead of fabricating placeholder names."""
+    fee = config.entry_fee()
+    entry_total = fee * len(MANAGERS)
+    split = faab.pot_split(lid)
+    entry = faab.entry_pot(lid)
+
+    st.markdown('<h3>Year-End Payouts</h3>', unsafe_allow_html=True)
+    if split is None or entry is None:
+        st.caption("Winners are named here once both brackets finish.")
+        rows = [
+            _payout_row("FAAB Pot", "3rd-place game winner",
+                        f'${pot["pot"]:,}', "gets their own FAAB spend back", theme.TEAL),
+            _payout_row("FAAB Pot", "5th place (consolation champion)",
+                        "remainder", "whatever's left after that refund", theme.PURPLE),
+            _payout_row("Entry Pot", "League champion",
+                        f'${entry_total - fee * 2:,.0f}', f"balance of the ${entry_total:,.0f} pot", theme.AMBER),
+            _payout_row("Entry Pot", "Runner-up",
+                        f"${fee * 2:,.0f}", f"doubles their ${fee:,.0f} buy-in", theme.AMBER),
+        ]
+    else:
+        rows = [
+            _payout_row("FAAB Pot", config.manager_name(split["third_place"]["owner"]),
+                        split["third_place"]["refund"],
+                        "3rd-place game winner — own spend refunded", theme.TEAL),
+            _payout_row("FAAB Pot", config.manager_name(split["fifth_place"]["owner"]),
+                        split["fifth_place"]["amount"],
+                        f'5th place — remainder of the ${split["pot"]:,} pot', theme.PURPLE),
+            _payout_row("Entry Pot", config.manager_name(entry["champion"]["owner"]),
+                        entry["champion"]["amount"], "league champion", theme.AMBER),
+            _payout_row("Entry Pot", config.manager_name(entry["runner_up"]["owner"]),
+                        entry["runner_up"]["amount"],
+                        f'runner-up — double the ${entry["entry_fee"]:,.0f} buy-in', theme.AMBER),
+        ]
+    st.markdown('<div class="payouts">' + "".join(rows) + '</div>', unsafe_allow_html=True)
+
+
 def render_faab() -> None:
     st.markdown(f'<h2>FAAB <span class="g">Pot</span></h2>', unsafe_allow_html=True)
-    st.caption("Unspent FAAB at year end goes to the consolation-bracket champion.")
+    st.caption("Every dollar SPENT league-wide goes into the pot. The 3rd-place game's "
+               "winner gets their own spend back; 5th place takes the rest.")
 
     lid = LEAGUE["sleeper_league_id"]
     budgets = faab.team_budgets(lid)
@@ -2394,20 +2518,22 @@ def render_faab() -> None:
 
     st.markdown(
         f'<div class="faab-pot"><b>${pot["pot"]}</b>'
-        f'<span>up for grabs · ${pot["total_spent"]} spent of ${pot["total_budget"]} '
+        f'<span>in the pot · ${pot["total_spent"]} spent of ${pot["total_budget"]} '
         f'league-wide ({pot["teams"]} teams &times; ${pot["total_budget"] // max(1, pot["teams"])})</span></div>',
         unsafe_allow_html=True,
     )
+
+    _render_payouts(lid, pot)
 
     leader_id = max(budgets, key=lambda o: budgets[o]["spent"]) if budgets else None
     dm_preview = faab.dead_money(lid)
     total_dead = sum(rec["dead"] for rec in dm_preview.values())
     pct_spent = round(100 * pot["total_spent"] / max(1, pot["total_budget"]))
     tiles = [
-        (f"${pot['total_spent']}", "League Spend", f"{pct_spent}% of ${pot['total_budget']}"),
-        (f"${pot['pot']}", "Pot Remaining", f"{100 - pct_spent}% left"),
+        (f"${pot['total_spent']}", "In The Pot", f"{pct_spent}% of ${pot['total_budget']} spent"),
+        (f"${pot['unspent']}", "Still Unspent", f"{100 - pct_spent}% left to spend"),
         (config.manager_name(leader_id).split()[0] if leader_id else "—", "Biggest Spender",
-         f"${budgets[leader_id]['spent']} owed" if leader_id else ""),
+         f"${budgets[leader_id]['spent']} in" if leader_id else ""),
         (f"${total_dead}", "Dead Money", "spent on dropped players"),
     ]
     st.markdown(
@@ -2566,7 +2692,7 @@ PRESEASON_LEAVES = {
 INSEASON_GROUPS = [("trades", "Trades"), ("league", "League"), ("history", "History")]
 INSEASON_LEAVES = {
     "trades": [("recent", "Recent Trades"), ("market", "Trade Market"), ("analyzer", "Trade Analyzer")],
-    "league": [("faab", "FAAB Pot"), ("odds", "Title Odds"), ("superlatives", "Superlatives"), ("lottery", "Draft-Order Lottery")],
+    "league": [("faab", "FAAB Pot"), ("odds", "Title Odds"), ("superlatives", "Superlatives"), ("lottery", "Draft-Order Lottery"), ("rules", "Rules & Bylaws")],
     "history": [("record", "Record Book"), ("hitrate", "Keeper Hit-Rate")],
 }
 
@@ -2611,7 +2737,7 @@ elif page == "inseason":
          "analyzer": render_trade_analyzer}[t]()
     elif g == "league":
         {"faab": render_faab, "odds": render_odds, "superlatives": render_superlatives,
-         "lottery": render_lottery}[t]()
+         "lottery": render_lottery, "rules": render_rules}[t]()
     else:
         {"record": render_record_book, "hitrate": render_keeper_hitrate}[t]()
 

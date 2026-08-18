@@ -117,15 +117,18 @@ def test_final_tiers_returns_none_when_incomplete():
 
 
 def test_final_tiers_matches_2025_kreeper_league_result():
-    """Reproduces the real, human-confirmed 2025 lottery order for this
-    league — including the real bug: Sleeper's bracket API had the wrong
-    winner recorded for both round-1 consolation games (confirmed against
-    actual matchup scores), so placements must come from real per-round
-    points, never from the bracket's own w/l fields. This fixture mirrors
-    that exact scenario: round-1 "advancement" pairs the TRUE round-1
-    winners together in round 2 (as Sleeper's real schedule did), but no
-    w/l field is present anywhere — only real scores decide who won each
-    game, at every round.
+    """Real 2025 bracket data, scored under the CURRENT (2026-vote, inverted)
+    rule — so the expected order below is the mirror of what actually ran in
+    2025, when placement mapped straight onto rank.
+
+    Still pulls double duty as the regression test for the real Sleeper bug:
+    the bracket API had the wrong winner recorded for both round-1
+    consolation games (confirmed against actual matchup scores), so
+    placements must come from real per-round points, never the bracket's own
+    w/l fields. This fixture mirrors that exact scenario: round-1
+    "advancement" pairs the TRUE round-1 winners together in round 2 (as
+    Sleeper's real schedule did), but no w/l field is present anywhere —
+    only real scores decide who won each game, at every round.
     """
     # roster_id -> owner, matching this league's real 2025 role mapping
     r2o = {1: "jared", 2: "chase", 3: "brandon", 4: "ned",
@@ -166,9 +169,13 @@ def test_final_tiers_matches_2025_kreeper_league_result():
          patch("kreeper.config.lottery_weights", return_value=[25, 22, 19, 14, 10, 6, 3, 1]):
         tiers = lottery.final_tiers("fake")
 
-    expected = {  # owner -> (rank, weight) — straight, no inversion
-        "brandon": (1, 25), "branigan": (2, 22), "heath": (3, 19), "ned": (4, 14),
-        "tanner": (5, 10), "mike": (6, 6), "jared": (7, 3), "chase": (8, 1),
+    # 2026 vote INVERTED placement->rank within each bracket, so the same
+    # real 2025 bracket results now map to the mirror image of the order that
+    # actually ran that year: consolation LAST place (ned) takes the best
+    # odds, the league champion (tanner) the worst.
+    expected = {  # owner -> (rank, weight)
+        "ned": (1, 25), "heath": (2, 22), "branigan": (3, 19), "brandon": (4, 14),
+        "chase": (5, 10), "jared": (6, 6), "mike": (7, 3), "tanner": (8, 1),
     }
     for owner, (rank, weight) in expected.items():
         assert tiers[owner]["rank"] == rank, (owner, tiers[owner])
@@ -244,16 +251,18 @@ def test_live_projection_worst_record_gets_highest_projected_weight():
     assert by_owner["worst"]["proj_weight"] > by_owner["best"]["proj_weight"]
 
 
-def test_projection_favors_strongest_of_the_projected_consolation_group():
-    """The consolation bracket is a real mini-tournament, so the team
-    closest to the playoff cutoff (strongest of the projected-bad four)
-    should project a HIGHER expected weight than the team that's weakest of
-    all — even though the weakest team has a HIGHER probability of actually
-    landing in the consolation group in the first place. Regression test for
-    the bug where a flat within-group average ignored this entirely."""
+def test_projection_favors_weakest_of_the_projected_consolation_group():
+    """Under the 2026 inverted rule, WINNING your bracket costs you odds — so
+    within the projected consolation four, the weakest team (most likely to
+    finish last in that bracket, and most likely to be in it at all) should
+    project a HIGHER expected weight than the team closest to the playoff
+    cutoff. This is the exact mirror of the pre-2026 expectation, and still
+    guards the underlying modeling: the projection must account for WHERE in
+    the bracket a team is likely to finish, not just flat-average the group's
+    weights."""
     power = {"weakest": 1.0, "b": 5.0, "c": 9.0, "closest_to_cutoff": 13.0,
              "e": 20.0, "f": 25.0, "g": 30.0, "h": 35.0}
     with patch("kreeper.config.lottery_weights", return_value=[25, 22, 19, 14, 10, 6, 3, 1]):
         rows = lottery.preseason_projection(power, playoff_teams=4)
     by_owner = {r["owner"]: r for r in rows}
-    assert by_owner["closest_to_cutoff"]["proj_weight"] > by_owner["weakest"]["proj_weight"]
+    assert by_owner["weakest"]["proj_weight"] > by_owner["closest_to_cutoff"]["proj_weight"]
