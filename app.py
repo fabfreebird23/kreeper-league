@@ -938,8 +938,87 @@ def _render_home_pre_season() -> None:
 
 
 def _render_home_in_season() -> None:
-    render_faab()
-    render_odds()
+    """The season is live, so Home leads with where it actually stands —
+    the race, your own team's line in it, and this week's scoreboard —
+    rather than the FAAB/odds pages stacked, which are each one tap away
+    in the bottom bar anyway."""
+    table = get_standings()
+    if not any(r["weeks_played"] for r in table):
+        # Week 1 hasn't been scored yet — nothing to lead with.
+        _home_quick_glance()
+        render_odds()
+        return
+
+    played = max(r["weeks_played"] for r in table)
+    total = season.regular_season_weeks()
+    st.markdown(
+        f'<h2>Week <span class="g">{played}</span> '
+        f'<span style="font-size:.55em;color:var(--muted);">of {total}</span></h2>',
+        unsafe_allow_html=True,
+    )
+
+    # Your team's own line, picked from the sidebar-style selector so the
+    # page means something specific to whoever's looking at it.
+    who = st.selectbox("Your team", [config.manager_name(o) for o in MANAGERS],
+                        key="home_team", label_visibility="collapsed")
+    me = NAME_TO_ID.get(who)
+    mine = next((r for r in table if r["owner"] == me), None)
+    odds = {r["owner"]: r for r in get_playoff_odds()}
+    power = {r["owner"]: r for r in get_power_rankings()}
+
+    if mine:
+        rec = f'{mine["wins"]}-{mine["losses"]}' + (f'-{mine["ties"]}' if mine["ties"] else "")
+        in_bracket = mine["rank"] <= PLAYOFF_TEAMS
+        my_odds = odds.get(me, {}).get("odds")
+        my_power = power.get(me, {}).get("rank")
+        _glance_box([
+            (mine["rank"] / max(1, len(table)), f'#{mine["rank"]}', "of " + str(len(table)),
+             "Standing", "in the bracket" if in_bracket else "outside the top "
+             f"{PLAYOFF_TEAMS}", theme.TEAL if in_bracket else theme.RED),
+            (1.0, rec, "rec", "Record", f'{mine["points_for"]:.0f} PF · {mine["streak"]}',
+             theme.PURPLE),
+            ((my_odds or 0) / 100, f'{my_odds:.0f}%' if my_odds is not None else "—", "odds",
+             "Playoff Odds", f'power rank #{my_power}' if my_power else "", theme.AMBER),
+        ])
+
+    st.markdown('<h3>The Race</h3>', unsafe_allow_html=True)
+    body = []
+    for r in table:
+        d = f'{r["wins"]}-{r["losses"]}'
+        o = odds.get(r["owner"], {}).get("odds")
+        badge = '<span class="kept-badge">IN</span>' if r["rank"] <= PLAYOFF_TEAMS else ""
+        strong = ' style="background:rgba(160,107,255,.10);"' if r["owner"] == me else ""
+        body.append(
+            f'<tr{strong}><td class="rk">{r["rank"]}</td>'
+            f'<td class="pl">{config.manager_name(r["owner"])} {badge}</td>'
+            f'<td class="num" style="font-family:\'Anton\';">{d}</td>'
+            f'<td class="num">{r["points_for"]:.0f}</td>'
+            f'<td class="num">{f"{o:.0f}%" if o is not None else "—"}</td></tr>'
+        )
+    st.markdown(
+        '<div class="neonwrap"><table class="lb"><thead><tr>'
+        '<th>#</th><th>Team</th><th>Rec</th><th>PF</th><th>Playoffs</th>'
+        f'</tr></thead><tbody>{"".join(body)}</tbody></table></div>',
+        unsafe_allow_html=True,
+    )
+
+    results = get_season_results()
+    if results:
+        last = max(results)
+        st.markdown(f'<h3>Week {last}</h3>', unsafe_allow_html=True)
+        cards = []
+        for g in results[last]:
+            rows = "".join(
+                f'<div class="mu-row{" win" if (not g["tie"] and g["winner"] == s["owner"]) else ""}">'
+                f'<span class="mu-team">{config.manager_name(s["owner"])}</span>'
+                f'<span class="mu-pts">{s["points"]:.1f}</span></div>'
+                for s in (g["home"], g["away"])
+            )
+            note = "TIE" if g["tie"] else f'by {g["margin"]:.1f}'
+            cards.append(f'<div class="matchup">{rows}<div class="mu-note">{note}</div></div>')
+        st.markdown('<div class="matchups">' + "".join(cards) + '</div>', unsafe_allow_html=True)
+
+    _home_quick_glance()
 
 
 def _render_home_offseason() -> None:
@@ -2261,6 +2340,112 @@ _RULES_SECTIONS = [
 ]
 
 
+# What the league actually passed, most recent first. Minutes are a record,
+# not config — nothing reads them, they're the "why" behind the rules.
+_MINUTES = [
+    ("2026 Draft", [
+        "Reseed lottery odds by playoff results 8-1, best to worst; 3rd and 4th "
+        "place playoff teams play for a return of their FAAB balance. — PASSED",
+        "Amend article 1 section 4: trade vetoes now pass on a majority of the "
+        "non-affected parties. — PASSED",
+        "The loser picks the meal for the draft. — PASSED",
+        "Rules must be proposed at the keeper deadline for vote at the draft that "
+        "league year. — PASSED",
+        "Payouts: 2nd place doubles their money; 3rd and 4th play for their FAAB "
+        "back; 5th gets the remainder of the FAAB; 1st gets the balance of the "
+        "entry pot. — PASSED",
+        "One rule submission per general manager. — PASSED",
+    ]),
+]
+
+
+def render_votes() -> None:
+    st.markdown('<h2>Votes &amp; <span class="g">Minutes</span></h2>', unsafe_allow_html=True)
+    st.caption("Open motions go to a vote at the draft. Proposals are due by the keeper "
+               "deadline — one per manager.")
+
+    data = storage.load_votes(SEASON)
+    motions = data.get("motions", [])
+    ballots = data.get("ballots", {})
+
+    who = st.selectbox("Voting as", [config.manager_name(o) for o in MANAGERS],
+                        key="vote_as")
+    me = NAME_TO_ID.get(who)
+
+    open_motions = [m for m in motions if m.get("status", "open") == "open"]
+    if not open_motions:
+        st.info("No open motions. Propose one below — it'll go to a vote at the draft.")
+    for m in open_motions:
+        mid = str(m.get("id"))
+        cast = ballots.get(mid, {})
+        st.markdown(
+            f'<div class="motion"><div class="mo-head">{m.get("title","(untitled)")}</div>'
+            f'<div class="mo-detail">{m.get("detail","")}</div>'
+            f'<div class="mo-by">proposed by {config.manager_name(m.get("proposed_by",""))}</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+        options = m.get("options") or ["Yes", "No"]
+        mine = cast.get(str(me))
+        pick = st.radio("Your vote", options, key=f"v_{mid}",
+                        index=options.index(mine) if mine in options else None,
+                        horizontal=True, label_visibility="collapsed")
+        if st.button("Cast vote", key=f"b_{mid}"):
+            storage.record_vote(me, mid, pick, SEASON)
+            st.success(f"Recorded: {pick}")
+            st.rerun()
+
+        tally = {o: sum(1 for c in cast.values() if c == o) for o in options}
+        total = sum(tally.values()) or 1
+        bars = "".join(
+            f'<div class="tally-row"><span class="tl-opt">{o}</span>'
+            f'<div class="burnbar-track"><div class="burnbar-fill" '
+            f'style="width:{100 * n / total:.0f}%;background:var(--accent);"></div></div>'
+            f'<span class="tl-n">{n}</span></div>'
+            for o, n in tally.items()
+        )
+        waiting = [config.manager_name(o) for o in MANAGERS if str(o) not in cast]
+        st.markdown(
+            f'<div class="tally">{bars}'
+            + (f'<div class="tl-wait">Waiting on: {", ".join(waiting)}</div>' if waiting
+               else '<div class="tl-wait">All ballots in.</div>')
+            + '</div>',
+            unsafe_allow_html=True,
+        )
+        st.divider()
+
+    mine_count = sum(1 for m in motions if str(m.get("proposed_by")) == str(me))
+    with st.expander("Propose a motion"):
+        if mine_count:
+            st.warning(f"{who} has already submitted a motion this year — the league "
+                       f"allows one per manager. Proposing another needs the "
+                       f"commissioner to retire the first.")
+        title = st.text_input("Motion", placeholder="Motion to…")
+        detail = st.text_area("Detail / rationale", placeholder="What it changes and why.")
+        opts = st.text_input("Options (comma-separated)", value="For, Against")
+        if st.button("Submit motion", type="primary", disabled=bool(mine_count)):
+            if not title.strip():
+                st.error("Give the motion a title.")
+            else:
+                storage.add_motion({
+                    "id": f"{me}-{len(motions) + 1}",
+                    "title": title.strip(),
+                    "detail": detail.strip(),
+                    "options": [o.strip() for o in opts.split(",") if o.strip()] or ["For", "Against"],
+                    "proposed_by": str(me),
+                    "status": "open",
+                }, SEASON)
+                st.success("Motion filed — it goes to a vote at the draft.")
+                st.rerun()
+
+    st.markdown('<h3>Minutes</h3>', unsafe_allow_html=True)
+    st.caption("What's been passed, most recent first.")
+    for meeting, items in _MINUTES:
+        rows = "".join(f'<div class="min-item">{i}</div>' for i in items)
+        st.markdown(f'<div class="rule-block"><h4>{meeting}</h4>{rows}</div>',
+                    unsafe_allow_html=True)
+
+
 def render_rules() -> None:
     st.markdown('<h2>Rules &amp; <span class="g">Bylaws</span></h2>', unsafe_allow_html=True)
     st.caption("The house rules this app enforces. Motions passed at the 2026 draft are marked "
@@ -2911,7 +3096,8 @@ INSEASON_LEAVES = {
     "trades": [("recent", "Recent Trades"), ("market", "Trade Market"), ("analyzer", "Trade Analyzer")],
     "league": [("standings", "Standings & Scoreboard"), ("power", "Power Rankings"),
                 ("faab", "FAAB Pot"), ("odds", "Title Odds"), ("superlatives", "Superlatives"),
-                ("lottery", "Draft-Order Lottery"), ("rules", "Rules & Bylaws")],
+                ("lottery", "Draft-Order Lottery"), ("rules", "Rules & Bylaws"),
+                ("votes", "Votes & Minutes")],
     "history": [("record", "Record Book"), ("hitrate", "Keeper Hit-Rate")],
 }
 
@@ -2957,7 +3143,7 @@ elif page == "inseason":
     elif g == "league":
         {"standings": render_standings, "power": render_power,
          "faab": render_faab, "odds": render_odds, "superlatives": render_superlatives,
-         "lottery": render_lottery, "rules": render_rules}[t]()
+         "lottery": render_lottery, "rules": render_rules, "votes": render_votes}[t]()
     else:
         {"record": render_record_book, "hitrate": render_keeper_hitrate}[t]()
 

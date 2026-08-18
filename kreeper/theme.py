@@ -281,6 +281,23 @@ tr.playoff-cut td{ border-bottom:2px solid var(--accent) !important; }
 .pr-down{ color:var(--red); font-weight:700; }
 .pr-flat{ color:var(--muted); }
 
+/* votes & minutes */
+.motion{ background:var(--panel2); border:1px solid var(--line); border-left:4px solid var(--accent);
+  border-radius:10px; padding:14px 16px; margin-bottom:10px; }
+.motion .mo-head{ font-family:'Anton', sans-serif; font-size:16px; text-transform:uppercase;
+  letter-spacing:.4px; color:var(--ink); line-height:1.25; }
+.motion .mo-detail{ font-size:13px; color:var(--ink); opacity:.85; margin-top:6px; line-height:1.5; }
+.motion .mo-by{ font-size:10.5px; text-transform:uppercase; letter-spacing:.8px;
+  color:var(--muted); margin-top:8px; }
+.tally{ margin-top:6px; }
+.tally-row{ display:grid; grid-template-columns:110px 1fr 32px; align-items:center; gap:10px;
+  margin-bottom:6px; }
+.tl-opt{ font-size:12px; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tl-n{ font-family:'Anton', sans-serif; font-size:13px; color:var(--muted); text-align:right; }
+.tl-wait{ font-size:11px; color:var(--muted); margin-top:8px; font-style:italic; }
+.min-item{ font-size:13px; color:var(--ink); opacity:.9; line-height:1.55; padding:8px 0;
+  border-top:1px solid var(--line); }
+
 /* rules / bylaws page */
 .rule-block{ background:var(--panel2); border:1px solid var(--line); border-radius:12px;
   padding:6px 18px 14px; margin-bottom:16px; }

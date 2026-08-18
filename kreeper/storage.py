@@ -347,3 +347,107 @@ def prior_rookie_seasons(
             if str(s.get("player_id")) == str(player_id) and s.get("is_rookie_keeper"):
                 out.append(yr)
     return out
+
+
+# ------------------------------------------------------------------- votes
+# League motions and their ballots. Same durable-storage pattern as the
+# lottery record: GitHub-backed for the live season, local JSON otherwise.
+# Shape: {"motions": [{id, title, detail, options: [...], proposed_by,
+#         status, ...}], "ballots": {motion_id: {owner_id: option}}}
+def _votes_gh_path(season: int) -> str:
+    return f"data/votes_{season}.json"
+
+
+def _votes_local_path(season: int) -> Path:
+    base = Path(os.environ.get("KREEPER_DATA", config.DATA_DIR))
+    base.mkdir(parents=True, exist_ok=True)
+    return base / f"votes_{season}.json"
+
+
+def _gh_get_votes(season: int) -> Tuple[Dict[str, Any], Optional[str]]:
+    tok, repo, branch = _gh_config()
+    r = requests.get(f"{_API}/repos/{repo}/contents/{_votes_gh_path(season)}",
+                     headers=_headers(tok), params={"ref": branch}, timeout=15)
+    if r.status_code == 404:
+        return {}, None
+    r.raise_for_status()
+    j = r.json()
+    content = base64.b64decode(j["content"]).decode()
+    return (json.loads(content) if content.strip() else {}), j["sha"]
+
+
+def _gh_save_votes(data: Dict[str, Any], season: int) -> None:
+    tok, repo, branch = _gh_config()
+    _ensure_branch(repo, branch, tok)
+    path = _votes_gh_path(season)
+    for _ in range(3):  # retry on a concurrent-write SHA conflict
+        _, sha = _gh_get_votes(season)
+        body = {
+            "message": f"votes: {season}",
+            "content": base64.b64encode(json.dumps(data, indent=2).encode()).decode(),
+            "branch": branch,
+        }
+        if sha:
+            body["sha"] = sha
+        r = requests.put(f"{_API}/repos/{repo}/contents/{path}",
+                         headers=_headers(tok), json=body, timeout=20)
+        if r.status_code in (200, 201):
+            return
+        if r.status_code != 409:
+            r.raise_for_status()
+    raise RuntimeError("GitHub votes save failed after retries")
+
+
+def load_votes(season: int | None = None) -> Dict[str, Any]:
+    """{"motions": [...], "ballots": {motion_id: {owner: choice}}}. Always
+    returns both keys so callers never have to guard for a fresh season."""
+    season = season or config.current_season()
+    data: Dict[str, Any] = {}
+    if _use_remote(season):
+        try:
+            data, _ = _gh_get_votes(season)
+        except Exception:  # noqa: BLE001
+            data = {}
+    if not data:
+        p = _votes_local_path(season)
+        if p.exists():
+            try:
+                with _LOCK:
+                    data = json.loads(p.read_text())
+            except Exception:  # noqa: BLE001
+                data = {}
+    data.setdefault("motions", [])
+    data.setdefault("ballots", {})
+    return data
+
+
+def save_votes(data: Dict[str, Any], season: int | None = None) -> None:
+    """Replace the whole votes record for a season."""
+    season = season or config.current_season()
+    if _use_remote(season):
+        _gh_save_votes(data, season)
+        return
+    p = _votes_local_path(season)
+    with _LOCK:
+        tmp = p.with_suffix(".tmp")
+        tmp.write_text(json.dumps(data, indent=2))
+        tmp.replace(p)
+
+
+def record_vote(owner_id: str, motion_id: str, choice: str,
+                season: int | None = None) -> None:
+    """Cast (or change) one manager's ballot on one motion. Read-modify-write
+    of the whole record, matching how the lottery record is persisted."""
+    season = season or config.current_season()
+    data = load_votes(season)
+    data.setdefault("ballots", {}).setdefault(str(motion_id), {})[str(owner_id)] = choice
+    save_votes(data, season)
+
+
+def add_motion(motion: Dict[str, Any], season: int | None = None) -> None:
+    """Append a proposed motion. Callers own the id/dedupe policy — the
+    one-per-GM rule is a league bylaw enforced in the UI, not here."""
+    season = season or config.current_season()
+    data = load_votes(season)
+    data.setdefault("motions", []).append(motion)
+    save_votes(data, season)
