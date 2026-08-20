@@ -1,7 +1,7 @@
 {
   "season": 2026,
   "scoring": "ppr",
-  "updated_utc": "2026-08-19T11:17:04Z",
+  "updated_utc": "2026-08-20T11:18:49Z",
   "sources": [
     "CBS",
     "DraftKings",
@@ -18,5 +18,5 @@
     "footballguys": "ok (2703 rows)",
     "sleeper": "FAILED: ValueError: DraftSharks: no Sleeper ADP rows parsed (layout/key changed)"
   },
-  "players": 587
+  "players": 590
 }
