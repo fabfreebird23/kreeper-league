@@ -48,9 +48,18 @@ def card_color(i: int) -> str:
 
 CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@400;500;600;700&family=Rubik+Wet+Paint&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Archivo+Black&display=swap');
 
 :root{
+  /* Type system (Swiss). Display is Archivo Black — a single 400 weight, so
+     font-weight on display elements is a no-op; size and tracking do the work.
+     Archivo Black is much WIDER than the Anton it replaced, so display sizes
+     run a touch smaller and tracking goes slightly negative rather than the
+     positive tracking a condensed face wanted. */
+  --font-display:'Archivo Black', system-ui, sans-serif;
+  --font-body:'Archivo', system-ui, sans-serif;
+  --display-ls:-.4px;
+
   --bg:#08080b; --panel:#121216; --panel2:#17171d;
   --g1:#ff5aa0; --g2:#a06bff; --g3:#4f9dff; --accent:var(--g2); --accent-ink:#14101f;
   --purple:#a06bff; --teal:#3fd67c; --cyan:#5ecbf0;
@@ -72,7 +81,11 @@ CSS = """
     var(--bg);
   background-attachment:fixed;
 }
-html, body, [class*="css"]{ font-family:'Oswald', sans-serif; color:var(--ink) !important; }
+html, body, [class*="css"]{ font-family:var(--font-body); color:var(--ink) !important; }
+/* every column of figures on the site lines up without a monospace face */
+table.lb td, table.lb th, .num, .liq-ring .liq-val b, .mu-pts, .po-amt, .tl-n,
+.burn-key b, .faab-pot b{ font-variant-numeric:tabular-nums;
+  font-feature-settings:"tnum" 1; }
 [data-testid="stMarkdownContainer"], [data-testid="stMarkdownContainer"] p,
 [data-testid="stMarkdownContainer"] li, [data-testid="stMarkdownContainer"] span,
 [data-testid="stCaptionContainer"], [data-testid="stCaptionContainer"] p,
@@ -82,13 +95,19 @@ html, body, [class*="css"]{ font-family:'Oswald', sans-serif; color:var(--ink) !
 [data-testid="stMarkdownContainer"] a{ color:var(--accent) !important; }
 
 [data-testid="stHeader"]{ background:transparent; }
-[data-testid="stSidebar"]{ background:#0d0d11; border-right:1px solid var(--line); }
+/* No sidebar. The masthead carries the identity and the bottom bar carries
+   the nav, so a third chrome surface on the left was just eating width —
+   its contents moved onto the pages they belong to (ADP freshness to the ADP
+   page, the refresh control to Home). Collapse the control too, or Streamlit
+   leaves a hamburger that opens an empty drawer. */
+[data-testid="stSidebar"], [data-testid="stSidebarCollapsedControl"],
+[data-testid="collapsedControl"]{ display:none !important; }
 
 /* expanders — themed card, not the bare default row (used for any plain
    st.expander elsewhere in the app, e.g. the sidebar's Source status) */
 [data-testid="stExpander"]{ border:1px solid var(--line); border-left:4px solid var(--accent);
   border-radius:10px; background:var(--panel); margin-bottom:10px; overflow:hidden; }
-[data-testid="stExpander"] summary{ padding:14px 18px !important; font-family:'Oswald', sans-serif !important;
+[data-testid="stExpander"] summary{ padding:14px 18px !important; font-family:var(--font-body) !important;
   font-size:14.5px !important; font-weight:600 !important; transition:background .12s; }
 [data-testid="stExpander"] summary:hover{ background:rgba(255,255,255,.03); }
 [data-testid="stExpander"] summary [data-testid="stIconMaterial"]{ display:none; }
@@ -102,7 +121,7 @@ html, body, [class*="css"]{ font-family:'Oswald', sans-serif; color:var(--ink) !
 details.team-details{ border:1px solid var(--line); border-left:4px solid var(--accent);
   border-radius:10px; background:var(--panel); margin-bottom:10px; overflow:hidden; }
 details.team-details summary{ list-style:none; cursor:pointer; padding:14px 18px;
-  font-family:'Oswald', sans-serif; font-weight:600; font-size:14.5px; color:var(--ink);
+  font-family:var(--font-body); font-weight:600; font-size:14.5px; color:var(--ink);
   transition:background .12s; }
 details.team-details summary::-webkit-details-marker{ display:none; }
 details.team-details summary:hover{ background:rgba(255,255,255,.03); }
@@ -110,11 +129,11 @@ details.team-details .team-details-body{ padding:4px 18px 18px; }
 details.team-details .empty-note{ color:var(--muted); font-size:13px; padding:0 0 4px; margin:0; }
 
 /* headings — h2 carries the page's gradient as text color, not a filled bar */
-h1{ font-family:'Anton', sans-serif !important; letter-spacing:1px; text-transform:uppercase;
-  color:var(--ink) !important; }
-h2{ font-family:'Anton', sans-serif !important; letter-spacing:.4px; margin:0 0 8px !important;
-  font-size:1.5rem !important; color:var(--ink) !important; }
-h3{ font-family:'Oswald', sans-serif !important; font-weight:600 !important; letter-spacing:.2px;
+h1{ font-family:var(--font-display) !important; letter-spacing:var(--display-ls);
+  text-transform:uppercase; font-size:1.7rem !important; color:var(--ink) !important; }
+h2{ font-family:var(--font-display) !important; letter-spacing:var(--display-ls);
+  margin:0 0 8px !important; font-size:1.34rem !important; color:var(--ink) !important; }
+h3{ font-family:var(--font-body) !important; font-weight:600 !important; letter-spacing:.2px;
   color:var(--ink) !important; font-size:1.05rem !important; margin:0 0 10px !important; }
 /* two-tone heading accent — wrap the one word that matters in <span class="g"> */
 .g{ background:var(--grad) !important; -webkit-background-clip:text !important;
@@ -134,7 +153,7 @@ h3{ font-family:'Oswald', sans-serif !important; font-weight:600 !important; let
 /* ThunderCats wordmark — liquid-chrome steel letters + red-disc pig emblem */
 .tc-wrap{ display:inline-flex; align-items:center; gap:8px; }
 .tc-emblem{ flex:0 0 auto; filter:drop-shadow(0 4px 16px rgba(79,157,255,.35)); }
-.neon-logo{ font-family:'Anton', sans-serif; line-height:1; display:inline-block;
+.neon-logo{ font-family:var(--font-display); line-height:1; display:inline-block;
   letter-spacing:0px; white-space:nowrap; transform:skewX(-7deg); }
 .neon-logo .kl{ display:inline-block;
   background:linear-gradient(180deg,#f2f8ff 0%,#aecdf0 24%,#4a6ea4 47%,#14264a 51%,
@@ -142,16 +161,16 @@ h3{ font-family:'Oswald', sans-serif !important; font-weight:600 !important; let
   -webkit-background-clip:text; background-clip:text;
   -webkit-text-fill-color:transparent; color:transparent;
   text-shadow:0 1px 0 #243b66, 1px 2px 0 #16264a, 3px 4px 6px rgba(8,14,30,.55); }
-.neon-tag{ font-family:'Oswald'; letter-spacing:5px; font-weight:700; font-size:11px;
+.neon-tag{ font-family:var(--font-body); letter-spacing:5px; font-weight:700; font-size:11px;
   color:var(--purple); text-transform:uppercase; }
 
 /* section tabs (st.tabs) -> match the display-font header treatment */
 [data-testid="stTabs"] button[data-baseweb="tab"]{
-  font-family:'Anton', sans-serif !important; letter-spacing:.8px; text-transform:uppercase;
+  font-family:var(--font-display) !important; letter-spacing:var(--display-ls); text-transform:uppercase;
   font-size:14px; color:var(--muted);
 }
 [data-testid="stTabs"] button[data-baseweb="tab"] p{
-  font-family:'Anton', sans-serif !important; letter-spacing:.8px; text-transform:uppercase;
+  font-family:var(--font-display) !important; letter-spacing:var(--display-ls); text-transform:uppercase;
   font-size:14px;
 }
 [data-testid="stTabs"] button[aria-selected="true"]{ color:var(--ink) !important; }
@@ -164,24 +183,25 @@ h3{ font-family:'Oswald', sans-serif !important; font-weight:600 !important; let
 [data-testid="stSidebar"] [role="radiogroup"] label:hover{ border-color:var(--accent); }
 [data-testid="stSidebar"] [role="radiogroup"] label p{ font-weight:600; text-transform:uppercase; letter-spacing:.5px; font-size:13px;}
 
-.stButton>button{ font-family:'Anton'; letter-spacing:1px; text-transform:uppercase;
+.stButton>button{ font-family:var(--font-display); letter-spacing:.2px; text-transform:uppercase;
   background:var(--accent); color:var(--accent-ink); border:none; border-radius:4px; }
 .stButton>button:hover{ background:var(--purple); color:#fff; }
 
 /* ---- shared custom tables — flat, no boxed wrapper, hairline row dividers only ---- */
 .neonwrap{ overflow-x:auto; }
-table.lb{ width:100%; border-collapse:collapse; font-family:'Oswald'; font-size:14px; }
+table.lb{ width:100%; border-collapse:collapse; font-family:var(--font-body); font-size:14px; }
 table.lb th{ color:var(--muted); text-transform:uppercase; letter-spacing:1px;
   font-size:11px; text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); position:sticky; top:0; background:var(--bg); }
 table.lb td{ padding:6px 10px; border-bottom:1px solid var(--line); }
 table.lb tr:hover td{ background:rgba(255,255,255,.025); }
 table.lb tr.kept td{ background:linear-gradient(90deg, rgba(47,224,196,.16), rgba(47,224,196,.03)); }
 table.lb tr.kept td:first-child{ box-shadow:inset 3px 0 0 var(--teal); }
-.lb .rk{ font-family:'Anton'; color:var(--accent); width:34px; text-align:center; }
+.lb .rk{ font-family:var(--font-display); color:var(--accent); width:34px; text-align:center; }
 .lb .pl{ font-weight:600; }
 .lb .pos{ color:var(--muted); font-size:11px; font-weight:600; }
-.lb .val{ font-family:'Anton'; color:var(--teal); text-align:right; }
+.lb .val{ font-family:var(--font-display); color:var(--teal); text-align:right; }
 .lb .num{ text-align:right; color:var(--ink); }
+.lb .pl.win{ color:var(--teal); font-weight:700; }
 .lb .kept-badge{ color:#04231d; background:var(--teal); font-weight:700; font-size:10px;
   padding:1px 6px; border-radius:3px; text-transform:uppercase; letter-spacing:.5px; }
 .lb .rk-badge{ color:#fff; background:var(--purple); font-weight:700; font-size:10px;
@@ -196,7 +216,7 @@ table.lb tr.fa td{ background:rgba(94,203,240,.06); }
 /* team line-cards: colored strip header + spacious keeper rows */
 .kcards{ display:grid; grid-template-columns:repeat(2,1fr); gap:16px; }
 .kcard{ border:1px solid var(--line); border-radius:10px; background:var(--panel); overflow:hidden; }
-.kcard h4{ font-family:'Anton', sans-serif; font-size:14px; margin:0; letter-spacing:.6px;
+.kcard h4{ font-family:var(--font-display); font-size:14px; margin:0; letter-spacing:.6px;
   text-transform:uppercase; color:var(--accent-ink); background:var(--accent); padding:9px 14px; }
 .kcard .kp{ display:flex; align-items:center; gap:10px; font-size:13.5px; padding:8px 14px;
   border-bottom:1px solid var(--line); transition:background .12s; }
@@ -205,7 +225,7 @@ table.lb tr.fa td{ background:rgba(94,203,240,.06); }
 .kcard .kp img{ width:28px;height:28px;border-radius:50%;object-fit:cover;background:var(--panel2);
   border:1px solid var(--line); flex:0 0 auto; }
 .kcard .kp span:not(.rd):not(.rk-tag){ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.kcard .kp .rd{ margin-left:auto; flex:0 0 auto; font-family:var(--mono, monospace); font-size:11.5px;
+.kcard .kp .rd{ margin-left:auto; flex:0 0 auto; font-family:var(--font-body); font-weight:600; font-size:11.5px;
   font-weight:700; color:var(--teal); background:var(--panel2); border:1px solid var(--line);
   border-radius:5px; padding:2px 7px; }
 .kcard .empty{ color:var(--muted); font-style:italic; font-size:12px; padding:12px 14px; }
@@ -214,7 +234,7 @@ table.lb tr.fa td{ background:rgba(94,203,240,.06); }
 /* stat tiles row */
 .tiles{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
 .tile{ background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:12px 14px; }
-.tile .num{ font-family:var(--mono, monospace); font-weight:700; font-size:24px; color:var(--ink); line-height:1; }
+.tile .num{ font-family:var(--font-display); font-size:24px; color:var(--ink); line-height:1; }
 .tile .num.accent{ color:var(--accent); }
 .tile .lbl{ font-size:10px; text-transform:uppercase; letter-spacing:.8px; color:var(--muted); margin-top:5px; }
 .tile .sub{ font-size:11px; color:var(--ink); opacity:.75; margin-top:1px; }
@@ -223,7 +243,7 @@ table.lb tr.fa td{ background:rgba(94,203,240,.06); }
 .faab-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
 .faab-card{ border:1px solid var(--line); border-radius:10px; background:var(--panel);
   padding:12px; text-align:center; }
-.faab-card h4{ font-family:'Anton'; font-size:14px; margin:0 0 8px; color:var(--purple); }
+.faab-card h4{ font-family:var(--font-display); font-size:14px; margin:0 0 8px; color:var(--purple); }
 .faab-card .rem{ font-size:11px; color:var(--muted); margin-top:2px; }
 
 /* liquid-fill circle gauge — reusable for FAAB rings + home quick-glance tiles */
@@ -231,7 +251,7 @@ table.lb tr.fa td{ background:rgba(94,203,240,.06); }
 .liq-ring svg{ display:block; }
 .liq-ring .liq-val{ position:absolute; inset:0; display:flex; flex-direction:column;
   align-items:center; justify-content:center; text-align:center; line-height:1.15; pointer-events:none; }
-.liq-ring .liq-val b{ font-family:'Anton'; font-weight:400; }
+.liq-ring .liq-val b{ font-family:var(--font-display); font-weight:400; }
 .liq-ring .liq-val small{ font-size:8.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; }
 
 .glance-panel{ border-radius:16px; padding:1px; margin:10px 0 26px;
@@ -245,7 +265,7 @@ table.lb tr.fa td{ background:rgba(94,203,240,.06); }
 .faab-pot{ text-align:center; padding:18px 12px; border-radius:12px; border:1px solid transparent;
   background:linear-gradient(var(--panel2),var(--panel2)) padding-box, var(--grad) border-box;
   margin-bottom:16px; }
-.faab-pot b{ font-family:'Anton'; font-size:38px; background:var(--grad); -webkit-background-clip:text;
+.faab-pot b{ font-family:var(--font-display); font-size:38px; background:var(--grad); -webkit-background-clip:text;
   background-clip:text; -webkit-text-fill-color:transparent; display:block; line-height:1; }
 .faab-pot span{ font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
 
@@ -258,7 +278,7 @@ table.lb tr.fa td{ background:rgba(94,203,240,.06); }
 .burn-key{ display:flex; align-items:center; gap:6px; font-size:11px; color:var(--muted);
   white-space:nowrap; }
 .burn-key.on{ color:var(--ink); font-weight:600; }
-.burn-key b{ font-family:'Anton', sans-serif; font-weight:400; color:var(--ink); }
+.burn-key b{ font-family:var(--font-display); font-weight:400; color:var(--ink); }
 .burn-dot{ width:9px; height:9px; border-radius:2px; flex:0 0 auto; }
 
 /* standings — the playoff cut line sits UNDER the last qualifying row */
@@ -272,7 +292,7 @@ tr.playoff-cut td{ border-bottom:2px solid var(--accent) !important; }
 .mu-row.win{ color:var(--ink); font-weight:700; }
 .mu-row.win .mu-pts{ color:var(--teal); }
 .mu-team{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.mu-pts{ font-family:'Anton', sans-serif; font-size:15px; flex:0 0 auto; }
+.mu-pts{ font-family:var(--font-display); font-size:15px; flex:0 0 auto; }
 .mu-note{ margin-top:6px; padding-top:6px; border-top:1px solid var(--line);
   font-size:9.5px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); text-align:right; }
 
@@ -284,7 +304,7 @@ tr.playoff-cut td{ border-bottom:2px solid var(--accent) !important; }
 /* votes & minutes */
 .motion{ background:var(--panel2); border:1px solid var(--line); border-left:4px solid var(--accent);
   border-radius:10px; padding:14px 16px; margin-bottom:10px; }
-.motion .mo-head{ font-family:'Anton', sans-serif; font-size:16px; text-transform:uppercase;
+.motion .mo-head{ font-family:var(--font-display); font-size:16px; text-transform:uppercase;
   letter-spacing:.4px; color:var(--ink); line-height:1.25; }
 .motion .mo-detail{ font-size:13px; color:var(--ink); opacity:.85; margin-top:6px; line-height:1.5; }
 .motion .mo-by{ font-size:10.5px; text-transform:uppercase; letter-spacing:.8px;
@@ -293,7 +313,7 @@ tr.playoff-cut td{ border-bottom:2px solid var(--accent) !important; }
 .tally-row{ display:grid; grid-template-columns:110px 1fr 32px; align-items:center; gap:10px;
   margin-bottom:6px; }
 .tl-opt{ font-size:12px; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.tl-n{ font-family:'Anton', sans-serif; font-size:13px; color:var(--muted); text-align:right; }
+.tl-n{ font-family:var(--font-display); font-size:13px; color:var(--muted); text-align:right; }
 .tl-wait{ font-size:11px; color:var(--muted); margin-top:8px; font-style:italic; }
 .min-item{ font-size:13px; color:var(--ink); opacity:.9; line-height:1.55; padding:8px 0;
   border-top:1px solid var(--line); }
@@ -301,7 +321,7 @@ tr.playoff-cut td{ border-bottom:2px solid var(--accent) !important; }
 /* rules / bylaws page */
 .rule-block{ background:var(--panel2); border:1px solid var(--line); border-radius:12px;
   padding:6px 18px 14px; margin-bottom:16px; }
-.rule-block h4{ font-family:'Anton', sans-serif; text-transform:uppercase; letter-spacing:.8px;
+.rule-block h4{ font-family:var(--font-display); text-transform:uppercase; letter-spacing:.8px;
   font-size:15px; color:var(--ink); margin:14px 0 10px; }
 .rule-row{ display:grid; grid-template-columns:minmax(120px, 190px) 1fr; gap:16px;
   padding:10px 0; border-top:1px solid var(--line); }
@@ -317,7 +337,7 @@ tr.playoff-cut td{ border-bottom:2px solid var(--accent) !important; }
   margin-bottom:18px; }
 .payout-row{ display:flex; align-items:center; gap:14px; background:var(--panel2);
   border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
-.payout-row .po-amt{ font-family:'Anton'; font-size:26px; line-height:1; white-space:nowrap; }
+.payout-row .po-amt{ font-family:var(--font-display); font-size:26px; line-height:1; white-space:nowrap; }
 .payout-row .po-lbl{ font-size:9.5px; text-transform:uppercase; letter-spacing:1.2px; color:var(--muted); }
 .payout-row .po-who{ font-size:14px; font-weight:600; color:var(--ink); margin-top:2px; line-height:1.2; }
 .payout-row .po-sub{ font-size:11px; color:var(--muted); margin-top:2px; line-height:1.3; }
@@ -344,10 +364,10 @@ tr.playoff-cut td{ border-bottom:2px solid var(--accent) !important; }
 /* contract cards — per-player keeper economics browse grid */
 .kr-section{ margin-bottom:28px; }
 .kr-section-head{ display:flex; align-items:baseline; justify-content:space-between; gap:14px; margin-bottom:14px; }
-.kr-section-head h3{ font-family:'Anton', sans-serif !important; font-size:22px !important;
+.kr-section-head h3{ font-family:var(--font-display) !important; font-size:19px !important;
   font-weight:400 !important; letter-spacing:.3px; margin:0 !important; background:none !important;
   color:var(--ink) !important; padding:0 !important; display:inline !important; }
-.kr-section-head .tag{ font-family:'Oswald'; font-weight:600; font-size:10.5px; letter-spacing:.6px;
+.kr-section-head .tag{ font-family:var(--font-body); font-weight:600; font-size:10.5px; letter-spacing:.6px;
   text-transform:uppercase; color:var(--purple); }
 .contract-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
 .ccard{ border:1px solid var(--line); border-radius:10px; padding:14px 16px 15px; position:relative;
@@ -363,17 +383,17 @@ tr.playoff-cut td{ border-bottom:2px solid var(--accent) !important; }
 .ccard.wall{ box-shadow:inset 0 0 0 1px rgba(255,92,108,.5); }
 .ccard.ineligible{ opacity:.55; }
 .ccard-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
-.ccard h4{ font-family:'Anton'; font-weight:400; font-size:18px; color:var(--ink); margin:0;
+.ccard h4{ font-family:var(--font-display); font-weight:400; font-size:18px; color:var(--ink); margin:0;
   letter-spacing:.2px; line-height:1.15; }
 .ccard .pos{ font-size:11px; color:var(--muted); margin-top:1px; }
 .ccard .cost{ text-align:right; }
-.ccard .cost b{ font-family:'Anton'; font-size:18px; color:var(--accent); display:block; line-height:1; font-weight:400; }
+.ccard .cost b{ font-family:var(--font-display); font-size:18px; color:var(--accent); display:block; line-height:1; font-weight:400; }
 .ccard .cost small{ font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
 .pips{ display:flex; gap:4px; margin:8px 0 7px; }
 .pip{ width:15px; height:6px; border-radius:3px; background:rgba(255,255,255,.12); }
 .pip.on{ background:var(--accent); }
 .badges{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px; }
-.badge{ font-family:'Oswald'; font-weight:600; font-size:9.5px; letter-spacing:.3px; text-transform:uppercase;
+.badge{ font-family:var(--font-body); font-weight:600; font-size:9.5px; letter-spacing:.3px; text-transform:uppercase;
   padding:3px 7px; border-radius:999px; border:1px solid var(--line); color:var(--muted); background:var(--panel2); }
 .badge.rookie{ background:rgba(143,123,255,.15); border-color:rgba(143,123,255,.35); color:var(--purple); }
 .badge.surplus-pos{ background:rgba(47,224,196,.14); border-color:rgba(47,224,196,.35); color:var(--teal); }
@@ -391,14 +411,14 @@ tr.playoff-cut td{ border-bottom:2px solid var(--accent) !important; }
   border:1px solid var(--line); overflow:hidden; position:relative; }
 .lottery-bar-fill{ height:100%; border-radius:5px; background:var(--grad);
   display:flex; align-items:center; justify-content:flex-end; padding-right:8px;
-  font-family:var(--mono, monospace); font-size:11.5px; font-weight:700; color:var(--accent-ink); white-space:nowrap; }
+  font-family:var(--font-body); font-weight:600; font-size:11.5px; font-weight:700; color:var(--accent-ink); white-space:nowrap; }
 .lottery-bar-fill.dim{ background:var(--muted); }
-.lottery-row-val{ flex:0 0 34px; text-align:right; font-family:'Anton'; font-weight:400;
+.lottery-row-val{ flex:0 0 34px; text-align:right; font-family:var(--font-display); font-weight:400;
   font-size:14px; color:var(--ink); }
 
 /* draft board — flat, hairline cell dividers; only cells that mean
    something (traded/kept/conflict) carry a background */
-table.dboard{ width:100%; border-collapse:collapse; table-layout:fixed; font-family:'Oswald'; font-size:12px; }
+table.dboard{ width:100%; border-collapse:collapse; table-layout:fixed; font-family:var(--font-body); font-size:12px; }
 table.dboard th{ color:var(--muted); text-align:center; font-size:11px; padding:5px;
   border-bottom:1px solid var(--line); text-transform:uppercase; letter-spacing:.5px; }
 .dbcell{ border:1px solid var(--line); padding:3px 4px; vertical-align:top; height:48px; }
@@ -409,15 +429,27 @@ table.dboard td.dbcell{ padding:3px 4px; }
 .db-traded{ background:rgba(79,157,255,.16); color:#bcd7ff; }
 .db-keep{ background:rgba(63,214,124,.16); color:#a4f0bf; box-shadow:inset 0 0 0 1px rgba(63,214,124,.45); }
 .db-conflict{ background:rgba(255,92,108,.16); color:#ffb3ba; box-shadow:inset 0 0 0 1px rgba(255,92,108,.45); }
-.db-rd{ background:none; color:var(--purple); font-family:'Anton'; text-align:center; white-space:nowrap; }
+.db-rd{ background:none; color:var(--purple); font-family:var(--font-display); text-align:center; white-space:nowrap; }
 
 .lb .pos{ white-space:nowrap; }
 
-/* top bar — logo + phase chip; section nav lives in the fixed bottom bar */
-.kbar{ display:flex; align-items:center; justify-content:space-between; gap:28px; flex-wrap:wrap;
-  padding-bottom:14px; margin-bottom:18px; border-bottom:1px solid var(--line); }
-.khome{ text-decoration:none !important; line-height:1; }
-.khome .neon-logo{ font-size:30px; margin:0; }
+/* masthead — a full-bleed gradient band, not an inset bar. Streamlit caps its
+   content column and pads it, so the band is pushed back out to the viewport
+   edges with negative margins sized off that padding; 100vw would overflow by
+   the scrollbar's width and produce a horizontal scroll. */
+.masthead{ display:flex; align-items:center; justify-content:space-between; gap:24px;
+  flex-wrap:wrap; background:var(--grad);
+  margin:0 calc(-1 * var(--block-pad)) 26px;
+  padding:14px var(--block-pad); }
+.mh-home{ text-decoration:none !important; line-height:1; }
+.mh-home .neon-logo{ font-size:26px; margin:0; }
+/* on the gradient the wordmark is solid white — the logo's own gradient fill
+   would be invisible against it */
+.masthead .neon-logo .kl{ background:none !important; -webkit-text-fill-color:#fff !important;
+  color:#fff !important; text-shadow:0 2px 12px rgba(0,0,0,.28); }
+.masthead .topbar-chip{ background:rgba(0,0,0,.24); border-color:rgba(255,255,255,.26); }
+.masthead .topbar-chip .txt .lbl{ color:#fff; }
+.masthead .topbar-chip .txt .sub{ color:rgba(255,255,255,.8); }
 
 /* compact liquid-wave phase indicator, top-right, persistent on every page */
 .topbar-chip{ background:var(--panel2); border:1px solid var(--line); border-radius:999px;
@@ -430,16 +462,42 @@ table.dboard td.dbcell{ padding:3px 4px; }
   .topbar-chip .txt .sub{ display:none; }
 }
 
+/* section header — title, a hairline rule running to the right edge, and a
+   right-aligned micro-caption. Replaces bare <h2> + st.caption stacked, which
+   left every section starting with two left-aligned lines and no horizontal
+   structure. */
+.sechead{ display:flex; align-items:center; gap:16px; margin:34px 0 14px; }
+.sechead h2{ font-family:var(--font-display); font-size:1.34rem; letter-spacing:var(--display-ls);
+  margin:0 !important; white-space:nowrap; color:var(--ink); }
+.sechead .rule{ flex:1; height:1px; background:var(--line); }
+.sechead .cap{ font-size:10px; letter-spacing:1.8px; text-transform:uppercase;
+  color:var(--muted); white-space:nowrap; }
+@media (max-width: 640px){
+  .sechead{ gap:10px; margin:24px 0 12px; }
+  .sechead .cap{ display:none; }
+}
+
 /* fixed bottom bar — floating pill segmented control, the site's only nav.
    Leave room for it at the foot of the page so content never sits under it. */
-[data-testid="stAppViewContainer"] .block-container{ padding-bottom:112px !important; }
+/* Own the content column's horizontal padding rather than inheriting whatever
+   Streamlit's default is, because the full-bleed masthead cancels exactly this
+   value with a negative margin — if the two ever disagree the band either
+   insets or overflows into a horizontal scroll. */
+[data-testid="stAppViewContainer"] .block-container{
+  --block-pad:3rem;
+  padding-left:var(--block-pad) !important; padding-right:var(--block-pad) !important;
+  /* tightened from Streamlit's ~6rem default now that a full-bleed masthead is
+     the first thing on the page — but NOT to zero: the floating toolbar sits
+     top-right and would land on top of the phase chip. */
+  padding-top:2.6rem !important;
+  padding-bottom:112px !important; }
 .bottom-bar-wrap{ position:fixed; left:0; right:0; bottom:max(18px, env(safe-area-inset-bottom)); display:flex;
   justify-content:center; z-index:1000; pointer-events:none; }
 .bottom-bar{ pointer-events:auto; display:flex; gap:2px; background:rgba(18,18,22,.94);
   backdrop-filter:blur(16px); border:1px solid var(--line); border-radius:999px;
   padding:8px; box-shadow:0 12px 36px rgba(0,0,0,.5); }
 .navlink, [data-testid="stMarkdownContainer"] a.navlink{
-  font-family:'Oswald'; font-weight:600; letter-spacing:.5px; font-size:14px;
+  font-family:var(--font-body); font-weight:600; letter-spacing:.5px; font-size:14px;
   text-transform:uppercase; color:var(--ink) !important; text-decoration:none !important;
   background:none; border:none !important; border-image:none !important; border-radius:999px !important;
   white-space:nowrap; opacity:.6; padding:13px 24px !important; transition:opacity .2s, background .25s ease; }
@@ -459,12 +517,12 @@ table.dboard td.dbcell{ padding:3px 4px; }
   pointer-events:none; transition:opacity .2s ease, transform .2s ease; z-index:999; }
 .bb-pop.on{ opacity:1; pointer-events:auto; transform:translate(-50%,0) scale(1); }
 .bb-pop-head{ display:flex; align-items:center; gap:8px; padding:8px 10px 10px; }
-.bb-pop-title{ font-family:'Anton', sans-serif; font-size:12px; text-transform:uppercase;
+.bb-pop-title{ font-family:var(--font-display); font-size:12px; text-transform:uppercase;
   letter-spacing:.5px; color:var(--muted); }
 /* group label above each cluster of leaves — not interactive, just an
    in-place divider so every leaf across every group is one tap, no
    drill-down/back step to pick a group first. */
-.bb-pop-group-label{ font-family:'Anton', sans-serif; font-size:10.5px; text-transform:uppercase;
+.bb-pop-group-label{ font-family:var(--font-display); font-size:10.5px; text-transform:uppercase;
   letter-spacing:.6px; color:var(--purple); padding:14px 12px 4px; }
 .bb-pop-group-label:first-of-type{ padding-top:4px; }
 .bb-pop-item{ display:flex; align-items:center; justify-content:space-between; padding:12px 12px;
@@ -493,7 +551,19 @@ table.dboard td.dbcell{ padding:3px 4px; }
   h1{ font-size:1.5rem !important; }
   h2{ font-size:1.25rem !important; }
   h3{ font-size:1.15rem !important; }
-  .block-container{ padding-left:.6rem !important; padding-right:.6rem !important; padding-top:2.5rem !important; }
+  .block-container{ --block-pad:.6rem;
+    padding-left:var(--block-pad) !important; padding-right:var(--block-pad) !important;
+    padding-top:2.5rem !important; }
+  /* keep the band one line high — wrapping the chip underneath ate a third
+     of a phone screen before any content showed */
+  .masthead{ padding-top:10px; padding-bottom:10px; margin-bottom:16px;
+    flex-wrap:nowrap; gap:10px; }
+  .mh-home{ min-width:0; }
+  .mh-home .neon-logo{ font-size:17px !important; }
+  .masthead .topbar-chip{ padding:4px 10px 4px 4px; flex:0 0 auto; }
+  .masthead .topbar-chip .txt .lbl{ font-size:10px; }
+  .masthead .topbar-chip .liq-ring{ width:22px !important; height:22px !important; }
+  .masthead .topbar-chip .liq-ring svg{ width:22px; height:22px; }
   /* flow the tall scroll panels with the page (no nested scrollbox) */
   .neonwrap{ max-height:none !important; }
 
@@ -693,6 +763,14 @@ def liquid_ring_html(pct: float, value_html: str, label: str = "", size: int = 8
         f'<span class="liq-val"><b>{value_html}</b>{sub}</span>'
         f'</span>'
     )
+
+
+def section_head(title_html: str, caption: str = "") -> str:
+    """Title + hairline rule + right-aligned micro-caption. `title_html` may
+    carry a `<span class="g">` for the two-tone gradient word."""
+    cap = f'<span class="cap">{caption}</span>' if caption else ""
+    return (f'<div class="sechead"><h2>{title_html}</h2>'
+            f'<span class="rule"></span>{cap}</div>')
 
 
 def liquid_stat_html(pct: float, value_html: str, ring_label: str, label: str, sub: str = "",

@@ -22,7 +22,8 @@ from kreeper import (config, draftboard, engine, faab, history, lottery, phase, 
 from kreeper.adp import consensus as adp_consensus
 from kreeper.names import normalize_name
 
-st.set_page_config(page_title="The Kreeper League — Keeper Hub", page_icon=None, layout="wide")
+st.set_page_config(page_title="The Kreeper League — Keeper Hub", page_icon=None, layout="wide",
+                   initial_sidebar_state="collapsed")
 
 # Routing via a `?p=` query param so the nav links are real, shareable, static
 # links. Three top-level sections grouped by where they fall in the season,
@@ -898,6 +899,8 @@ def render_home() -> None:
     else:
         _render_home_keepers_open()
 
+    render_refresh_control()
+
 
 def _home_quick_glance() -> None:
     """Three liquid-fill quick-glance stats — FAAB pot, the title-odds
@@ -938,10 +941,12 @@ def _render_home_pre_season() -> None:
 
 
 def _render_home_in_season() -> None:
-    """The season is live, so Home leads with where it actually stands —
-    the race, your own team's line in it, and this week's scoreboard —
-    rather than the FAAB/odds pages stacked, which are each one tap away
-    in the bottom bar anyway."""
+    """Live season. Ordered the way the question actually gets asked: what
+    happened this week, what the money is doing, where that leaves the table,
+    and what everyone's been up to. Deliberately league-wide — no "your team"
+    card, since the page is read by eight people and a selector at the top
+    just makes seven of them scroll past someone else's record.
+    """
     table = get_standings()
     if not any(r["weeks_played"] for r in table):
         # Week 1 hasn't been scored yet — nothing to lead with.
@@ -951,72 +956,54 @@ def _render_home_in_season() -> None:
 
     played = max(r["weeks_played"] for r in table)
     total = season.regular_season_weeks()
-    st.markdown(
-        f'<h2>Week <span class="g">{played}</span> '
-        f'<span style="font-size:.55em;color:var(--muted);">of {total}</span></h2>',
-        unsafe_allow_html=True,
-    )
-
-    # Your team's own line, picked from the sidebar-style selector so the
-    # page means something specific to whoever's looking at it.
-    who = st.selectbox("Your team", [config.manager_name(o) for o in MANAGERS],
-                        key="home_team", label_visibility="collapsed")
-    me = NAME_TO_ID.get(who)
-    mine = next((r for r in table if r["owner"] == me), None)
+    results = get_season_results()
     odds = {r["owner"]: r for r in get_playoff_odds()}
-    power = {r["owner"]: r for r in get_power_rankings()}
 
-    if mine:
-        rec = f'{mine["wins"]}-{mine["losses"]}' + (f'-{mine["ties"]}' if mine["ties"] else "")
-        in_bracket = mine["rank"] <= PLAYOFF_TEAMS
-        my_odds = odds.get(me, {}).get("odds")
-        my_power = power.get(me, {}).get("rank")
-        _glance_box([
-            (mine["rank"] / max(1, len(table)), f'#{mine["rank"]}', "of " + str(len(table)),
-             "Standing", "in the bracket" if in_bracket else "outside the top "
-             f"{PLAYOFF_TEAMS}", theme.TEAL if in_bracket else theme.RED),
-            (1.0, rec, "rec", "Record", f'{mine["points_for"]:.0f} PF · {mine["streak"]}',
-             theme.PURPLE),
-            ((my_odds or 0) / 100, f'{my_odds:.0f}%' if my_odds is not None else "—", "odds",
-             "Playoff Odds", f'power rank #{my_power}' if my_power else "", theme.AMBER),
-        ])
+    # ---- this week's scores ----
+    if results:
+        last = max(results)
+        st.markdown(theme.section_head(f'Week <span class="g">{last}</span>',
+                                        f"{total - played} weeks to play"),
+                    unsafe_allow_html=True)
+        rows = []
+        for g in results[last]:
+            a, b = g["home"], g["away"]
+            aw = (not g["tie"]) and g["winner"] == a["owner"]
+            bw = (not g["tie"]) and g["winner"] == b["owner"]
+            rows.append(
+                f'<tr><td class="pl{" win" if aw else ""}">{config.manager_name(a["owner"])}</td>'
+                f'<td class="pl{" win" if bw else ""}">{config.manager_name(b["owner"])}</td>'
+                f'<td class="num" style="text-align:right;">{a["points"]:.1f} &ndash; {b["points"]:.1f}</td></tr>')
+        st.markdown('<div class="neonwrap"><table class="lb"><tbody>'
+                    + "".join(rows) + '</tbody></table></div>', unsafe_allow_html=True)
 
-    st.markdown('<h3>The Race</h3>', unsafe_allow_html=True)
+    # ---- the money ----
+    lid = LEAGUE["sleeper_league_id"]
+    pot = faab.projected_pot(lid)
+    st.markdown(theme.section_head('The <span class="g">Money</span>',
+                                    f'${pot["total_spent"]} in the pot'),
+                unsafe_allow_html=True)
+    _render_payouts(lid, pot, heading=False)
+
+    # ---- the race ----
+    st.markdown(theme.section_head('The <span class="g">Race</span>',
+                                    f"top {PLAYOFF_TEAMS} make the bracket"),
+                unsafe_allow_html=True)
     body = []
     for r in table:
-        d = f'{r["wins"]}-{r["losses"]}'
         o = odds.get(r["owner"], {}).get("odds")
         badge = '<span class="kept-badge">IN</span>' if r["rank"] <= PLAYOFF_TEAMS else ""
-        strong = ' style="background:rgba(160,107,255,.10);"' if r["owner"] == me else ""
         body.append(
-            f'<tr{strong}><td class="rk">{r["rank"]}</td>'
+            f'<tr><td class="rk">{r["rank"]}</td>'
             f'<td class="pl">{config.manager_name(r["owner"])} {badge}</td>'
-            f'<td class="num" style="font-family:\'Anton\';">{d}</td>'
+            f'<td class="num">{r["wins"]}-{r["losses"]}</td>'
             f'<td class="num">{r["points_for"]:.0f}</td>'
-            f'<td class="num">{f"{o:.0f}%" if o is not None else "—"}</td></tr>'
-        )
+            f'<td class="num">{f"{o:.0f}%" if o is not None else "&mdash;"}</td></tr>')
     st.markdown(
         '<div class="neonwrap"><table class="lb"><thead><tr>'
         '<th>#</th><th>Team</th><th>Rec</th><th>PF</th><th>Playoffs</th>'
         f'</tr></thead><tbody>{"".join(body)}</tbody></table></div>',
-        unsafe_allow_html=True,
-    )
-
-    results = get_season_results()
-    if results:
-        last = max(results)
-        st.markdown(f'<h3>Week {last}</h3>', unsafe_allow_html=True)
-        cards = []
-        for g in results[last]:
-            rows = "".join(
-                f'<div class="mu-row{" win" if (not g["tie"] and g["winner"] == s["owner"]) else ""}">'
-                f'<span class="mu-team">{config.manager_name(s["owner"])}</span>'
-                f'<span class="mu-pts">{s["points"]:.1f}</span></div>'
-                for s in (g["home"], g["away"])
-            )
-            note = "TIE" if g["tie"] else f'by {g["margin"]:.1f}'
-            cards.append(f'<div class="matchup">{rows}<div class="mu-note">{note}</div></div>')
-        st.markdown('<div class="matchups">' + "".join(cards) + '</div>', unsafe_allow_html=True)
+        unsafe_allow_html=True)
 
     _home_quick_glance()
 
@@ -2074,6 +2061,7 @@ def render_draft_board() -> None:
 def render_adp() -> None:
     st.markdown(f'<h3>{SEASON} Consensus <span class="g">ADP</span></h3>', unsafe_allow_html=True)
     st.caption("Averaged across " + ", ".join(ADP_META.get("sources", [])) + ".")
+    render_adp_freshness()
     if ADP_DF.empty:
         st.info("No ADP data yet. Run `python scripts/refresh_adp.py`.")
         return
@@ -2858,7 +2846,7 @@ def _payout_row(label: str, who: str, amount, sub: str, accent: str) -> str:
             f'<div class="po-who">{who}</div><div class="po-sub">{sub}</div></div></div>')
 
 
-def _render_payouts(lid: str, pot: dict) -> None:
+def _render_payouts(lid: str, pot: dict, heading: bool = True) -> None:
     """Year-end money: the FAAB pot split + the cash entry pot. Both need a
     finished season to name winners, so before that they show the rule and
     the running pot totals instead of fabricating placeholder names."""
@@ -2867,7 +2855,8 @@ def _render_payouts(lid: str, pot: dict) -> None:
     split = faab.pot_split(lid)
     entry = faab.entry_pot(lid)
 
-    st.markdown('<h3>Year-End Payouts</h3>', unsafe_allow_html=True)
+    if heading:
+        st.markdown('<h3>Year-End Payouts</h3>', unsafe_allow_html=True)
     if split is None or entry is None:
         st.caption("Winners are named here once both brackets finish.")
         rows = [
@@ -3044,43 +3033,48 @@ def render_superlatives() -> None:
 
 # ---------------------------------------------------------------- sidebar + nav
 # ----------------------------------------------------------------- navigation
-# Top bar on every page: just the clickable KREEPER logo (-> Home) now — the
-# section links live in the fixed bottom bar instead (render_bottom_bar,
-# called at the end of the script so it always paints last / on top).
+# Masthead on every page: a full-bleed gradient band carrying the wordmark and
+# the season/phase line. Replaces both the old inset logo bar AND the sidebar —
+# the section links live in the fixed bottom bar (render_bottom_bar, called at
+# the end of the script so it always paints last / on top).
 st.markdown(
-    f'<div class="kbar">'
-    f'<a class="khome" href="?p=home" target="_self">{theme.logo_html(40, None)}</a>'
+    f'<div class="masthead">'
+    f'<a class="mh-home" href="?p=home" target="_self">'
+    f'{theme.logo_html(34, None)}</a>'
     f'{_topbar_chip_html(_current_phase())}'
     f'</div>',
     unsafe_allow_html=True,
 )
 
-# Sidebar keeps the league info + ADP freshness (secondary).
-with st.sidebar:
-    st.caption(f"**{LEAGUE['name']}** · season **{SEASON}** · {NT} teams · "
-               f"{DRAFT_ROUNDS} rds · {LEAGUE.get('scoring','ppr').upper()}")
-    if st.button("Refresh rosters & picks", use_container_width=True,
-                 help="Just made a trade? Pull the latest rosters and traded "
-                      "picks from Sleeper instead of waiting ~30 min for the cache."):
-        sleeper.invalidate_league_cache(LEAGUE["sleeper_league_id"])
-        st.cache_data.clear()
-        st.rerun()
-    st.divider()
-    st.subheader("ADP freshness")
+# The sidebar is gone — the masthead carries the identity, the bottom bar
+# carries the nav, and a third chrome surface on the left was only eating
+# width. Its contents moved to where they're actually relevant: ADP freshness
+# onto the ADP page, the refresh control onto Home, and the keeper-rules recap
+# is now redundant with the Rules & Bylaws page.
+def render_adp_freshness() -> None:
+    """ADP source freshness. Lived in the sidebar; now shown on the ADP page,
+    the only place it ever mattered."""
     if ADP_META:
-        st.caption(f"Updated: {ADP_META.get('updated_utc','—')}")
-        st.caption("Sources: " + ", ".join(ADP_META.get("sources", [])))
+        st.caption(f"Updated: {ADP_META.get('updated_utc','—')} · Sources: "
+                   + ", ".join(ADP_META.get("sources", [])))
         with st.expander("Source status"):
             for k, v in ADP_META.get("status", {}).items():
                 st.write(f"{'OK' if v.startswith('ok') else 'FAILED'} · **{k}** — {v}")
     else:
         st.warning("No ADP pulled yet. Run `python scripts/refresh_adp.py`.")
+
+
+def render_refresh_control() -> None:
+    """The one sidebar control worth keeping, parked at the foot of Home."""
     st.divider()
-    st.caption("Rules: 3-yr max per keeper · Yr1 draft round · Yr2 up 3 rounds or ADP · "
-               "Yr3 ADP · rookies kept for their career at your last rounds · "
-               "trades carry the keeper round over.")
-    st.divider()
-    st.caption(f"{ned()}")
+    st.caption(f"**{LEAGUE['name']}** · season **{SEASON}** · {NT} teams · "
+               f"{DRAFT_ROUNDS} rds · {LEAGUE.get('scoring','ppr').upper()} · {ned()}")
+    if st.button("Refresh rosters & picks",
+                 help="Just made a trade? Pull the latest rosters and traded "
+                      "picks from Sleeper instead of waiting ~30 min for the cache."):
+        sleeper.invalidate_league_cache(LEAGUE["sleeper_league_id"])
+        st.cache_data.clear()
+        st.rerun()
 
 # Sub-tab trees for the three sections that have them — plain (key, label)
 # lists that drive the bottom-bar popover (render_bottom_bar), the sole nav
