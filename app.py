@@ -495,7 +495,14 @@ def build_value_leaderboard(top_n: int = 50, hide_rookie_keepers: bool = False) 
 
     df = pd.DataFrame(rows)
     if df.empty:
-        return df
+        # An empty frame built from an empty list has NO columns, so every
+        # caller doing lb["Team"] / sort_values("Value") raises KeyError
+        # rather than getting back nothing. Hand back the real schema so
+        # "no ADP yet" degrades to an empty board everywhere instead of
+        # tracebacking whichever page asked first.
+        return pd.DataFrame(columns=[
+            "_pid", "Player", "Pos", "Team", "Kept", "Rookie", "FA",
+            "Keep Yr", "Cost Rd", "ADP", "ADP Rd", "Value"])
     df = df.sort_values("Value", ascending=False).head(top_n).reset_index(drop=True)
     df.insert(0, "#", range(1, len(df) + 1))
     return df
@@ -581,6 +588,10 @@ def _select_keepers(team_lb, cap, pos_cap, seed_positions=None,
         max_reg = MAX_REG
     pcount = Counter(seed_positions or [])
     chosen, n_rook, n_reg = [], 0, 0
+    # An empty leaderboard (no ADP pulled yet) has no columns at all, so even
+    # sorting by "Value" raises — there's simply nothing to select.
+    if team_lb.empty or "Value" not in team_lb.columns:
+        return chosen
     for _, r in team_lb.sort_values("Value", ascending=False).iterrows():
         if len(chosen) >= cap:
             break
@@ -929,12 +940,12 @@ def _home_quick_glance() -> None:
 def _render_home_pre_draft() -> None:
     _home_quick_glance()
     render_draft_capital()
-    st.markdown(f'<h2>Submitted Keepers by <span class="g">Team</span></h2>', unsafe_allow_html=True)
+    st.markdown(theme.section_head(f'Submitted Keepers by <span class="g">Team</span>', page=True), unsafe_allow_html=True)
     render_team_boxes()
 
 
 def _render_home_pre_season() -> None:
-    st.markdown(f'<h2>The <span class="g">Draft</span></h2>', unsafe_allow_html=True)
+    st.markdown(theme.section_head(f'The <span class="g">Draft</span>', page=True), unsafe_allow_html=True)
     st.caption("It's in the books — here's how it landed.")
     render_draft_board()
     render_odds()
@@ -1018,7 +1029,7 @@ def _render_home_offseason() -> None:
 def _render_home_keepers_open() -> None:
     render_countdown()
     _home_quick_glance()
-    st.markdown(f'<h2>Top 50 Keeper <span class="g">Values</span></h2>', unsafe_allow_html=True)
+    st.markdown(theme.section_head(f'Top 50 Keeper <span class="g">Values</span>', page=True), unsafe_allow_html=True)
     st.caption("Draft value gained by keeping a player, best bargains first.")
     fc1, fc2, fc3 = st.columns([1, 1, 1])
     with fc1:
@@ -1040,7 +1051,7 @@ def _render_home_keepers_open() -> None:
         st.info("No players match those filters (or no ADP data yet).")
     else:
         st.markdown(_leaderboard_html(lb), unsafe_allow_html=True)
-    st.markdown(f'<h2>Submitted Keepers by <span class="g">Team</span></h2>', unsafe_allow_html=True)
+    st.markdown(theme.section_head(f'Submitted Keepers by <span class="g">Team</span>', page=True), unsafe_allow_html=True)
     render_team_boxes()
 
     # Export — grab every submitted keeper to paste into the year-to-year sheet.
@@ -1061,7 +1072,7 @@ def _render_home_keepers_open() -> None:
         )
 
     # Recent updates — who changed their keepers and when (shared-URL audit trail).
-    st.markdown(f'<h3>Recent Updates</h3>', unsafe_allow_html=True)
+    st.markdown(theme.section_head(f'Recent Updates'), unsafe_allow_html=True)
     deadline, locked = keeper_lock()
     if deadline:
         st.caption((f"Submissions closed {deadline:%b %d, %Y · %-I:%M %p}."
@@ -1135,7 +1146,7 @@ def _glance_box(tiles: list) -> None:
 
 
 def render_record_book() -> None:
-    st.markdown(f'<h2>League <span class="g">Record Book</span></h2>', unsafe_allow_html=True)
+    st.markdown(theme.section_head(f'League <span class="g">Record Book</span>', page=True), unsafe_allow_html=True)
     seasons, agg = build_record_book()
     if not seasons:
         st.info("No completed seasons on record yet.")
@@ -1273,7 +1284,7 @@ def get_recent_trades(limit: int = 8) -> list:
 
 
 def render_recent_trades() -> None:
-    st.markdown('<h2>Recent <span class="g">Trades</span></h2>', unsafe_allow_html=True)
+    st.markdown(theme.section_head('Recent <span class="g">Trades</span>', page=True), unsafe_allow_html=True)
     st.caption("Every deal carries its keeper round obligations forward to the new team.")
     trades = get_recent_trades()
     if not trades:
@@ -1299,7 +1310,7 @@ def render_recent_trades() -> None:
 
 
 def render_trade_analyzer() -> None:
-    st.markdown(f'<h2>Trade <span class="g">Analyzer</span></h2>', unsafe_allow_html=True)
+    st.markdown(theme.section_head(f'Trade <span class="g">Analyzer</span>', page=True), unsafe_allow_html=True)
     st.caption("Build a deal and grade it — higher total wins.")
 
     tt = build_trade_targets()
@@ -1399,7 +1410,7 @@ def render_trade_analyzer() -> None:
 
 
 def render_keeper_landscape() -> None:
-    st.markdown(f'<h2>Keeper <span class="g">Landscape</span></h2>', unsafe_allow_html=True)
+    st.markdown(theme.section_head(f'Keeper <span class="g">Landscape</span>', page=True), unsafe_allow_html=True)
     st.caption("Positional scarcity — who's likely kept vs. left in the pool.")
     kept = _projected_kept_ids()
     pid_owner = {}
@@ -1447,7 +1458,7 @@ def render_keeper_landscape() -> None:
 
 
 def render_mock_draft() -> None:
-    st.markdown(f'<h2>Projected <span class="g">Draft</span></h2>', unsafe_allow_html=True)
+    st.markdown(theme.section_head(f'Projected <span class="g">Draft</span>', page=True), unsafe_allow_html=True)
     st.caption("Likely keepers in their slots; best available by ADP everywhere else.")
     rf = config.mock_draft_rookie_factor()
     c1, c2 = st.columns([2, 1])
@@ -1487,7 +1498,7 @@ def render_mock_draft() -> None:
 
 
 def render_trade_targets() -> None:
-    st.markdown(f'<h2>Keeper Trade <span class="g">Market</span></h2>', unsafe_allow_html=True)
+    st.markdown(theme.section_head(f'Keeper Trade <span class="g">Market</span>', page=True), unsafe_allow_html=True)
     st.caption("Players keepable at the round you pick — best value up top.")
     df = build_trade_targets()
     if df.empty:
@@ -1549,7 +1560,7 @@ def render_trade_targets() -> None:
 
 
 def render_rookies() -> None:
-    st.markdown(f'<h3>{SEASON} Top <span class="g">Rookies</span></h3>', unsafe_allow_html=True)
+    st.markdown(theme.section_head(f'{SEASON} Top <span class="g">Rookies</span>'), unsafe_allow_html=True)
     st.caption("Ranked by consensus ADP — your rookie-keeper targets.")
     df = build_rookies_table(40)
     if df.empty:
@@ -1667,7 +1678,7 @@ def render_contract_cards(name: str, df: pd.DataFrame, show_title: bool = True) 
 
 
 def render_my_keepers() -> None:
-    st.markdown(f'<h3>Set Your <span class="g">Keepers</span></h3>', unsafe_allow_html=True)
+    st.markdown(theme.section_head(f'Set Your <span class="g">Keepers</span>'), unsafe_allow_html=True)
     deadline, locked = keeper_lock()
     if locked:
         st.warning(f"Keeper submissions closed on **{deadline:%b %d, %Y · %-I:%M %p}**. "
@@ -1893,8 +1904,13 @@ def team_power():
     keep_n = MAX_REG + MAX_ROOKIE
     pos_cap = position_keeper_caps()
     talent, kcap, best = {}, {}, {}
+    # No ADP -> an empty frame with no columns at all, so `lb["Team"]` raises
+    # KeyError rather than returning nothing. Degrade to the record-only half
+    # of the model instead of tracebacking the whole page: this fires whenever
+    # a scheduled ADP refresh hasn't run or has failed.
+    has_lb = not lb.empty and "Team" in lb.columns
     for o in MANAGERS:
-        team = lb[lb["Team"] == config.manager_name(o)]
+        team = lb[lb["Team"] == config.manager_name(o)] if has_lb else lb
         sel = _select_keepers(team, keep_n, pos_cap)  # realistic keep set (no 2 QB/TE)
         talent[o] = float(sum(max(0, 260 - int(r["ADP"])) for r in sel))
         kcap[o] = float(sum(r["Value"] for r in sel))
@@ -1941,7 +1957,7 @@ def build_championship_odds():
 
 
 def render_odds() -> None:
-    st.markdown(f'<h2>{SEASON} Title <span class="g">Odds</span></h2>', unsafe_allow_html=True)
+    st.markdown(theme.section_head(f'{SEASON} Title <span class="g">Odds</span>', page=True), unsafe_allow_html=True)
     st.caption("For fun — Vegas-style line, juice included.")
     rows = build_championship_odds()
     if rows:
@@ -1981,7 +1997,8 @@ def render_odds() -> None:
 
 
 def render_draft_board() -> None:
-    st.markdown(f'<h3>{SEASON} Draft <span class="g">Board</span></h3>', unsafe_allow_html=True)
+    st.markdown(theme.section_head(f'{SEASON} Draft <span class="g">Board</span>',
+                                    f'{NT} teams &middot; {DRAFT_ROUNDS} rounds'), unsafe_allow_html=True)
     try:
         board = get_board()
     except Exception as e:  # noqa: BLE001
@@ -2059,7 +2076,7 @@ def render_draft_board() -> None:
 
 
 def render_adp() -> None:
-    st.markdown(f'<h3>{SEASON} Consensus <span class="g">ADP</span></h3>', unsafe_allow_html=True)
+    st.markdown(theme.section_head(f'{SEASON} Consensus <span class="g">ADP</span>'), unsafe_allow_html=True)
     st.caption("Averaged across " + ", ".join(ADP_META.get("sources", [])) + ".")
     render_adp_freshness()
     if ADP_DF.empty:
@@ -2120,7 +2137,7 @@ def render_adp() -> None:
 
 
 def render_adp_trends() -> None:
-    st.markdown(f'<h2>ADP <span class="g">Risers &amp; Fallers</span></h2>', unsafe_allow_html=True)
+    st.markdown(theme.section_head(f'ADP <span class="g">Risers &amp; Fallers</span>', page=True), unsafe_allow_html=True)
     win = st.selectbox("Window", [7, 14, 30], format_func=lambda d: f"Last {d} days", key="adp_win")
     mv = adp_consensus.adp_movement(SEASON, window_days=win)
     if not mv.get("moves"):
@@ -2191,7 +2208,7 @@ def _lottery_bar_panels(items: list, eyebrow: str, weight_label: str = "Weight",
 
 
 def render_lottery() -> None:
-    st.markdown(f'<h2>Draft-Order <span class="g">Lottery</span></h2>', unsafe_allow_html=True)
+    st.markdown(theme.section_head(f'Draft-Order <span class="g">Lottery</span>', page=True), unsafe_allow_html=True)
     weights = config.lottery_weights()
     st.caption("Weighted odds set next season's draft position directly.")
 
@@ -2258,7 +2275,8 @@ def render_lottery() -> None:
             st.rerun()
         return
 
-    st.markdown(f'<h3>Next Season\'s Draft <span class="g">Order</span></h3>', unsafe_allow_html=True)
+    st.markdown(theme.section_head(f'Next Season\'s Draft <span class="g">Order</span>',
+                                    'as drawn'), unsafe_allow_html=True)
     cards = [
         f'<div class="kcard"><h4 style="background:{theme.card_color(i)};">Pick {i + 1}</h4>'
         f'<p>{config.manager_name(oid)}</p></div>'
@@ -2348,7 +2366,7 @@ _MINUTES = [
 
 
 def render_votes() -> None:
-    st.markdown('<h2>Votes &amp; <span class="g">Minutes</span></h2>', unsafe_allow_html=True)
+    st.markdown(theme.section_head('Votes &amp; <span class="g">Minutes</span>', page=True), unsafe_allow_html=True)
     st.caption("Open motions go to a vote at the draft. Proposals are due by the keeper "
                "deadline — one per manager.")
 
@@ -2426,7 +2444,7 @@ def render_votes() -> None:
                 st.success("Motion filed — it goes to a vote at the draft.")
                 st.rerun()
 
-    st.markdown('<h3>Minutes</h3>', unsafe_allow_html=True)
+    st.markdown(theme.section_head('Minutes', 'what has passed'), unsafe_allow_html=True)
     st.caption("What's been passed, most recent first.")
     for meeting, items in _MINUTES:
         rows = "".join(f'<div class="min-item">{i}</div>' for i in items)
@@ -2435,7 +2453,7 @@ def render_votes() -> None:
 
 
 def render_rules() -> None:
-    st.markdown('<h2>Rules &amp; <span class="g">Bylaws</span></h2>', unsafe_allow_html=True)
+    st.markdown(theme.section_head('Rules &amp; <span class="g">Bylaws</span>', page=True), unsafe_allow_html=True)
     st.caption("The house rules this app enforces. Motions passed at the 2026 draft are marked "
                "**2026** — see Draft-Order Lottery and FAAB Pot for those in action.")
 
@@ -2457,7 +2475,7 @@ def render_rules() -> None:
 
 
 def render_draft_capital() -> None:
-    st.markdown(f'<h2>Draft <span class="g">Capital</span> &amp; Keeper Cost</h2>', unsafe_allow_html=True)
+    st.markdown(theme.section_head(f'Draft <span class="g">Capital</span> &amp; Keeper Cost', page=True), unsafe_allow_html=True)
     rows = []
     for o in MANAGERS:
         kr = team_keeper_rows(o)
@@ -2489,7 +2507,7 @@ def render_draft_capital() -> None:
 
 
 def render_roster_needs() -> None:
-    st.markdown(f'<h2>Roster <span class="g">Needs</span></h2>', unsafe_allow_html=True)
+    st.markdown(theme.section_head(f'Roster <span class="g">Needs</span>', page=True), unsafe_allow_html=True)
     st.caption("Starting spots each team still has to draft, after likely keepers.")
     from collections import Counter
     slots = starter_slots()
@@ -2593,7 +2611,7 @@ def build_keeper_hitrate():
 
 
 def render_keeper_hitrate() -> None:
-    st.markdown(f'<h2>Keeper <span class="g">Hit-Rate</span></h2>', unsafe_allow_html=True)
+    st.markdown(theme.section_head(f'Keeper <span class="g">Hit-Rate</span>', page=True), unsafe_allow_html=True)
     st.caption("Did past keepers pay off — finished a startable rank that season?")
     per_owner, decisions = build_keeper_hitrate()
     if not decisions:
@@ -2678,7 +2696,8 @@ def _no_season_yet(what: str) -> bool:
 
 
 def render_standings() -> None:
-    st.markdown('<h2>Standings &amp; <span class="g">Scoreboard</span></h2>', unsafe_allow_html=True)
+    st.markdown(theme.section_head('Standings &amp; <span class="g">Scoreboard</span>',
+                                    f'top {PLAYOFF_TEAMS} make the bracket', page=True), unsafe_allow_html=True)
     st.caption("Live from real weekly results. Sorted by record, then points for — "
                "the same tiebreak Sleeper uses.")
     if _no_season_yet("The standings table"):
@@ -2724,7 +2743,7 @@ def render_standings() -> None:
                f"#{PLAYOFF_TEAMS}. Everyone below plays the consolation bracket "
                f"(and the last-place finisher buys the draft meal).")
 
-    st.markdown('<h3>Weekly Scoreboard</h3>', unsafe_allow_html=True)
+    st.markdown(theme.section_head('Weekly Scoreboard', 'pick a week'), unsafe_allow_html=True)
     results = get_season_results()
     if not results:
         return
@@ -2747,7 +2766,8 @@ def render_standings() -> None:
 
 
 def render_power() -> None:
-    st.markdown('<h2>Power <span class="g">Rankings</span></h2>', unsafe_allow_html=True)
+    st.markdown(theme.section_head('Power <span class="g">Rankings</span>',
+                                    'record &middot; scoring &middot; form', page=True), unsafe_allow_html=True)
     st.caption("Driven by what's actually happened: 45% win rate, 35% scoring, 20% recent form. "
                "Separate from Title Odds, which is a pre-season keeper-strength model.")
     if _no_season_yet("Power rankings"):
@@ -2793,7 +2813,7 @@ def render_power() -> None:
     st.caption("“vs. Standings” compares power rank to where the record has them — "
                "green means the record undersells them.")
 
-    st.markdown('<h3>Playoff Odds</h3>', unsafe_allow_html=True)
+    st.markdown(theme.section_head('Playoff Odds', '10,000 simulations'), unsafe_allow_html=True)
     st.caption(f"10,000 simulations of every remaining game, drawn from each team's own "
                f"scoring average and volatility. Top {PLAYOFF_TEAMS} make it.")
     odds = get_playoff_odds()
@@ -2818,7 +2838,7 @@ def render_power() -> None:
             unsafe_allow_html=True,
         )
 
-    st.markdown('<h3>Luck</h3>', unsafe_allow_html=True)
+    st.markdown(theme.section_head('Luck', 'expected vs. actual wins'), unsafe_allow_html=True)
     st.caption("Expected wins = what your scores would've earned against the whole league "
                "each week. Positive luck means the schedule has been kind.")
     rows = sorted(get_luck(), key=lambda r: -r["luck"])
@@ -2856,7 +2876,7 @@ def _render_payouts(lid: str, pot: dict, heading: bool = True) -> None:
     entry = faab.entry_pot(lid)
 
     if heading:
-        st.markdown('<h3>Year-End Payouts</h3>', unsafe_allow_html=True)
+        st.markdown(theme.section_head('Year-End Payouts', 'entry pot &middot; FAAB pot'), unsafe_allow_html=True)
     if split is None or entry is None:
         st.caption("Winners are named here once both brackets finish.")
         rows = [
@@ -2887,7 +2907,7 @@ def _render_payouts(lid: str, pot: dict, heading: bool = True) -> None:
 
 
 def render_faab() -> None:
-    st.markdown(f'<h2>FAAB <span class="g">Pot</span></h2>', unsafe_allow_html=True)
+    st.markdown(theme.section_head(f'FAAB <span class="g">Pot</span>', page=True), unsafe_allow_html=True)
     st.caption("Every dollar SPENT league-wide goes into the pot. The 3rd-place game's "
                "winner gets their own spend back; 5th place takes the rest.")
 
@@ -2926,7 +2946,7 @@ def render_faab() -> None:
 
     curve = faab.burndown(lid)
     if any(t["total"] for t in curve["teams"]):
-        st.markdown('<h3>The Pot, Week by Week</h3>', unsafe_allow_html=True)
+        st.markdown(theme.section_head('The Pot, Week by Week', 'cumulative spend'), unsafe_allow_html=True)
         st.caption("Cumulative FAAB spend. Every dollar spent is a dollar in the pot — "
                    "a flat line is a team sitting on their budget.")
         names = {o: config.manager_name(o).split()[0] for o in MANAGERS}
@@ -2953,7 +2973,7 @@ def render_faab() -> None:
         )
     st.markdown('<div class="faab-grid">' + "".join(cards) + "</div>", unsafe_allow_html=True)
 
-    st.markdown(f'<h3>Dead Money</h3>', unsafe_allow_html=True)
+    st.markdown(theme.section_head('Dead Money', 'spent on players since dropped'), unsafe_allow_html=True)
     st.caption("FAAB spent on adds you've since dropped.")
     dm = dm_preview
     rows = sorted(dm.items(), key=lambda kv: -kv[1]["dead"])
@@ -2977,7 +2997,7 @@ def render_faab() -> None:
 
 
 def render_superlatives() -> None:
-    st.markdown(f'<h2><span class="g">Superlatives</span></h2>', unsafe_allow_html=True)
+    st.markdown(theme.section_head(f'<span class="g">Superlatives</span>', page=True), unsafe_allow_html=True)
     cards = []
 
     def card(title, who, sub):

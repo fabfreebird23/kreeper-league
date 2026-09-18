@@ -467,6 +467,7 @@ table.dboard td.dbcell{ padding:3px 4px; }
    left every section starting with two left-aligned lines and no horizontal
    structure. */
 .sechead{ display:flex; align-items:center; gap:16px; margin:34px 0 14px; }
+.sechead.page{ margin-top:4px; }
 .sechead h2{ font-family:var(--font-display); font-size:1.34rem; letter-spacing:var(--display-ls);
   margin:0 !important; white-space:nowrap; color:var(--ink); }
 .sechead .rule{ flex:1; height:1px; background:var(--line); }
@@ -765,11 +766,21 @@ def liquid_ring_html(pct: float, value_html: str, label: str = "", size: int = 8
     )
 
 
-def section_head(title_html: str, caption: str = "") -> str:
+def section_head(title_html: str, caption: str = "", page: bool = False) -> str:
     """Title + hairline rule + right-aligned micro-caption. `title_html` may
-    carry a `<span class="g">` for the two-tone gradient word."""
+    carry a `<span class="g">` for the two-tone gradient word.
+
+    `caption` is terse metadata ("final scores", "top 4 make the bracket"),
+    NOT prose — it's set nowrap so a sentence would squeeze the rule to
+    nothing and overflow on a narrow screen. Explanatory copy belongs in a
+    caption under the header instead.
+
+    `page=True` for the title at the top of a page, which needs far less
+    space above it than a section break further down.
+    """
     cap = f'<span class="cap">{caption}</span>' if caption else ""
-    return (f'<div class="sechead"><h2>{title_html}</h2>'
+    cls = "sechead page" if page else "sechead"
+    return (f'<div class="{cls}"><h2>{title_html}</h2>'
             f'<span class="rule"></span>{cap}</div>')
 
 
