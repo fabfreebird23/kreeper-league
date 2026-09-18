@@ -951,9 +951,93 @@ def _render_home_pre_season() -> None:
     render_odds()
 
 
+def _team_of(owner: str) -> str:
+    """The manager's team name, falling back to their own name so a row never
+    renders blank for someone who never named a team."""
+    m = MANAGERS.get(str(owner)) or {}
+    return m.get("team") or config.manager_name(owner)
+
+
+def _two_cell(owner: str, win: bool = False) -> str:
+    """Two-line table cell: team name on top, the human under it. Used
+    everywhere on Home so a row identifies a team the way people actually
+    talk about it, without losing who's behind it."""
+    return (f'<td class="two{" w" if win else ""}"><b>{_team_of(owner)}</b>'
+            f'<span>{config.manager_name(owner)}</span></td>')
+
+
+@st.cache_data(ttl=900, show_spinner=False)
+def get_recent_moves():
+    return season.recent_moves(limit=8)
+
+
+def _move_player_html(pid: str) -> str:
+    p = sleeper.get_players().get(str(pid)) or {}
+    nm = p.get("full_name") or p.get("last_name") or str(pid)
+    pos = p.get("position") or ""
+    return f'{nm}<span class="pos">{pos}</span>' if pos else nm
+
+
+def _render_home_money(lid: str) -> None:
+    """The money, as four bowls and a ledger. Both pots are shown at their
+    rule amounts until the brackets finish and faab.pot_split/entry_pot can
+    name real winners — better than hiding the money for sixteen weeks."""
+    pot = faab.projected_pot(lid)
+    split = faab.pot_split(lid)
+    entry = faab.entry_pot(lid)
+    fee = config.entry_fee()
+    entry_total = fee * len(MANAGERS)
+
+    champ = entry["champion"]["amount"] if entry else entry_total - fee * 2
+    runner = entry["runner_up"]["amount"] if entry else fee * 2
+    # Unknown until the 3rd-place game is played: whose spend gets refunded,
+    # and therefore what's left for 5th.
+    refund = split["third_place"]["refund"] if split else None
+    fifth = split["fifth_place"]["amount"] if split else None
+
+    st.markdown(theme.section_head('The <span class="g">Money</span>',
+                                   f'${entry_total:,.0f} entry pot &middot; ${pot["pot"]:,} in the FAAB pot'),
+                unsafe_allow_html=True)
+
+    bowls = [
+        (1.0, f'${champ:,.0f}', "Winner",
+         f'balance of the ${entry_total:,.0f} entry pot', theme.RED),
+        (runner / max(1.0, champ), f'${runner:,.0f}', "Runner-up",
+         f'double the ${fee:,.0f} buy-in', theme.PURPLE),
+        (fifth / max(1, pot["pot"]) if fifth is not None else 1.0,
+         f'${fifth:,.0f}' if fifth is not None else f'${pot["pot"]:,}',
+         "5th Place", "remainder of the FAAB pot", theme.TEAL),
+        (refund / max(1, pot["pot"]) if refund is not None else 0.0,
+         f'${refund:,.0f}' if refund is not None else "TBD",
+         "3rd-Place Game", "winner gets their own spend back", theme.CYAN),
+    ]
+    st.markdown(
+        '<div class="money-bowls">' + "".join(
+            f'<div class="bowl">{theme.liquid_ring_html(pct, big, "", size=132, accent=color)}'
+            f'<div class="bl">{label}</div><div class="bn">{note}</div></div>'
+            for pct, big, label, note, color in bowls
+        ) + "</div>", unsafe_allow_html=True)
+
+    budgets = faab.team_budgets(lid)
+    led = "".join(
+        f'<tr>{_two_cell(o)}<td class="num">${b["spent"]}</td>'
+        f'<td class="num" style="color:var(--muted);">${b["remaining"]}</td></tr>'
+        for o, b in sorted(budgets.items(), key=lambda kv: -kv[1]["spent"]))
+    st.markdown(
+        '<div class="neonwrap"><table class="lb"><thead><tr><th>Manager</th>'
+        '<th style="text-align:right;">In the pot</th>'
+        f'<th style="text-align:right;">Unspent</th></tr></thead><tbody>{led}</tbody></table></div>',
+        unsafe_allow_html=True)
+    st.markdown(
+        '<p class="sec-note">Every dollar <b>spent</b> on waivers goes into the FAAB pot. '
+        'The winner of the 3rd-place game takes back exactly what they spent; 5th place '
+        'takes the rest. The entry pot is separate: 2nd doubles their buy-in, the champion '
+        'takes the balance.</p>', unsafe_allow_html=True)
+
+
 def _render_home_in_season() -> None:
     """Live season. Ordered the way the question actually gets asked: what
-    happened this week, what the money is doing, where that leaves the table,
+    happened this week, what the money is doing, who's actually playing well,
     and what everyone's been up to. Deliberately league-wide — no "your team"
     card, since the page is read by eight people and a selector at the top
     just makes seven of them scroll past someone else's record.
@@ -965,58 +1049,78 @@ def _render_home_in_season() -> None:
         render_odds()
         return
 
-    played = max(r["weeks_played"] for r in table)
-    total = season.regular_season_weeks()
     results = get_season_results()
-    odds = {r["owner"]: r for r in get_playoff_odds()}
+    total = season.regular_season_weeks()
 
     # ---- this week's scores ----
     if results:
         last = max(results)
-        st.markdown(theme.section_head(f'Week <span class="g">{last}</span>',
-                                        f"{total - played} weeks to play"),
-                    unsafe_allow_html=True)
+        st.markdown(theme.section_head(
+            f'Week <span class="g">{last}</span>',
+            "final scores" if last >= total else f"{total - last} weeks to play"),
+            unsafe_allow_html=True)
         rows = []
         for g in results[last]:
             a, b = g["home"], g["away"]
             aw = (not g["tie"]) and g["winner"] == a["owner"]
             bw = (not g["tie"]) and g["winner"] == b["owner"]
-            rows.append(
-                f'<tr><td class="pl{" win" if aw else ""}">{config.manager_name(a["owner"])}</td>'
-                f'<td class="pl{" win" if bw else ""}">{config.manager_name(b["owner"])}</td>'
-                f'<td class="num" style="text-align:right;">{a["points"]:.1f} &ndash; {b["points"]:.1f}</td></tr>')
+            rows.append(f'<tr>{_two_cell(a["owner"], aw)}{_two_cell(b["owner"], bw)}'
+                        f'<td class="num">{a["points"]:.1f} &ndash; {b["points"]:.1f}</td></tr>')
         st.markdown('<div class="neonwrap"><table class="lb"><tbody>'
                     + "".join(rows) + '</tbody></table></div>', unsafe_allow_html=True)
 
     # ---- the money ----
-    lid = LEAGUE["sleeper_league_id"]
-    pot = faab.projected_pot(lid)
-    st.markdown(theme.section_head('The <span class="g">Money</span>',
-                                    f'${pot["total_spent"]} in the pot'),
-                unsafe_allow_html=True)
-    _render_payouts(lid, pot, heading=False)
+    _render_home_money(LEAGUE["sleeper_league_id"])
 
-    # ---- the race ----
-    st.markdown(theme.section_head('The <span class="g">Race</span>',
-                                    f"top {PLAYOFF_TEAMS} make the bracket"),
-                unsafe_allow_html=True)
-    body = []
-    for r in table:
-        o = odds.get(r["owner"], {}).get("odds")
-        badge = '<span class="kept-badge">IN</span>' if r["rank"] <= PLAYOFF_TEAMS else ""
-        body.append(
-            f'<tr><td class="rk">{r["rank"]}</td>'
-            f'<td class="pl">{config.manager_name(r["owner"])} {badge}</td>'
-            f'<td class="num">{r["wins"]}-{r["losses"]}</td>'
-            f'<td class="num">{r["points_for"]:.0f}</td>'
-            f'<td class="num">{f"{o:.0f}%" if o is not None else "&mdash;"}</td></tr>')
-    st.markdown(
-        '<div class="neonwrap"><table class="lb"><thead><tr>'
-        '<th>#</th><th>Team</th><th>Rec</th><th>PF</th><th>Playoffs</th>'
-        f'</tr></thead><tbody>{"".join(body)}</tbody></table></div>',
-        unsafe_allow_html=True)
+    # ---- power rankings ----
+    power = get_power_rankings()
+    if power:
+        st.markdown(theme.section_head(
+            'Power <span class="g">Rankings</span>',
+            "45% win rate &middot; 35% scoring &middot; 20% recent form"),
+            unsafe_allow_html=True)
+        by_owner = {r["owner"]: r for r in table}
+        top = max(r["score"] for r in power) or 1
+        prow = []
+        for r in power:
+            d = r["rank_delta"]
+            chip = (f'<span class="chip good">&#9650; {d}</span>' if d > 0
+                    else f'<span class="chip bad">&#9660; {abs(d)}</span>' if d < 0
+                    else '<span class="chip">holding</span>')
+            s = by_owner.get(r["owner"], {})
+            prow.append(
+                f'<tr><td class="rk">{r["rank"]}</td>{_two_cell(r["owner"])}'
+                f'<td class="num">{s.get("wins", 0)}&ndash;{s.get("losses", 0)}</td>'
+                f'<td class="num">{s.get("points_for", 0):.1f}</td>'
+                f'<td class="pw"><div class="pbar">'
+                f'<i style="width:{100 * r["score"] / top:.0f}%"></i></div></td>'
+                f'<td>{chip}</td></tr>')
+        st.markdown(
+            '<div class="neonwrap"><table class="lb"><thead><tr><th></th><th>Team</th>'
+            '<th style="text-align:right;">W&ndash;L</th>'
+            '<th style="text-align:right;">PF</th><th>Power</th><th></th></tr></thead>'
+            f'<tbody>{"".join(prow)}</tbody></table></div>', unsafe_allow_html=True)
+        st.markdown(
+            f'<p class="sec-note">The bracket is decided on <b>record</b>, not this — the top '
+            f'{PLAYOFF_TEAMS} by record make it. Power ranks the eight by how they\'ve actually '
+            f'played; the arrow is movement against where the standings have them.</p>',
+            unsafe_allow_html=True)
 
-    _home_quick_glance()
+    # ---- recent moves ----
+    moves = get_recent_moves()
+    if moves:
+        st.markdown(theme.section_head('Recent <span class="g">Moves</span>',
+                                       "claims, adds and trades"), unsafe_allow_html=True)
+        mrow = "".join(
+            f'<tr><td class="two"><b>{m["kind"]}</b><span>week {m["week"]}</span></td>'
+            f'<td class="two"><b>{_move_player_html(m["player_id"])}</b>'
+            f'<span>{config.manager_name(m["owner"])}</span></td>'
+            f'<td class="num">{"$" + str(m["bid"]) if m["bid"] else "&mdash;"}</td></tr>'
+            for m in moves)
+        st.markdown(
+            '<div class="neonwrap"><table class="lb"><thead><tr><th>Move</th><th>Player</th>'
+            f'<th style="text-align:right;">Bid</th></tr></thead><tbody>{mrow}</tbody>'
+            '</table></div>', unsafe_allow_html=True)
 
 
 def _render_home_offseason() -> None:
@@ -3057,11 +3161,25 @@ def render_superlatives() -> None:
 # the season/phase line. Replaces both the old inset logo bar AND the sidebar —
 # the section links live in the fixed bottom bar (render_bottom_bar, called at
 # the end of the script so it always paints last / on top).
+def _masthead_right(current: str) -> str:
+    """Right-hand side of the masthead. In-season the phase chip's job is done
+    better by the season line — "2025 · Week 12 of 14" says both which phase
+    we're in and exactly where in it — so it takes the chip's place there. In
+    every other phase the chip still carries the wave and the countdown."""
+    if current == "in_season":
+        table = get_standings()
+        played = max((r["weeks_played"] for r in table), default=0)
+        total = season.regular_season_weeks()
+        wk = f'Week {played} of {total}' if played else "Kickoff"
+        return f'<div class="mh-meta">{SEASON} &middot; {wk}</div>'
+    return _topbar_chip_html(current)
+
+
 st.markdown(
     f'<div class="masthead">'
     f'<a class="mh-home" href="?p=home" target="_self">'
     f'{theme.logo_html(34, None)}</a>'
-    f'{_topbar_chip_html(_current_phase())}'
+    f'{_masthead_right(_current_phase())}'
     f'</div>',
     unsafe_allow_html=True,
 )

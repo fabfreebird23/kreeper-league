@@ -375,3 +375,35 @@ def playoff_odds(league_id: Optional[str] = None, playoff_teams: Optional[int] =
     for i, r in enumerate(out, 1):
         r["rank"] = i
     return out
+
+
+def recent_moves(league_id: Optional[str] = None, limit: int = 8) -> List[Dict[str, Any]]:
+    """Newest-first roster moves: [{kind, week, player_id, owner, bid}].
+
+    Only transactions that actually bring a player IN — a pure drop moves
+    nobody onto a roster and reads as a blank row. Walks weeks backwards and
+    stops as soon as `limit` is reached rather than pulling the whole season,
+    since this only ever feeds a short "recent" list.
+    """
+    league_id = league_id or config.league()["sleeper_league_id"]
+    r2o = _roster_to_owner(league_id)
+    kinds = {"waiver": "claimed", "trade": "traded", "free_agent": "added"}
+
+    out: List[Dict[str, Any]] = []
+    for wk in range(regular_season_weeks(league_id) + 6, 0, -1):
+        for tx in sleeper.get_transactions(league_id, wk) or []:
+            if tx.get("status") != "complete" or tx.get("type") not in kinds:
+                continue
+            adds = tx.get("adds") or {}
+            if not adds:
+                continue
+            bid = int((tx.get("settings") or {}).get("waiver_bid", 0) or 0)
+            for pid, rid in adds.items():
+                owner = r2o.get(int(rid))
+                if not owner:
+                    continue
+                out.append({"kind": kinds[tx["type"]], "week": wk,
+                            "player_id": str(pid), "owner": owner, "bid": bid})
+        if len(out) >= limit:
+            break
+    return out[:limit]

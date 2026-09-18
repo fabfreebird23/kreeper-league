@@ -447,6 +447,9 @@ table.dboard td.dbcell{ padding:3px 4px; }
    would be invisible against it */
 .masthead .neon-logo .kl{ background:none !important; -webkit-text-fill-color:#fff !important;
   color:#fff !important; text-shadow:0 2px 12px rgba(0,0,0,.28); }
+/* season line — the in-season stand-in for the phase chip */
+.mh-meta{ font-family:var(--font-body); font-size:11px; letter-spacing:2.4px;
+  text-transform:uppercase; color:rgba(255,255,255,.88); white-space:nowrap; }
 .masthead .topbar-chip{ background:rgba(0,0,0,.24); border-color:rgba(255,255,255,.26); }
 .masthead .topbar-chip .txt .lbl{ color:#fff; }
 .masthead .topbar-chip .txt .sub{ color:rgba(255,255,255,.8); }
@@ -461,6 +464,45 @@ table.dboard td.dbcell{ padding:3px 4px; }
 @media (max-width: 640px){
   .topbar-chip .txt .sub{ display:none; }
 }
+
+/* ---- Home: the mock's own surfaces ---- */
+
+/* money bowls — four big liquid rings across, each with a label and a line
+   of explanation under it */
+.money-bowls{ display:grid; grid-template-columns:repeat(4,1fr); gap:18px; margin-bottom:18px; }
+.money-bowls .bowl{ text-align:center; }
+.money-bowls .bowl .liq-ring{ margin:0 auto 10px; }
+.money-bowls .bowl .liq-val b{ font-size:23px !important; }
+.money-bowls .bl{ font-size:10.5px; letter-spacing:1.8px; text-transform:uppercase; color:var(--ink); }
+.money-bowls .bn{ font-size:11px; color:var(--muted); margin-top:4px; line-height:1.4; }
+@media (max-width: 760px){
+  .money-bowls{ grid-template-columns:repeat(2,1fr); gap:14px; }
+}
+
+/* two-line table cell: the thing in bold, who owns it underneath */
+table.lb td.two{ padding-top:9px; padding-bottom:9px; }
+table.lb td.two b{ display:block; font-weight:700; font-size:13.5px; color:var(--ink); }
+table.lb td.two span{ display:block; font-size:11px; color:var(--muted); margin-top:1px; }
+table.lb td.two.w b{ color:var(--teal); }
+table.lb td.two b .pos{ display:inline !important; color:var(--muted); font-size:10.5px;
+  font-weight:400; margin-left:5px; }
+
+/* power bar inside a table row */
+table.lb td.pw{ display:flex; align-items:center; gap:9px; }
+.pbar{ flex:1; height:5px; background:rgba(255,255,255,.08); border-radius:3px;
+  overflow:hidden; min-width:60px; }
+.pbar i{ display:block; height:100%; background:var(--grad); }
+
+/* movement / status chip */
+.chip{ display:inline-block; font-size:9.5px; letter-spacing:1.1px; text-transform:uppercase;
+  border:1px solid var(--line); border-radius:999px; padding:3px 9px; color:var(--muted);
+  white-space:nowrap; }
+.chip.good{ color:var(--teal); border-color:rgba(63,214,124,.4); }
+.chip.bad{ color:var(--red); border-color:rgba(255,92,108,.4); }
+
+/* the explanatory paragraph that follows a dense table */
+.sec-note{ font-size:12px; color:var(--muted); line-height:1.6; margin:10px 0 0; max-width:780px; }
+.sec-note b{ color:var(--ink); font-weight:600; }
 
 /* section header — title, a hairline rule running to the right edge, and a
    right-aligned micro-caption. Replaces bare <h2> + st.caption stacked, which
@@ -559,8 +601,12 @@ table.dboard td.dbcell{ padding:3px 4px; }
      of a phone screen before any content showed */
   .masthead{ padding-top:10px; padding-bottom:10px; margin-bottom:16px;
     flex-wrap:nowrap; gap:10px; }
-  .mh-home{ min-width:0; }
+  /* inline-flex so the anchor's box is as wide as the emblem+wordmark it
+     actually contains — as a block it reported a narrower width and the
+     season line was laid out on top of the wordmark */
+  .mh-home{ min-width:0; display:inline-flex; flex:0 0 auto; }
   .mh-home .neon-logo{ font-size:17px !important; }
+  .mh-meta{ font-size:9px; letter-spacing:1.2px; flex:0 0 auto; }
   .masthead .topbar-chip{ padding:4px 10px 4px 4px; flex:0 0 auto; }
   .masthead .topbar-chip .txt .lbl{ font-size:10px; }
   .masthead .topbar-chip .liq-ring{ width:22px !important; height:22px !important; }

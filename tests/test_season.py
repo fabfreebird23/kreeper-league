@@ -218,3 +218,58 @@ def test_playoff_odds_seeded_run_is_reproducible():
     a = _run(lambda: season.playoff_odds("fake", playoff_teams=2, trials=200), partial)
     b = _run(lambda: season.playoff_odds("fake", playoff_teams=2, trials=200), partial)
     assert [r["odds"] for r in a] == [r["odds"] for r in b]
+
+
+# -------------------------------------------------------------- recent_moves
+def _tx(kind, adds, bid=0, status="complete"):
+    return {"type": kind, "status": status, "adds": adds, "settings": {"waiver_bid": bid}}
+
+
+def _tx_fn(by_week):
+    def fn(league_id, week):
+        return by_week.get(week, [])
+    return fn
+
+
+def _run_moves(by_week, **kw):
+    ctxs = [
+        patch("kreeper.sleeper.get_rosters", return_value=ROSTERS),
+        patch("kreeper.sleeper.get_league", return_value=_league()),
+        patch("kreeper.sleeper.get_transactions", side_effect=_tx_fn(by_week)),
+    ]
+    for c in ctxs:
+        c.start()
+    try:
+        return season.recent_moves("fake", **kw)
+    finally:
+        for c in ctxs:
+            c.stop()
+
+
+def test_recent_moves_is_newest_first():
+    moves = _run_moves({1: [_tx("waiver", {"10": 1}, 5)],
+                        3: [_tx("free_agent", {"20": 2})]})
+    assert [m["week"] for m in moves] == [3, 1]
+    assert moves[0]["kind"] == "added"
+    assert moves[1]["kind"] == "claimed"
+    assert moves[1]["bid"] == 5
+
+
+def test_recent_moves_skips_pure_drops_and_failed_claims():
+    """A drop brings nobody in, and a failed claim never happened — either one
+    renders as a blank row."""
+    moves = _run_moves({2: [_tx("waiver", {}, 9),
+                            _tx("waiver", {"10": 1}, 9, status="failed")]})
+    assert moves == []
+
+
+def test_recent_moves_maps_roster_to_owner():
+    moves = _run_moves({1: [_tx("trade", {"77": 3})]})
+    assert moves[0]["owner"] == "carol"
+    assert moves[0]["kind"] == "traded"
+    assert moves[0]["player_id"] == "77"
+
+
+def test_recent_moves_honours_limit():
+    wk = {1: [_tx("waiver", {str(i): 1}, 1) for i in range(10)]}
+    assert len(_run_moves(wk, limit=3)) == 3
