@@ -190,6 +190,18 @@ def get_owned_for(season: int):
     return draftboard.owned_picks_by_owner(season=season)
 
 
+@st.cache_data(ttl=600, show_spinner=False)
+def current_draft_done() -> bool:
+    """True once this season's draft has been run. After that its picks are
+    spent — they're players on rosters now — so anything that trades picks
+    has to start from next year's draft."""
+    try:
+        lg = sleeper.get_league(LEAGUE["sleeper_league_id"])
+        return (sleeper.get_draft(lg["draft_id"]) or {}).get("status") == "complete"
+    except Exception:
+        return False
+
+
 def current_pick_slots():
     """owner_id -> {round: [overall pick_no, ...]} for the CURRENT season, using
     the real snake- and trade-aware draft slots from the board (so a 1.01 and a
@@ -1415,7 +1427,9 @@ def render_recent_trades() -> None:
 
 def render_trade_analyzer() -> None:
     st.markdown(theme.section_head(f'Trade <span class="g">Analyzer</span>', page=True), unsafe_allow_html=True)
-    st.caption("Build a deal and grade it — higher total wins.")
+    _fy = SEASON + 1 if current_draft_done() else SEASON
+    st.caption(f"Build a deal and grade it — higher total wins. "
+               f"Picks are from the {_fy}–{_fy + 2} drafts.")
 
     tt = build_trade_targets()
     kv = {str(r["_pid"]): int(r["Value"]) for _, r in tt.iterrows()}     # keeper bargain (rounds)
@@ -1437,7 +1451,11 @@ def render_trade_analyzer() -> None:
                 out[f"{pm.name} ({pm.position})"] = str(pid)
         return out
 
-    pick_seasons = [SEASON, SEASON + 1, SEASON + 2]
+    # Once this year's draft has run its picks are gone, so the tradeable
+    # picks are the next three drafts — showing the spent year's picks here
+    # listed rounds a team no longer has (and hid the ones it does).
+    first_year = SEASON + 1 if current_draft_done() else SEASON
+    pick_seasons = [first_year, first_year + 1, first_year + 2]
     cur_slots = current_pick_slots()
     by_pick, by_round = pick_market_values()
 
@@ -1446,10 +1464,11 @@ def render_trade_analyzer() -> None:
         player projected AVAILABLE at that slot once keepers are off the board (so
         the 1.01 is worth the best un-kept player, and a 1.03 differs from a 1.01).
         This year uses the real snake/trade-aware slot ('2026 R1 (1.03)'); future
-        years use that round's average value, discounted ~20% per year out."""
+        years use that round's average value, discounted ~20% per year out.
+        Once this year's draft is done, every year is a future year."""
         items = []
         for yr in pick_seasons:
-            discount = 0.8 ** (yr - SEASON)
+            discount = 0.8 ** (yr - first_year)
             if yr == SEASON:
                 for rnd in sorted(cur_slots.get(oid, {})):
                     for pick_no in cur_slots[oid][rnd]:
