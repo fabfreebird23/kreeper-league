@@ -102,22 +102,22 @@ def _fmt_ts(iso: str) -> str:
 
 _COUNTDOWN_TEMPLATE = """
 <!doctype html><html><head><meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Oswald:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
  *{margin:0;box-sizing:border-box;}
  html,body{background:transparent;overflow:hidden;font-family:'Oswald',sans-serif;}
  .cd{display:flex;flex-direction:column;align-items:center;gap:6px;
    background:#fff;border:2px solid #2f7de0;border-radius:16px;padding:14px 18px;
    box-shadow:0 6px 22px rgba(123,92,255,.18);}
- .ttl{font-family:'Anton',sans-serif;text-transform:uppercase;letter-spacing:3px;
+ .ttl{font-family:'Oswald',sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:3px;
    font-size:15px;color:#7b5cff;}
  .units{display:flex;gap:16px;}
  .u{display:flex;flex-direction:column;align-items:center;min-width:60px;}
- .u .n{font-family:'Anton',sans-serif;font-size:42px;line-height:1;color:#2f7de0;
+ .u .n{font-family:'Oswald',sans-serif;font-weight:600;font-size:42px;line-height:1;color:#2f7de0;
    text-shadow:0 0 12px rgba(47,125,224,.45);}
  .u .l{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#8b86a0;margin-top:5px;}
  .sub{font-size:12px;letter-spacing:1px;color:#6a6580;}
- .locked{font-family:'Anton',sans-serif;font-size:30px;color:#7b5cff;letter-spacing:2px;}
+ .locked{font-family:'Oswald',sans-serif;font-weight:600;font-size:30px;color:#7b5cff;letter-spacing:2px;}
 </style></head><body>
 <div class="cd">
   <div class="ttl">Keepers Due In</div>
@@ -329,43 +329,56 @@ def _years_exp(pid: str):
     return (H.players.get(str(pid)) or {}).get("years_exp")
 
 
-def _was_regular_keeper(pid: str) -> bool:
+def _was_regular_keeper(pid: str, hist=None) -> bool:
     """True if the player has ever been kept as a REGULAR (non-rookie) keeper in
     our ledger — i.e. the rookie->regular conversion already happened."""
+    hist = hist or H
     pid = str(pid)
-    return any(p == pid and (p, s) not in H.rookie_kept_set for (p, s) in H.kept_set)
+    return any(p == pid and (p, s) not in hist.rookie_kept_set for (p, s) in hist.kept_set)
 
 
-def rookie_keeper_eligible(owner_id: str, pid: str) -> bool:
+def rookie_keeper_eligible(owner_id: str, pid: str, season: int = SEASON, hist=None) -> bool:
     """A player may be kept as a ROOKIE keeper only if THIS team drafted them in
     the player's rookie season and has held them continuously since. A trade (or
     picking them up as a veteran) breaks rookie-keeper eligibility, and the
     rookie->regular move is one-way: once kept as a regular keeper they can never
     return to a rookie keeper.
+
+    `season` is the keeper season being asked about (next year's, for the
+    in-season Keepers outlook — pass `hist` from _history_through_this_season
+    so this year's keepers count). `years_exp` is always as of now, so the
+    rookie season itself is still SEASON - years_exp.
     """
-    pid = str(pid)
+    hist = hist or H
+    pid, owner = str(pid), str(owner_id)
     # One-way: a player who has been a regular keeper can't go back to rookie.
-    if _was_regular_keeper(pid):
+    if _was_regular_keeper(pid, hist):
         return False
-    # An established rookie keeper for THIS owner stays eligible (seeded ledger
-    # may predate our Sleeper draft window).
-    if storage.prior_rookie_seasons(owner_id, pid, SEASON):
+    ps = hist.player_seasons.get(pid, {})
+
+    def held_since(first: int) -> bool:
+        # Any season after `first` under a different owner = he left the team.
+        return all(not ps.get(y) or str(ps[y].get("owner")) == owner for y in range(first, season))
+
+    # An established rookie keeper for THIS owner stays eligible (the seeded
+    # ledger may predate our Sleeper draft window) — but only while this owner
+    # has held him since. A rookie keeper who was traded away and later came
+    # back is a veteran pickup now, not a rookie keeper.
+    prior = list(storage.prior_rookie_seasons(owner, pid, season))
+    if season > SEASON and any(str(x.get("player_id")) == pid and x.get("is_rookie_keeper")
+                               for x in storage.load(SEASON).get(owner, [])):
+        prior.append(SEASON)
+    if prior and held_since(max(prior) + 1):
         return True
     ye = _years_exp(pid)
     if ye is None:
         return False
     rookie_season = SEASON - int(ye)
-    ps = H.player_seasons.get(pid, {})
     rec = ps.get(rookie_season)
     # Must be their rookie-season DRAFT pick (not a keeper slot) by THIS owner.
-    if not rec or str(rec.get("owner")) != str(owner_id) or rec.get("is_keeper"):
+    if not rec or str(rec.get("owner")) != owner or rec.get("is_keeper"):
         return False
-    # Held continuously since — any season under a different owner = traded.
-    for s in range(rookie_season, SEASON):
-        r = ps.get(s)
-        if r and str(r.get("owner")) != str(owner_id):
-            return False
-    return True
+    return held_since(rookie_season)
 
 
 def current_keepers(season: int | None = None) -> dict:
@@ -1457,7 +1470,7 @@ def render_live() -> None:
 
 
 def render_matchup() -> None:
-    st.markdown(theme.section_head('<span class="g">Matchup</span>', "your next game", page=True),
+    st.markdown(theme.section_head('<span class="g">Matchup</span>', "your next game &middot; start / sit", page=True),
                 unsafe_allow_html=True)
     me = _need_me("Matchup")
     cur = season.current_week()
@@ -1494,36 +1507,10 @@ def render_matchup() -> None:
                ("Win prob if fixed", f"{_wp(fixed, b) * 100:.0f}%",
                 f"from {_wp(a, b) * 100:.0f}% as it stands", "good")]),
         unsafe_allow_html=True)
-    flag = {o for _, o, _g in adv["swaps"]}
-    st.markdown(
-        f'<div class="lockline"></div><div class="wk-cols">'
-        f'<div><div class="eyebrow">Your lineup as set on Sleeper</div>{_lineup_rows(ctx, sa, flag=flag)}</div>'
-        f'<div><div class="eyebrow">{_team_of(sb["owner"])} &middot; as set</div>{_lineup_rows(ctx, sb)}</div>'
-        '</div>', unsafe_allow_html=True)
-    st.caption("Projections from Sleeper. A player on bye projects 0. Win probability treats each "
-               "lineup's total as a range, wider for riskier positions — Draft Room's model.")
-
-
-def render_lineup() -> None:
-    st.markdown(theme.section_head('<span class="g">Lineup</span>', "start / sit", page=True),
-                unsafe_allow_html=True)
-    me = _need_me("Lineup")
-    cur = season.current_week()
-    if me is None:
-        return
-    if not cur:
-        st.info("🏈 Lineup advice shows up here once the season kicks off.")
-        return
-    aw = gameday.advice_week(cur, get_week_ctx(cur)["games"])
-    adv = _advice(me, aw)
-    if not adv:
-        st.info(f"No game for you in Week {aw}.")
-        return
-    ctx, side = adv["ctx"], adv["side"]
     pos_of, team_of = _pos_team_maps()
     flag_out = {o for _, o, _g in adv["swaps"]}
     flag_in = {i for i, _o, _g in adv["swaps"]}
-    bench = sorted((p for p in side["players"] if p not in side["starters"] and pos_of.get(p) in gameday.SKILL),
+    bench = sorted((p for p in sa["players"] if p not in sa["starters"] and pos_of.get(p) in gameday.SKILL),
                    key=lambda p: -ctx["proj"].get(p, 0.0))
     brows = "".join(
         f'<tr class="{"swap" if p in flag_in else ""}"><td class="two"><b>{_pname(p)}<span class="pos">{pos_of.get(p, "")}</span></b>'
@@ -1533,13 +1520,257 @@ def render_lineup() -> None:
         f'<td>{_START_CHIP if p in flag_in else ""}</td></tr>'
         for p in bench)
     st.markdown(
-        f'<div class="wk-cols"><div><div class="eyebrow">What to do &middot; Week {aw}</div>{_todo_html(me, adv)}'
+        f'<div class="lockline"></div><div class="wk-cols">'
+        f'<div><div class="eyebrow">What to do &middot; Week {aw}</div>{_todo_html(me, adv)}'
         f'<div class="eyebrow pad">Your bench</div><table class="dt">{brows}</table></div>'
-        f'<div><div class="eyebrow">Your lineup as set &middot; projected</div>'
-        f'{_lineup_rows(ctx, side, flag=flag_out, show_actual=False)}</div></div>',
+        f'<div><div class="eyebrow">Your lineup as set on Sleeper</div>'
+        f'{_lineup_rows(ctx, sa, flag=flag_out, show_actual=started)}</div></div>',
         unsafe_allow_html=True)
-    st.caption(f'As set: {adv["set_total"]:.1f} projected. Best available: {adv["best_total"]:.1f}. '
-               "Players whose game has started are left where they are.")
+    with st.expander(f"{_team_of(sb['owner'])}'s lineup as set"):
+        st.markdown(_lineup_rows(ctx, sb, show_actual=started), unsafe_allow_html=True)
+    st.caption(f'As set: {adv["set_total"]:.1f} projected; best available {adv["best_total"]:.1f}. '
+               "Projections from Sleeper; a player on bye projects 0. Players whose game has started "
+               "stay where they are. Win probability treats each lineup's total as a range, wider "
+               "for riskier positions — Draft Room's model.")
+
+
+# ------------------------------------------------------------- keeper outlook
+# The Draft Room's Keepers screen on Kreeper's own engine: if the season ended
+# today, what would each player on your roster cost to keep next year, how
+# does that price climb, and which five would you keep. One price per player
+# can't be checked; the whole ladder with the rule beside it can.
+@st.cache_resource(ttl=600, show_spinner=False)
+def _history_through_this_season():
+    """H plus THIS season's submitted keepers in the ledger. H only loads
+    seasons before this one (that's all the current keeper deadline needs),
+    and Sleeper has no keeper flags on our offline-entered draft, so without
+    this next year's prices would treat every 2026 keeper as merely drafted."""
+    import dataclasses
+    kept, rook = set(H.kept_set), set(H.rookie_kept_set)
+    for picks in storage.load(SEASON).values():
+        for x in picks:
+            if x.get("player_id"):
+                kept.add((str(x["player_id"]), SEASON))
+                if x.get("is_rookie_keeper"):
+                    rook.add((str(x["player_id"]), SEASON))
+    return dataclasses.replace(H, kept_set=kept, rookie_kept_set=rook)
+
+
+def _keeper_outlook_rows(owner: str) -> list:
+    nxt = SEASON + 1
+    hist = _history_through_this_season()
+    rules = config.rules()
+    bump = int(rules.get("year2_bump_rounds", 3))
+    owned = get_owned_for(nxt).get(owner) or {}
+    rows = []
+    for pid in CANDS.get(owner, []):
+        pid = str(pid)
+        pm = H.player_meta(pid)
+        if pm.position not in gameday.SKILL:
+            continue
+        rank = adp_rank_for(pm.name, pm.position)
+        adp_rd = engine.adp_rank_to_round(rank, NT) if rank else None
+        prof = hist.keeper_profile(owner, pid, nxt)
+        r = {"_pid": pid, "name": pm.name, "Pos": pm.position, "adp": rank, "adp_rd": adp_rd,
+             "nfl": (H.players.get(pid) or {}).get("team") or "", "Rookie": False,
+             "cost": None, "ladder": [], "how": "", "blocked": ""}
+        if rookie_keeper_eligible(owner, pid, season=nxt, hist=hist):
+            r.update(Rookie=True, cost=DRAFT_ROUNDS, last=True,
+                     ladder=[(str(nxt), f"R{DRAFT_ROUNDS}"), ("then", "no clock")],
+                     how="Rookie keeper &middot; your last rounds, no 3-year clock")
+        else:
+            kc = engine.compute(prof, adp_rank=rank)
+            if not kc.eligible:
+                r["blocked"] = f"kept {rules.get('max_keep_years', 3)} years &middot; ages out"
+            else:
+                k = kc.keep_year
+                via, orig = prof.get("acquired_via"), prof.get("original_round")
+                if k == 1 and not (via in ("draft", "trade") and orig):
+                    base, r["how"], r["last"] = DRAFT_ROUNDS, f"Undrafted in {SEASON} &middot; keeps at your last round", True
+                else:
+                    base = kc.recommended_round
+                    if k == 1 and via == "trade":
+                        r["how"] = (f'From {config.manager_name(prof.get("prev_owner") or "").split()[0]} '
+                                    f"&middot; inherits his R{orig}")
+                    elif k == 1:
+                        r["how"] = f"Drafted R{orig} in {SEASON}"
+                    elif k == 2:
+                        r["how"] = f"Kept in {SEASON} &middot; year 2 moves up {bump} rounds"
+                    else:
+                        r["how"] = "Year 3 &middot; costs his ADP round"
+                cost = engine.adjust_to_owned(base, owned, DRAFT_ROUNDS) if base else None
+                if base and cost is None:
+                    r["blocked"] = (f"needs a {nxt} R1 &middot; you don't own one" if base == 1 else
+                                    f"needs a {nxt} pick in R{base} or earlier &middot; you don't own one")
+                elif base is None:
+                    r["blocked"] = "no ADP yet to price year 3"
+                else:
+                    r["cost"] = cost
+                    if k == 1:
+                        r["ladder"] = [(str(nxt), f"R{cost}"), (str(nxt + 1), f"R{max(1, base - bump)}"),
+                                       (str(nxt + 2), "ADP")]
+                    elif k == 2:
+                        r["ladder"] = [(str(nxt), f"R{cost}"), (str(nxt + 1), "ADP"), ("", "done")]
+                    else:
+                        r["ladder"] = [(str(nxt), f"R{cost} &middot; ADP"), ("", "done")]
+        r["Value"] = (r["cost"] - adp_rd) if (r["cost"] and adp_rd) else None
+        rows.append(r)
+
+    # Pick the five. Rookie slots first, from rookie-eligible players. A
+    # rookie who doesn't make a rookie slot can still be kept as a REGULAR —
+    # under house rules that conversion is a last-round pick with the clock
+    # starting — so he competes for the regular slots at that price instead of
+    # being cut behind a worse veteran.
+    from collections import Counter
+    caps, pc = position_keeper_caps(), Counter()
+
+    def fits(x):
+        lim = caps.get(x["Pos"])
+        return lim is None or pc[x["Pos"]] < lim
+
+    cands = [x for x in rows if x["Value"] is not None]
+    rook_pick, reg_pick = [], []
+    for x in sorted((c for c in cands if c["Rookie"]), key=lambda c: -c["Value"]):
+        if len(rook_pick) < MAX_ROOKIE and fits(x):
+            rook_pick.append(x)
+            pc[x["Pos"]] += 1
+    for x in sorted((c for c in cands if c not in rook_pick), key=lambda c: -c["Value"]):
+        if len(reg_pick) < MAX_REG and fits(x):
+            if x["Rookie"]:
+                x.update(Rookie=False, converted=True,
+                         how="Rookie keeper &rarr; regular &middot; a last-round pick, clock starts")
+            reg_pick.append(x)
+            pc[x["Pos"]] += 1
+    # Last-round keepers (rookies, conversions, undrafted adds) step down from
+    # your last round through the late picks you actually own: R14, R13, ...
+    left = Counter({int(k): int(v) for k, v in owned.items()})
+    for x in rook_pick + reg_pick:
+        if x.get("last") or x.get("converted"):
+            rnd = next((r_ for r_ in range(DRAFT_ROUNDS, 0, -1) if left[r_] > 0), DRAFT_ROUNDS)
+            left[rnd] -= 1
+            x["cost"] = rnd
+            x["Value"] = rnd - x["adp_rd"] if x["adp_rd"] else x["Value"]
+            x["ladder"] = ([(str(nxt), f"R{rnd}"), ("then", "no clock")] if x["Rookie"] else
+                           [(str(nxt), f"R{rnd}"), (str(nxt + 1), f"R{max(1, rnd - bump)}"), (str(nxt + 2), "ADP")])
+    keep_ids = [x["_pid"] for x in rook_pick + reg_pick]
+    for x in rows:
+        x["verdict"] = "keep" if x["_pid"] in keep_ids else "blocked" if x["blocked"] else "cut"
+        x["slot"] = "rookie" if x in rook_pick else "regular"
+    cuts = sorted((x for x in rows if x["verdict"] == "cut" and x["Value"] is not None),
+                  key=lambda x: -x["Value"])
+    if cuts:
+        cuts[0]["verdict"] = "next"
+    order = {"keep": 0, "next": 1, "cut": 2, "blocked": 3}
+    rows.sort(key=lambda x: (order[x["verdict"]], keep_ids.index(x["_pid"]) if x["_pid"] in keep_ids else 0,
+                             -(x["Value"] if x["Value"] is not None else -99)))
+    return rows
+
+
+def _headshot(pid: str) -> str:
+    return (f'<img class="kh-img" src="https://sleepercdn.com/content/nfl/players/thumb/{pid}.jpg" '
+            f'onerror="this.style.visibility=\'hidden\'" alt="">')
+
+
+def _keeper_tray_html(rows: list) -> str:
+    keeps = [r for r in rows if r["verdict"] == "keep"]
+    reg = [r for r in keeps if r["slot"] == "regular"]
+    rook = [r for r in keeps if r["slot"] == "rookie"]
+    slots = [(f"Keeper {i + 1}", reg[i] if i < len(reg) else None) for i in range(MAX_REG)] + \
+            [(f"Rookie {i + 1}", rook[i] if i < len(rook) else None) for i in range(MAX_ROOKIE)]
+    cells = []
+    for lab, r in slots:
+        if r is None:
+            cells.append(f'<div class="kt empty"><i>{lab}</i><b>open</b><span>nobody worth it</span></div>')
+            continue
+        v = r["Value"]
+        cells.append(f'<div class="kt"><i>{lab}</i>{_headshot(r["_pid"])}<b>{r["name"]}</b>'
+                     f'<span>R{r["cost"]} &middot; <em class="{"good" if (v or 0) > 0 else "bad" if (v or 0) < 0 else ""}">'
+                     f'{v:+d} rds</em></span></div>')
+    return f'<div class="ktray">{"".join(cells)}</div>'
+
+
+_VERDICT = {"keep": ("keep", "good"), "next": ("first out", "amber"), "cut": ("cut", ""),
+            "blocked": ("blocked", "bad")}
+
+
+def _keeper_card_html(r: dict) -> str:
+    lab, tone = _VERDICT[r["verdict"]]
+    steps = "".join(
+        f'<span class="ks{" now" if i == 0 else ""}"><i>{yr}</i><b>{price}</b></span>'
+        + ('<span class="ka">&rarr;</span>' if i < len(r["ladder"]) - 1 else "")
+        for i, (yr, price) in enumerate(r["ladder"]))
+    if r["blocked"]:
+        steps = f'<span class="kb">{r["blocked"]}</span>'
+    v = r["Value"]
+    val = (f'<div class="kv {"good" if v > 0 else "bad" if v < 0 else ""}"><b>{v:+d}</b><i>rounds</i></div>'
+           if v is not None else
+           f'<div class="kv"><b>&mdash;</b><i>{"blocked" if r["blocked"] else "no ADP"}</i></div>')
+    adp = f'ADP R{r["adp_rd"]} (#{int(r["adp"])})' if r["adp"] else "no ADP"
+    return (f'<div class="kcard2 {r["verdict"]}">{_headshot(r["_pid"])}<div class="kc-main">'
+            f'<div class="kc-top"><b>{r["name"]}</b><span class="pos">{r["Pos"]} &middot; {r["nfl"] or "FA"}</span>'
+            f'<span class="chip {tone}">{lab}</span></div>'
+            f'<div class="kladder">{steps}</div>'
+            f'<div class="kc-how">{r["how"] or "&nbsp;"} &middot; {adp}</div></div>{val}</div>')
+
+
+def render_keeper_outlook() -> None:
+    nxt = SEASON + 1
+    st.markdown(theme.section_head(f'{nxt} <span class="g">Keepers</span>', "if the season ended today",
+                                   page=True), unsafe_allow_html=True)
+    me = _need_me("Keepers")
+    if me is None:
+        return
+    rows = _keeper_outlook_rows(me)
+    if not rows:
+        st.info("No skill players on your roster to price.")
+        return
+    keeps = [r for r in rows if r["verdict"] == "keep"]
+    blocked = [r for r in rows if r["verdict"] == "blocked"]
+    best = max(keeps, key=lambda r: r["Value"] or -99) if keeps else None
+    bump = int(config.rules().get("year2_bump_rounds", 3))
+    cells = [("Keeper slots", str(MAX_REG + MAX_ROOKIE), f"{MAX_REG} regular + {MAX_ROOKIE} rookie", ""),
+             ("Best value", best["name"].split()[-1] if best else "&mdash;",
+              f'{best["Value"]:+d} rounds of surplus' if best else "", "good"),
+             ("Blocked", str(len(blocked)), blocked[0]["name"] if blocked else "nobody aged out",
+              "bad" if blocked else ""),
+             ("Escalation", f"&minus;{bump} rds", f'year 2 &middot; year {config.rules().get("max_keep_years", 3)} is ADP', "")]
+    st.markdown('<div class="hero kh"><div class="hcells">' + "".join(
+        f'<div class="hc"><i>{k}</i><b class="{c}">{v}</b><span>{s}</span></div>' for k, v, s, c in cells)
+        + "</div></div>", unsafe_allow_html=True)
+    st.markdown(f'<div class="eyebrow pad">The five it would keep</div>{_keeper_tray_html(rows)}',
+                unsafe_allow_html=True)
+
+    notes = []
+    for b in blocked[:1]:
+        notes.append(("&#8856;", f'{b["name"]} can\'t be kept in {nxt}',
+                      f'{b["blocked"].replace("&middot;", "—")}. From here he\'s a rental, so his trade value only falls.',
+                      "bad"))
+    cheap = [r for r in keeps if (r["Value"] or 0) >= 4]
+    if cheap:
+        notes.append(("&#9678;", ", ".join(r["name"] for r in cheap[:3]),
+                      "Cost a late pick and are worth an early one — build trades around them, don't sell them.",
+                      "good"))
+    nxt_out = next((r for r in rows if r["verdict"] == "next"), None)
+    if nxt_out:
+        notes.append(("!", f'{nxt_out["name"]} is the first one out',
+                      f'{nxt_out["Value"]:+d} rounds. If a keeper above gets hurt or traded, he\'s the replacement.',
+                      ""))
+    notes.append(("$", f"A waiver add keeps at R{DRAFT_ROUNDS}",
+                  "So a mid-season breakout is the cheapest keeper there is. Every claim competes with the list below.",
+                  "good"))
+    st.markdown('<div class="eyebrow pad">What this changes now</div>' + "".join(
+        f'<div class="todo {c}"><span class="ic">{ic}</span><div><b>{t}</b><span>{s}</span></div></div>'
+        for ic, t, s, c in notes), unsafe_allow_html=True)
+
+    st.markdown(theme.section_head("Your roster, <span class=\"g\">priced year by year</span>"),
+                unsafe_allow_html=True)
+    st.markdown('<div class="kgrid">' + "".join(_keeper_card_html(r) for r in rows) + "</div>",
+                unsafe_allow_html=True)
+    st.caption(f"Value is in rounds: cost round minus ADP round, so +5 means you keep him five rounds "
+               f"cheaper than he'd go. ADP is this year's consensus — next year's doesn't exist yet. "
+               f"Costs follow the house rules: the round he came from, then up {bump} rounds in year 2, "
+               f"then ADP in year 3; rookie keepers take your last rounds with no clock; a cost lands on "
+               f"a {nxt} pick you actually own. Set My Keepers does the exact allocation before the draft.")
 
 
 def _render_home_in_season() -> None:
@@ -1588,14 +1819,14 @@ def _render_home_in_season() -> None:
             prow.append(
                 f'<tr><td class="rk">{r["rank"]}</td>{_two_cell(r["owner"])}'
                 f'<td class="num">{s.get("wins", 0)}&ndash;{s.get("losses", 0)}</td>'
-                f'<td class="num">{s.get("points_for", 0):.1f}</td>'
+                f'<td class="num pf">{s.get("points_for", 0):.1f}</td>'
                 f'<td class="pw"><div class="pbar">'
                 f'<i style="width:{100 * r["score"] / top:.0f}%"></i></div></td>'
                 f'<td>{chip}</td></tr>')
         st.markdown(
             '<div class="neonwrap"><table class="lb"><thead><tr><th></th><th>Team</th>'
             '<th style="text-align:right;">W&ndash;L</th>'
-            '<th style="text-align:right;">PF</th><th>Power</th><th></th></tr></thead>'
+            '<th class="pf" style="text-align:right;">PF</th><th>Power</th><th></th></tr></thead>'
             f'<tbody>{"".join(prow)}</tbody></table></div>', unsafe_allow_html=True)
         st.markdown(
             f'<p class="sec-note">The bracket is decided on <b>record</b>, not this — the top '
@@ -2588,7 +2819,7 @@ def render_odds() -> None:
         body.append(
             f'<tr><td class="rk">{i+1}</td>'
             f'<td class="pl">{r["Team"]} {tag}</td>'
-            f'<td class="num" style="font-family:\'Anton\';font-size:17px;color:var(--accent);">{r["Odds"]}</td>'
+            f'<td class="num" style="font-family:var(--font-display);font-weight:600;font-size:17px;color:var(--accent);">{r["Odds"]}</td>'
             f'<td class="num">{r["Win %"]}%</td>'
             f'<td class="num">{r["Record"]}</td>'
             f'<td class="num">{r["KeeperRk"]}/{n}</td>'
@@ -3336,7 +3567,7 @@ def render_standings() -> None:
         body.append(
             f'<tr class="{cut.strip()}"><td class="rk">{r["rank"]}</td>'
             f'<td class="pl">{config.manager_name(r["owner"])} {badge}</td>'
-            f'<td class="num" style="font-family:\'Anton\';font-size:15px;">{rec}</td>'
+            f'<td class="num" style="font-family:var(--font-display);font-weight:600;font-size:15px;">{rec}</td>'
             f'<td class="num">{r["points_for"]:.1f}</td>'
             f'<td class="num">{r["points_against"]:.1f}</td>'
             f'<td class="num" style="color:{scolor};font-weight:700;">{streak}</td></tr>'
@@ -3405,7 +3636,7 @@ def render_power() -> None:
         body.append(
             f'<tr><td class="rk">{r["rank"]}</td>'
             f'<td class="pl">{config.manager_name(r["owner"])}</td>'
-            f'<td class="num" style="font-family:\'Anton\';color:var(--accent);">{r["score"]}</td>'
+            f'<td class="num" style="font-family:var(--font-display);font-weight:600;color:var(--accent);">{r["score"]}</td>'
             f'<td class="num">{r["win_pct"] * 100:.0f}%</td>'
             f'<td class="num">{r["points_for"]:.1f}</td>'
             f'<td class="num">{r["recent_avg"]:.1f}</td>'
@@ -3432,7 +3663,7 @@ def render_power() -> None:
             color = ("var(--teal)" if pct >= 75 else "var(--amber)" if pct >= 25 else "var(--red)")
             obody.append(
                 f'<tr><td class="pl">{config.manager_name(r["owner"])}</td>'
-                f'<td class="num" style="font-family:\'Anton\';font-size:16px;color:{color};">{pct:.0f}%</td>'
+                f'<td class="num" style="font-family:var(--font-display);font-weight:600;font-size:16px;color:{color};">{pct:.0f}%</td>'
                 f'<td class="num">{r["current_wins"]}</td>'
                 f'<td class="num">{r["proj_wins"]:.1f}</td>'
                 f'<td style="min-width:120px;"><div class="burnbar-track">'
@@ -3611,7 +3842,7 @@ def render_superlatives() -> None:
     def card(title, who, sub):
         i = len(cards)
         cards.append(f'<div class="kcard"><h4 style="background:{theme.card_color(i)};">{title}</h4>'
-                     f'<div style="font-family:\'Anton\';font-size:18px;color:var(--ink);">{who}</div>'
+                     f'<div style="font-family:var(--font-display);font-weight:600;font-size:18px;color:var(--ink);">{who}</div>'
                      f'<div style="font-size:12px;opacity:.8;">{sub}</div></div>')
 
     lb = build_value_leaderboard(400)
@@ -3727,71 +3958,82 @@ def render_refresh_control() -> None:
 # now that on-page tab rows have been removed in favor of it.
 PRESEASON_GROUPS = [("keepers", "Keepers"), ("draft", "Draft"), ("players", "Players")]
 PRESEASON_LEAVES = {
-    "keepers": [("setkeepers", "Set My Keepers"), ("landscape", "Keeper Landscape"), ("needs", "Roster Needs")],
-    "draft": [("board", "Draft Board"), ("projected", "Projected Draft"), ("capital", "Draft Capital & Keeper Cost")],
-    "players": [("adp", "ADP"), ("trends", "ADP Trends")],
+    "keepers": [("setkeepers", "Set My Keepers"), ("landscape", "Keeper Landscape")],
+    "draft": [("board", "Draft Board"), ("projected", "Projected Draft")],
+    "players": [("adp", "ADP & Rookies")],
 }
 INSEASON_GROUPS = [("week", "This Week"), ("trades", "Trades"), ("league", "League"), ("history", "History")]
 INSEASON_LEAVES = {
-    "week": [("live", "Live"), ("matchup", "Matchup"), ("lineup", "Lineup")],
-    "trades": [("recent", "Recent Trades"), ("market", "Trade Market"), ("analyzer", "Trade Analyzer")],
-    "league": [("standings", "Standings & Scoreboard"), ("power", "Power Rankings"),
-                ("faab", "FAAB Pot"), ("odds", "Title Odds"), ("superlatives", "Superlatives"),
-                ("lottery", "Draft-Order Lottery"), ("rules", "Rules & Bylaws"),
-                ("votes", "Votes & Minutes")],
-    "history": [("record", "Record Book"), ("hitrate", "Keeper Hit-Rate")],
+    "week": [("live", "Live"), ("matchup", "Matchup"), ("keepers", f"{SEASON + 1} Keepers")],
+    "trades": [("recent", "Trades"), ("analyzer", "Trade Analyzer")],
+    "league": [("standings", "Standings"), ("faab", "FAAB Pot"), ("lottery", "Draft-Order Lottery"),
+               ("rules", "Rules & Votes")],
+    "history": [("record", "Record Book")],
 }
+# Pages that were folded into another one. Old links (shared in the group
+# chat, bookmarked) land on the page that now holds that content.
+LEAF_ALIASES = {
+    "preseason": {("keepers", "needs"): ("keepers", "landscape"),
+                  ("draft", "capital"): ("draft", "board"),
+                  ("players", "trends"): ("players", "adp")},
+    "inseason": {("week", "lineup"): ("week", "matchup"),
+                 ("trades", "market"): ("trades", "recent"),
+                 ("league", "power"): ("league", "standings"),
+                 ("league", "odds"): ("league", "standings"),
+                 ("league", "votes"): ("league", "rules"),
+                 ("league", "superlatives"): ("history", "record"),
+                 ("history", "hitrate"): ("history", "record")},
+}
+
+
+def _resolve_leaf(section: str, leaves_by_group: dict, default_g: str):
+    """(group, leaf) for the current URL, following LEAF_ALIASES and writing
+    the canonical pair back so the nav highlights the right item."""
+    g = st.query_params.get("g", default_g)
+    t = st.query_params.get("t", "")
+    if (g, t) in LEAF_ALIASES.get(section, {}):
+        g, t = LEAF_ALIASES[section][(g, t)]
+        st.query_params["g"], st.query_params["t"] = g, t
+    if g not in leaves_by_group:
+        g = default_g
+    if t not in dict(leaves_by_group[g]):
+        t = leaves_by_group[g][0][0]
+    return g, t
+
+
+def _stack(*renders) -> None:
+    """One page made of several former pages, in order."""
+    for i, fn in enumerate(renders):
+        if i:
+            st.markdown('<div style="height:18px"></div>', unsafe_allow_html=True)
+        fn()
 
 
 if page == "home":
     render_home()
 elif page == "preseason":
-    g = st.query_params.get("g", "keepers")
-    if g not in PRESEASON_LEAVES:
-        g = "keepers"
-
-    leaves = PRESEASON_LEAVES[g]
-    t = st.query_params.get("t", leaves[0][0])
-    if t not in dict(leaves):
-        t = leaves[0][0]
-
-    if g == "keepers":
-        {"setkeepers": render_my_keepers, "landscape": render_keeper_landscape,
-         "needs": render_roster_needs}[t]()
-    elif g == "draft":
-        {"board": render_draft_board, "projected": render_mock_draft,
-         "capital": render_draft_capital}[t]()
-    else:
-        if t == "adp":
-            render_rookies()
-            st.divider()
-            render_adp()
-        else:
-            render_adp_trends()
+    g, t = _resolve_leaf("preseason", PRESEASON_LEAVES, "keepers")
+    {("keepers", "setkeepers"): render_my_keepers,
+     ("keepers", "landscape"): lambda: _stack(render_keeper_landscape, render_roster_needs),
+     ("draft", "board"): lambda: _stack(render_draft_board, render_draft_capital),
+     ("draft", "projected"): render_mock_draft,
+     ("players", "adp"): lambda: _stack(render_rookies, render_adp, render_adp_trends),
+     }[(g, t)]()
 elif page == "pick":
     render_team_picker()
 elif page == "inseason":
-    g = st.query_params.get("g", "week")
-    if g not in INSEASON_LEAVES:
-        g = "week"
-
-    leaves = INSEASON_LEAVES[g]
-    t = st.query_params.get("t", leaves[0][0])
-    if t not in dict(leaves):
-        t = leaves[0][0]
-
-    if g == "week":
-        {"live": render_live, "matchup": render_matchup, "lineup": render_lineup}[t]()
-    elif g == "trades":
-        {"recent": render_recent_trades, "market": render_trade_targets,
-         "analyzer": render_trade_analyzer}[t]()
-    elif g == "league":
-        {"standings": render_standings, "power": render_power,
-         "faab": render_faab, "odds": render_odds, "superlatives": render_superlatives,
-         "lottery": render_lottery, "rules": render_rules, "votes": render_votes}[t]()
-    else:
-        {"record": render_record_book, "hitrate": render_keeper_hitrate}[t]()
-
+    g, t = _resolve_leaf("inseason", INSEASON_LEAVES, "week")
+    {("week", "live"): render_live,
+     ("week", "matchup"): render_matchup,
+     ("week", "keepers"): render_keeper_outlook,
+     ("trades", "recent"): lambda: _stack(render_recent_trades, render_trade_targets),
+     ("trades", "analyzer"): render_trade_analyzer,
+     ("league", "standings"): lambda: _stack(render_standings, render_power, render_odds),
+     ("league", "faab"): render_faab,
+     ("league", "lottery"): render_lottery,
+     ("league", "rules"): lambda: _stack(render_rules, render_votes),
+     ("history", "record"): lambda: _stack(render_record_book, render_superlatives, render_keeper_hitrate),
+     }[(g, t)]()
 
 def _group_popover_html(pop_id: str, section_label: str, groups: list,
                          leaves_by_group: dict, page_key: str) -> str:

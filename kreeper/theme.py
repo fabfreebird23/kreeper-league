@@ -204,7 +204,7 @@ table.lb tr.kept td:first-child{ box-shadow:inset 3px 0 0 var(--teal); }
 .lb .pl{ font-weight:600; }
 .lb .pos{ color:var(--muted); font-size:11px; font-weight:600; }
 .lb .val{ font-family:var(--font-display); font-weight:var(--display-wt); color:var(--teal); text-align:right; }
-.lb .num{ text-align:right; color:var(--ink); }
+.lb .num{ text-align:right; color:var(--ink); white-space:nowrap; }
 .lb .pl.win{ color:var(--teal); font-weight:700; }
 .lb .kept-badge{ color:#04231d; background:var(--teal); font-weight:700; font-size:10px;
   padding:1px 6px; border-radius:3px; text-transform:uppercase; letter-spacing:.5px; }
@@ -492,7 +492,10 @@ table.lb td.two b .pos{ display:inline !important; color:var(--muted); font-size
   font-weight:400; margin-left:5px; }
 
 /* power bar inside a table row */
-table.lb td.pw{ display:flex; align-items:center; gap:9px; }
+/* a plain table cell: display:flex on a <td> drops it out of the row's
+   table layout, which floated the bar above its row on phones */
+table.lb td.pw{ vertical-align:middle; min-width:56px; }
+table.lb th{ white-space:nowrap; }
 .pbar{ flex:1; height:5px; background:rgba(255,255,255,.08); border-radius:3px;
   overflow:hidden; min-width:60px; }
 .pbar i{ display:block; height:100%; background:var(--grad); }
@@ -793,14 +796,48 @@ a.tp:hover, a.tp.on{ background:linear-gradient(var(--panel2),var(--panel2)) pad
    so they reset to inherit and re-assert their own colours at a higher
    specificity. Slot chips carry their colour in --c because an inline
    `color` would lose to the !important too. */
-[data-testid="stMarkdownContainer"] :is(.hero, .todo, .todo-foot, table.dt, .lcard, .strip, .picker, .mh-right, .lockline) span{ color:inherit !important; }
+[data-testid="stMarkdownContainer"] :is(.hero, .todo, .todo-foot, table.dt, .lcard, .strip, .picker, .mh-right, .lockline, .ktray, .kgrid) span{ color:inherit !important; }
 [data-testid="stMarkdownContainer"] .hero .big.dim, [data-testid="stMarkdownContainer"] .ls .dim{ color:#9a9aa6 !important; }
-[data-testid="stMarkdownContainer"] :is(.hk, .hc span, .todo div > span, table.dt td.two span, .lhead .two span, .ls span, .fp .proj){ color:var(--muted) !important; }
+[data-testid="stMarkdownContainer"] :is(.hk, .hc span, .todo div > span, table.dt td.two span, .lhead .two span, .ls span, .fp .proj, .kt span, .kc-top .pos, .ka){ color:var(--muted) !important; }
+[data-testid="stMarkdownContainer"] .kgrid span.chip.amber.amber{ color:var(--amber) !important; border-color:rgba(240,184,64,.4); }
 [data-testid="stMarkdownContainer"] span.chip.good.good{ color:var(--teal) !important; }
 [data-testid="stMarkdownContainer"] span.chip.bad.bad{ color:var(--red) !important; }
 /* .slot.slot: out-ranks the inherit reset above, which carries a table.dt */
 [data-testid="stMarkdownContainer"] span.slot.slot{ color:var(--c, var(--muted)) !important; border-color:color-mix(in srgb, var(--c, #8a8a95) 35%, transparent);
   background:color-mix(in srgb, var(--c, #8a8a95) 8%, transparent); }
+
+/* keeper outlook: the five-slot tray, then one card per player with his ladder */
+.hero.kh{ padding:0; } .hero.kh .hcells{ margin:0; border-top:none; }
+.ktray{ display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
+.kt{ background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 10px; text-align:center; }
+.kt i{ display:block; font-style:normal; font-size:9.5px; font-weight:600; letter-spacing:1.4px; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+.kt .kh-img{ width:52px; height:52px; border-radius:50%; object-fit:cover; background:var(--panel2); display:block; margin:0 auto 8px; }
+.kt b{ display:block; font-size:13px; font-weight:600; line-height:1.2; }
+.kt span{ display:block; font-size:11px; margin-top:3px; }
+.kt em{ font-style:normal; font-weight:600; } .kt em.good{ color:var(--teal); } .kt em.bad{ color:var(--red); }
+.kt.empty{ border-style:dashed; opacity:.6; } .kt.empty b{ font-family:var(--font-display); font-size:20px; margin:18px 0 4px; }
+.kgrid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.kcard2{ display:flex; align-items:center; gap:12px; background:var(--panel); border:1px solid var(--line);
+  border-radius:12px; padding:12px 14px; }
+.kcard2.keep{ box-shadow:inset 3px 0 0 var(--teal); } .kcard2.next{ box-shadow:inset 3px 0 0 var(--amber); }
+.kcard2.blocked{ opacity:.7; } .kcard2.cut{ opacity:.82; }
+.kcard2 .kh-img{ width:44px; height:44px; border-radius:50%; object-fit:cover; background:var(--panel2); flex:0 0 auto; }
+.kc-main{ flex:1; min-width:0; }
+.kc-top{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.kc-top b{ font-size:14px; font-weight:600; } .kc-top .pos{ font-size:11px; }
+.kc-top .chip{ margin-left:auto; }
+.kladder{ display:flex; align-items:center; gap:6px; margin:8px 0 6px; flex-wrap:wrap; }
+.ks{ display:inline-flex; flex-direction:column; align-items:center; background:var(--panel2); border:1px solid var(--line);
+  border-radius:8px; padding:3px 9px; min-width:54px; }
+.ks i{ font-style:normal; font-size:9px; font-weight:600; letter-spacing:1px; color:var(--muted); }
+.ks b{ font-family:var(--font-display); font-size:15px; font-weight:600; }
+.ks.now{ border-color:rgba(160,107,255,.55); background:rgba(160,107,255,.12); }
+.ka{ font-size:12px; } .kb{ font-size:12px; color:var(--red) !important; font-weight:600; }
+.kc-how{ font-size:11px; color:var(--muted); }
+.kv{ text-align:right; flex:0 0 auto; }
+.kv b{ display:block; font-family:var(--font-display); font-size:24px; font-weight:600; line-height:1; }
+.kv i{ font-style:normal; font-size:9px; font-weight:600; letter-spacing:1.2px; color:var(--muted); text-transform:uppercase; }
+.kv.good b{ color:var(--teal); } .kv.bad b{ color:var(--red); }
 
 @media (max-width: 760px){
   .wk-cols{ grid-template-columns:1fr; }
@@ -816,6 +853,10 @@ a.tp:hover, a.tp.on{ background:linear-gradient(var(--panel2),var(--panel2)) pad
   .gl{ display:none; } .gs{ display:inline; } .fp{ font-size:17px; } .fn b{ font-size:12px; line-height:1.25; }
   .forow{ grid-template-columns:1fr 46px 1fr; } .fo{ gap:6px; } .slot{ min-width:36px; padding:2px 4px; font-size:9px; }
   .tpgrid{ grid-template-columns:1fr; }
+  table.lb .pf{ display:none; } .pbar{ min-width:36px; }
+  table.lb td.two b{ font-size:12.5px; line-height:1.25; } .chip{ padding:2px 6px; letter-spacing:.4px; }
+  .ktray{ grid-template-columns:repeat(3,1fr); } .kgrid{ grid-template-columns:1fr; }
+  .kt .kh-img{ width:40px; height:40px; } .kt b{ font-size:12px; }
   td.barc{ width:22%; }
 }
 
