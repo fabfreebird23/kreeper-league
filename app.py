@@ -401,10 +401,67 @@ def current_keepers(season: int | None = None) -> dict:
     return out
 
 
+@st.cache_data(ttl=3600, show_spinner=False)
+def round_replacement_value() -> dict:
+    """{round: talent value of the player a pick in that round actually lands
+    once keepers are off the board}.
+
+    Kreeper keeps ~40 players a year, so the draft is a depleted pool: a 1st-
+    round pick doesn't get a 1st-rounder, it gets whoever's left — roughly the
+    30th-40th best player. Built from the league's REAL keepers (this
+    season's, else the latest season that has them) rather than a projection,
+    because the projection (build_mock_draft) picks keepers BY this value and
+    would be circular. Keepers also occupy picks, so each round has fewer free
+    picks than teams; a round is valued at its middle free pick.
+    """
+    from collections import Counter
+    kept = {}
+    for yr in (SEASON, SEASON - 1, SEASON - 2):
+        kept = storage.load(yr)
+        if any(kept.values()):
+            break
+    kept_names, per_round = set(), Counter()
+    for picks in kept.values():
+        for x in picks:
+            if x.get("player_name"):
+                kept_names.add(normalize_name(x["player_name"]))
+            cr = x.get("cost_round")
+            if str(cr).isdigit():
+                per_round[int(cr)] += 1
+    ranks = sorted(int(r["consensus_rank"]) for _, r in ADP_DF.iterrows()
+                   if r.get("position") in ("QB", "RB", "WR", "TE") and not pd.isna(r.get("consensus_rank"))
+                   and normalize_name(r["name"]) not in kept_names)
+    out, cum = {}, 0
+    for rnd in range(1, DRAFT_ROUNDS + 1):
+        free = max(1, NT - per_round[rnd])
+        i = min(int(cum + free / 2), len(ranks) - 1) if ranks else 0
+        out[rnd] = _draft_value(ranks[i]) if ranks else _draft_value((rnd - 1) * NT + NT // 2)
+        cum += free
+    return out
+
+
+def keeper_value(adp_rank, cost_round) -> int | None:
+    """What keeping a player is worth: his talent (the draft-value curve at his
+    ADP, pick #1 ≈ 100) minus the talent that same round's pick would actually
+    land in our keeper-depleted draft (round_replacement_value).
+
+    Both halves matter. A cheap late keeper wins because a late pick lands
+    almost nothing (Nabers at R14 vs a 14th-round leftover). An elite player
+    kept in the 1st wins too, because the 1st-round pick he costs would only
+    have landed the ~35th-best player — the old "cost round minus ADP round"
+    scored Bijan-in-the-1st as +0 and ranked him under a 12th-round QB.
+    """
+    if adp_rank is None or cost_round is None or pd.isna(adp_rank):
+        return None
+    return int(_draft_value(int(adp_rank)) - round_replacement_value().get(int(cost_round), 1))
+
+
 def build_value_leaderboard(top_n: int = 50, hide_rookie_keepers: bool = False) -> pd.DataFrame:
     """Best keeper bargains across every roster.
 
-    Value = keeper-cost round minus ADP round, i.e. how many rounds of draft
+    Value = keeper_value(): his talent minus what that round's pick would
+    actually land in our keeper-depleted draft. (Was: cost round minus ADP
+    round, i.e. how many rounds of draft
     capital you'd gain by keeping the player versus drafting them at market.
     The "Kept" column flags players a manager has already declared as a keeper.
     Real NFL rookies (years_exp == 0) are excluded — they live on the Rookies tab.
@@ -482,7 +539,7 @@ def build_value_leaderboard(top_n: int = 50, hide_rookie_keepers: bool = False) 
                     "Kept": is_kept, "Rookie": is_rookie_kp, "FA": False,
                     "Keep Yr": keep_yr, "Cost Rd": cost_round,
                     "ADP": int(rank), "ADP Rd": adp_round,
-                    "Value": cost_round - adp_round,
+                    "Value": keeper_value(rank, cost_round),
                 }
             )
 
@@ -514,7 +571,7 @@ def build_value_leaderboard(top_n: int = 50, hide_rookie_keepers: bool = False) 
                 "Kept": False, "Rookie": False, "FA": True,
                 "Keep Yr": 1, "Cost Rd": fa_cost,
                 "ADP": int(rank), "ADP Rd": adp_round,
-                "Value": fa_cost - adp_round,
+                "Value": keeper_value(rank, fa_cost),
             }
         )
 
@@ -579,7 +636,7 @@ def build_trade_targets() -> pd.DataFrame:
                 "_pid": str(pid), "Player": pm.name, "Pos": pm.position,
                 "Owner": mgr, "Keep Yr": keep_yr, "Rookie": from_rookie,
                 "Cost Rd": int(cost_round), "ADP": int(rank), "ADP Rd": adp_round,
-                "Value": int(cost_round) - adp_round,
+                "Value": keeper_value(rank, cost_round),
             })
     return pd.DataFrame(rows)
 
@@ -957,7 +1014,7 @@ def _home_quick_glance() -> None:
     if not lb.empty:
         top = lb.sort_values("Value", ascending=False).iloc[0]
         val = int(top["Value"])
-        tiles.append((min(1.0, val / 20), f'+{val}', "value", "Biggest Steal",
+        tiles.append((min(1.0, val / 70), f'+{val}', "value", "Biggest Steal",
                       f'{top["Player"]} · {top["Team"]}', theme.PURPLE))
     _glance_box(tiles)
 
@@ -1602,7 +1659,7 @@ def _keeper_outlook_rows(owner: str) -> list:
                         r["ladder"] = [(str(nxt), f"R{cost}"), (str(nxt + 1), "ADP"), ("", "done")]
                     else:
                         r["ladder"] = [(str(nxt), f"R{cost} &middot; ADP"), ("", "done")]
-        r["Value"] = (r["cost"] - adp_rd) if (r["cost"] and adp_rd) else None
+        r["Value"] = keeper_value(rank, r["cost"]) if r["cost"] else None
         rows.append(r)
 
     # Pick the five. Rookie slots first, from rookie-eligible players. A
@@ -1638,7 +1695,7 @@ def _keeper_outlook_rows(owner: str) -> list:
             rnd = next((r_ for r_ in range(DRAFT_ROUNDS, 0, -1) if left[r_] > 0), DRAFT_ROUNDS)
             left[rnd] -= 1
             x["cost"] = rnd
-            x["Value"] = rnd - x["adp_rd"] if x["adp_rd"] else x["Value"]
+            x["Value"] = keeper_value(x["adp"], rnd) if x["adp"] else x["Value"]
             x["ladder"] = ([(str(nxt), f"R{rnd}"), ("then", "no clock")] if x["Rookie"] else
                            [(str(nxt), f"R{rnd}"), (str(nxt + 1), f"R{max(1, rnd - bump)}"), (str(nxt + 2), "ADP")])
     keep_ids = [x["_pid"] for x in rook_pick + reg_pick]
@@ -1674,7 +1731,7 @@ def _keeper_tray_html(rows: list) -> str:
         v = r["Value"]
         cells.append(f'<div class="kt"><i>{lab}</i>{_headshot(r["_pid"])}<b>{r["name"]}</b>'
                      f'<span>R{r["cost"]} &middot; <em class="{"good" if (v or 0) > 0 else "bad" if (v or 0) < 0 else ""}">'
-                     f'{v:+d} rds</em></span></div>')
+                     f'{v:+d}</em></span></div>')
     return f'<div class="ktray">{"".join(cells)}</div>'
 
 
@@ -1691,7 +1748,7 @@ def _keeper_card_html(r: dict) -> str:
     if r["blocked"]:
         steps = f'<span class="kb">{r["blocked"]}</span>'
     v = r["Value"]
-    val = (f'<div class="kv {"good" if v > 0 else "bad" if v < 0 else ""}"><b>{v:+d}</b><i>rounds</i></div>'
+    val = (f'<div class="kv {"good" if v > 0 else "bad" if v < 0 else ""}"><b>{v:+d}</b><i>value</i></div>'
            if v is not None else
            f'<div class="kv"><b>&mdash;</b><i>{"blocked" if r["blocked"] else "no ADP"}</i></div>')
     adp = f'ADP R{r["adp_rd"]} (#{int(r["adp"])})' if r["adp"] else "no ADP"
@@ -1719,7 +1776,7 @@ def render_keeper_outlook() -> None:
     bump = int(config.rules().get("year2_bump_rounds", 3))
     cells = [("Keeper slots", str(MAX_REG + MAX_ROOKIE), f"{MAX_REG} regular + {MAX_ROOKIE} rookie", ""),
              ("Best value", best["name"].split()[-1] if best else "&mdash;",
-              f'{best["Value"]:+d} rounds of surplus' if best else "", "good"),
+              f'{best["Value"]:+d} value' if best else "", "good"),
              ("Blocked", str(len(blocked)), blocked[0]["name"] if blocked else "nobody aged out",
               "bad" if blocked else ""),
              ("Escalation", f"&minus;{bump} rds", f'year 2 &middot; year {config.rules().get("max_keep_years", 3)} is ADP', "")]
@@ -1734,7 +1791,7 @@ def render_keeper_outlook() -> None:
         notes.append(("&#8856;", f'{b["name"]} can\'t be kept in {nxt}',
                       f'{b["blocked"].replace("&middot;", "—")}. From here he\'s a rental, so his trade value only falls.',
                       "bad"))
-    cheap = [r for r in keeps if (r["Value"] or 0) >= 4]
+    cheap = [r for r in keeps if (r["Value"] or 0) >= 25]
     if cheap:
         notes.append(("&#9678;", ", ".join(r["name"] for r in cheap[:3]),
                       "Cost a late pick and are worth an early one — build trades around them, don't sell them.",
@@ -1742,7 +1799,7 @@ def render_keeper_outlook() -> None:
     nxt_out = next((r for r in rows if r["verdict"] == "next"), None)
     if nxt_out:
         notes.append(("!", f'{nxt_out["name"]} is the first one out',
-                      f'{nxt_out["Value"]:+d} rounds. If a keeper above gets hurt or traded, he\'s the replacement.',
+                      f'{nxt_out["Value"]:+d} value. If a keeper above gets hurt or traded, he\'s the replacement.',
                       ""))
     notes.append(("$", f"A waiver add keeps at R{DRAFT_ROUNDS}",
                   "So a mid-season breakout is the cheapest keeper there is. Every claim competes with the list below.",
@@ -1755,11 +1812,13 @@ def render_keeper_outlook() -> None:
                 unsafe_allow_html=True)
     st.markdown('<div class="kgrid">' + "".join(_keeper_card_html(r) for r in rows) + "</div>",
                 unsafe_allow_html=True)
-    st.caption(f"Value is in rounds: cost round minus ADP round, so +5 means you keep him five rounds "
-               f"cheaper than he'd go. ADP is this year's consensus — next year's doesn't exist yet. "
-               f"Costs follow the house rules: the round he came from, then up {bump} rounds in year 2, "
-               f"then ADP in year 3; rookie keepers take your last rounds with no clock; a cost lands on "
-               f"a {nxt} pick you actually own. Set My Keepers does the exact allocation before the draft.")
+    st.caption(f"**Value** is what keeping him is worth: his talent (a draft-value curve, the #1 player ≈ 100) "
+               f"minus what that round's pick would actually land in our draft once ~40 keepers are off the board. "
+               f"That's why an elite player kept in the 1st still scores well — a 1st-round pick only lands about "
+               f"the 35th-best player — and why a stud at a last-round price scores best of all. ADP is this year's "
+               f"consensus. Costs follow the house rules: the round he came from, up {bump} rounds in year 2, ADP in "
+               f"year 3; rookie keepers take your last rounds with no clock; a cost lands on a {nxt} pick you own. "
+               f"Set My Keepers does the exact allocation before the draft.")
 
 
 def _render_home_in_season() -> None:
@@ -1851,7 +1910,8 @@ def _render_home_keepers_open() -> None:
     render_countdown()
     _home_quick_glance()
     st.markdown(theme.section_head(f'Top 50 Keeper <span class="g">Values</span>', page=True), unsafe_allow_html=True)
-    st.caption("Draft value gained by keeping a player, best bargains first.")
+    st.caption("What keeping each player is worth: his talent minus what his cost round's pick would actually "
+               "land once keepers are off the board. Elite players kept early count, not just cheap late ones.")
     fc1, fc2, fc3 = st.columns([1, 1, 1])
     with fc1:
         pos_f = st.selectbox("Position", ["All", "QB", "RB", "WR", "TE"], key="lb_pos")
@@ -2137,7 +2197,7 @@ def render_trade_analyzer() -> None:
                f"Picks are from the {_fy}–{_fy + 2} drafts.")
 
     tt = build_trade_targets()
-    kv = {str(r["_pid"]): int(r["Value"]) for _, r in tt.iterrows()}     # keeper bargain (rounds)
+    kv = {str(r["_pid"]): int(r["Value"]) for _, r in tt.iterrows() if r["Value"] is not None}  # keeper value (talent pts)
     adp = {str(r["_pid"]): int(r["ADP"]) for _, r in tt.iterrows()}      # ADP rank
 
     names = list(NAME_TO_ID.keys())
@@ -2204,7 +2264,7 @@ def render_trade_analyzer() -> None:
         pid = str(pid)
         a = adp.get(pid) or adp_rank_for(H.player_meta(pid).name, H.player_meta(pid).position)
         talent = _draft_value(int(a)) if a else 4
-        bonus = max(0, kv.get(pid, 0)) * 6   # cheap-keeper edge, on top of talent
+        bonus = max(0, kv.get(pid, 0))   # keeper value — same talent-point units, on top of talent
         return talent + bonus
 
     def side_value(players, ropts, picks, pts_map):
@@ -2458,18 +2518,17 @@ def _contract_card_html(row: pd.Series) -> str:
         badges.append(f'<span class="badge">Year {keep_year_int} of 3</span>')
     if adp_round:
         badges.append(f'<span class="badge">ADP R{adp_round}</span>')
-    surplus = None
-    if cost_round is not None and adp_round is not None:
-        surplus = adp_round - cost_round
+    surplus = keeper_value(row["ADP Rank"], cost_round) if (cost_round is not None and row["ADP Rank"]) else None
+    if surplus is not None:
         cls = "surplus-pos" if surplus > 0 else ("surplus-neg" if surplus < 0 else "")
         sign = f"+{surplus}" if surplus > 0 else str(surplus)
-        badges.append(f'<span class="badge {cls}">{sign} RD SURPLUS</span>')
+        badges.append(f'<span class="badge {cls}">{sign} KEEPER VALUE</span>')
 
     if not eligible:
         note = "Not eligible to keep — clock's up or no pick left to use." if keep_year == "DONE" \
             else "No pick available at or before this round."
-    elif surplus is not None and surplus > 5:
-        note = "Big discount to market — a strong keep."
+    elif surplus is not None and surplus >= 25:
+        note = "Worth far more than that round's pick would land — a strong keep."
     elif surplus is not None and surplus < 0:
         note = "Underwater vs. ADP — the market's moved past this cost."
     else:
