@@ -607,7 +607,11 @@ span.mechip{ cursor:pointer; user-select:none; }
   h1{ font-size:1.5rem !important; }
   h2{ font-size:1.25rem !important; }
   h3{ font-size:1.15rem !important; }
-  .block-container{ --block-pad:.6rem;
+  /* Same selector as the desktop rule, so this one actually wins. As plain
+     .block-container it lost on specificity and phones kept the 48px desktop
+     gutters — a 375px screen showed 279px of content. 12px edges is the
+     right amount for dense tables on a phone. */
+  [data-testid="stAppViewContainer"] .block-container{ --block-pad:12px;
     padding-left:var(--block-pad) !important; padding-right:var(--block-pad) !important;
     padding-top:2.5rem !important; }
   /* keep the band one line high — wrapping the chip underneath ate a third
