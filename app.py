@@ -961,7 +961,7 @@ def _topbar_chip_html(current: str) -> str:
     label, sub = info.get(current, ("Draft Prep", ""))
     idx = _PHASE_ORDER.index(current) if current in _PHASE_ORDER else 1
     pct = idx / (len(_PHASE_ORDER) - 1)
-    inner = theme.liquid_stat_html(pct, "", "", label, sub, size=28, accent="#4f9dff")
+    inner = theme.liquid_stat_html(pct, "", "", label, sub, size=28, accent="#6aa6f0")
     return f'<div class="topbar-chip">{inner}</div>'
 
 
@@ -1083,15 +1083,15 @@ def _render_home_money(lid: str) -> None:
 
     bowls = [
         (1.0, f'${champ:,.0f}', "Winner",
-         f'balance of the ${entry_total:,.0f} entry pot', theme.RED),
+         f'balance of the ${entry_total:,.0f} entry pot', theme.ROYAL),
         (runner / max(1.0, champ), f'${runner:,.0f}', "Runner-up",
-         f'double the ${fee:,.0f} buy-in', theme.PURPLE),
+         f'double the ${fee:,.0f} buy-in', theme.GOLD),
         (fifth / max(1, pot["pot"]) if fifth is not None else 1.0,
          f'${fifth:,.0f}' if fifth is not None else f'${pot["pot"]:,}',
          "5th Place", "remainder of the FAAB pot", theme.TEAL),
         (refund / max(1, pot["pot"]) if refund is not None else 0.0,
          f'${refund:,.0f}' if refund is not None else "TBD",
-         "3rd-Place Game", "winner gets their own spend back", theme.CYAN),
+         "3rd-Place Game", "winner gets their own spend back", theme.AMBER),
     ]
     st.markdown(
         '<div class="money-bowls">' + "".join(
@@ -1123,7 +1123,7 @@ def _render_home_money(lid: str) -> None:
 # know whose phone they're on — see _me(). Everything league-wide stays
 # league-wide.
 _START_CHIP = '<span class="chip good">start</span>'
-_POSC = {"QB": "#ff7aa8", "RB": "#3fd67c", "WR": "#5ea8ff", "TE": "#f0b840"}
+_POSC = {"QB": "#c98fbb", "RB": "#7fd8b4", "WR": "#6aa6f0", "TE": "#f0b357"}
 
 
 def _me():
