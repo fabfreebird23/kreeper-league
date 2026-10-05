@@ -1065,7 +1065,6 @@ def _render_home_money(lid: str) -> None:
 # lineup advice, every matchup slot by slot. These are the only pages that
 # know whose phone they're on — see _me(). Everything league-wide stays
 # league-wide.
-ME_COOKIE = "kreeper_me"
 _START_CHIP = '<span class="chip good">start</span>'
 _POSC = {"QB": "#ff7aa8", "RB": "#3fd67c", "WR": "#5ea8ff", "TE": "#f0b840"}
 
@@ -1073,39 +1072,28 @@ _POSC = {"QB": "#ff7aa8", "RB": "#3fd67c", "WR": "#5ea8ff", "TE": "#f0b840"}
 def _me():
     """The manager this device belongs to, or None.
 
-    Picked once on the team picker, which links to `?me=<owner_id>`; that
-    visit stores it in a year-long cookie (see _persist_me), so every later
-    visit — including the plain `?p=` nav links, which reload the page —
-    knows without asking again. No passwords: it only decides whose matchup
-    leads, and anyone can switch from the masthead chip."""
+    Carried in the URL as `me=<owner_id>`. The browser remembers it in
+    localStorage and the nav script (render_bottom_bar) puts it back on every
+    in-app link, and on a bare URL or bookmark reloads once with it added. A
+    cookie would be simpler but Streamlit Cloud's proxy doesn't pass app
+    cookies through to st.context — it worked locally and forgot the team on
+    every page change in production. No passwords: it only decides whose
+    matchup leads, and anyone can switch from the masthead dropdown."""
     q = st.query_params.get("me")
     if q in MANAGERS:
         st.session_state["me"] = q
         return q
     s = st.session_state.get("me")
-    if s in MANAGERS:
-        return s
-    try:
-        c = st.context.cookies.get(ME_COOKIE)
-    except Exception:  # noqa: BLE001 — no cookie support / no request context
-        c = None
-    if c in MANAGERS:
-        st.session_state["me"] = c
-        return c
-    return None
+    return s if s in MANAGERS else None
 
 
-def _persist_me() -> None:
-    """Write the picked team to a cookie on the app's own document. Runs only
-    on the `?me=` visit. components.html because st.markdown strips scripts;
-    window.parent is the app's document (same origin, first party), which is
-    the document whose cookies reach Streamlit's request."""
-    q = st.query_params.get("me")
-    if q in MANAGERS:
-        components.html(
-            "<script>window.parent.document.cookie = "
-            f"'{ME_COOKIE}={q}; path=/; max-age=31536000; SameSite=Lax';</script>",
-            height=0)
+def _href_with(**kv) -> str:
+    """This page's URL with some params replaced — for links that should
+    switch something (the team) without leaving the page."""
+    from urllib.parse import urlencode
+    q = {k: st.query_params.get(k) for k in st.query_params.keys()}
+    q.update({k: v for k, v in kv.items() if v is not None})
+    return "?" + urlencode(q)
 
 
 def _initials(owner: str) -> str:
@@ -1296,7 +1284,8 @@ def _lineup_rows(ctx: dict, side: dict, *, flag=frozenset(), show_actual=True) -
 def _picker_html(compact: bool = False) -> str:
     me = _me()
     cards = "".join(
-        f'<a class="tp{" on" if o == me else ""}" href="?p=home&me={o}" target="_self">'
+        f'<a class="tp{" on" if o == me else ""}" '
+        f'href="{_href_with(me=o, p="home" if page == "pick" else None)}" target="_self">'
         f'<b>{m.get("team") or m["name"]}</b><em>{m["name"]}</em></a>'
         for o, m in MANAGERS.items())
     blurb = ("It decides whose matchup and lineup lead Home and the This Week pages. "
@@ -3906,9 +3895,9 @@ def _masthead_right(current: str) -> str:
         total = season.regular_season_weeks()
         line = f'Week {wk} of {total}' if wk else "Kickoff"
         me = _me()
-        chip = (f'<a class="mechip" href="?p=pick" target="_self"><span class="av sm">{_initials(me)}</span>'
-                f'{_team_of(me)} <i>&#9662;</i></a>' if me else
-                '<a class="mechip" href="?p=pick" target="_self">Pick your team <i>&#9662;</i></a>')
+        chip = (f'<span class="mechip" role="button" data-toggle="bb-pop-me"><span class="av sm">{_initials(me)}</span>'
+                f'{_team_of(me)} <i>&#9662;</i></span>' if me else
+                '<span class="mechip" role="button" data-toggle="bb-pop-me">Pick your team <i>&#9662;</i></span>')
         return f'<div class="mh-right"><div class="mh-meta">{SEASON} &middot; {line}</div>{chip}</div>'
     return _topbar_chip_html(current)
 
@@ -3921,7 +3910,6 @@ st.markdown(
     f'</div>',
     unsafe_allow_html=True,
 )
-_persist_me()
 
 # The sidebar is gone — the masthead carries the identity, the bottom bar
 # carries the nav, and a third chrome surface on the left was only eating
@@ -4061,47 +4049,103 @@ def _group_popover_html(pop_id: str, section_label: str, groups: list,
     )
 
 
+def _me_popover_html() -> str:
+    """The masthead team dropdown: every team, each a link to THIS page with
+    that team as `me`."""
+    me = _me()
+    items = "".join(
+        f'<a class="bb-pop-item{" leaf-active" if o == me else ""}" href="{_href_with(me=o)}" target="_self">'
+        f'<span class="lbl">{m.get("team") or m["name"]}</span><span class="sub">{m["name"]}</span></a>'
+        for o, m in MANAGERS.items())
+    return ('<div class="bb-pop bb-pop-me" id="bb-pop-me"><div class="bb-pop-head">'
+            '<span class="bb-pop-title">Whose phone is this?</span></div>' + items + "</div>")
+
+
+# Installed once per page load, in the PAGE's own JS realm (window.parent.eval),
+# not the components iframe's: Streamlit rebuilds both the iframe and the
+# masthead on reruns, so per-element listeners bound from the iframe go stale
+# or die with it. One delegated capture-phase handler covers every case:
+#   - [data-toggle] opens/closes a sheet (bottom bar sections, the team chip)
+#   - the scrim closes them
+#   - any in-app link ("?p=...") gets the remembered team appended, so the
+#     choice survives every page change.
+_NAV_HANDLER_JS = r"""
+(function(){
+  if (document.__kreeperNav) return;
+  document.__kreeperNav = true;
+  var KEY = 'kreeper_me';
+  function closeAll(){
+    document.querySelectorAll('.bb-pop').forEach(function(p){ p.classList.remove('on'); });
+    var sc = document.getElementById('bb-scrim'); if (sc) sc.classList.remove('on');
+  }
+  document.addEventListener('click', function(e){
+    var tg = e.target.closest('[data-toggle]');
+    if (tg) {
+      e.preventDefault(); e.stopPropagation();
+      var pop = document.getElementById(tg.getAttribute('data-toggle'));
+      var was = pop && pop.classList.contains('on');
+      closeAll();
+      if (pop && !was) { pop.classList.add('on'); var sc = document.getElementById('bb-scrim'); if (sc) sc.classList.add('on'); }
+      return;
+    }
+    if (e.target.id === 'bb-scrim') { closeAll(); return; }
+    var a = e.target.closest('a[href]');
+    if (!a) return;
+    var h = a.getAttribute('href') || '';
+    if (h.charAt(0) !== '?') return;
+    var u = new URLSearchParams(h.slice(1));
+    if (u.get('me')) { try { localStorage.setItem(KEY, u.get('me')); } catch(_) {} return; }
+    var m = null; try { m = localStorage.getItem(KEY); } catch(_) {}
+    if (m) { u.set('me', m); a.setAttribute('href', '?' + u.toString()); }
+  }, true);
+})();
+"""
+
+
 def render_bottom_bar() -> None:
     """Fixed floating pill bar — the site's only nav. Home is a plain link;
     Pre-Season / In-Season pop a sheet above the bar so you can jump
-    straight to a leaf sub-page instead of landing at the section root."""
+    straight to a leaf sub-page instead of landing at the section root.
+    Also carries the masthead's team dropdown and remembers the team."""
     ps_pop = _group_popover_html("preseason", "Pre-Season", PRESEASON_GROUPS, PRESEASON_LEAVES, "preseason")
     is_pop = _group_popover_html("inseason", "In-Season", INSEASON_GROUPS, INSEASON_LEAVES, "inseason")
 
     active = lambda k: " active" if page == k else ""
     bar_html = (
         '<div class="bb-scrim" id="bb-scrim"></div>'
-        + ps_pop + is_pop +
+        + ps_pop + is_pop + _me_popover_html() +
         '<div class="bottom-bar-wrap"><div class="bottom-bar">'
         f'<a class="navlink{active("home")}" href="?p=home" target="_self">Home</a>'
         f'<div class="navlink{active("preseason")}" data-toggle="bb-pop-preseason">Pre-Season</div>'
         f'<div class="navlink{active("inseason")}" data-toggle="bb-pop-inseason">In-Season</div>'
         '</div></div>'
     )
-    # st.markdown silently strips <script> tags, so the popover's click
-    # handlers can't live there (see render_countdown for the same issue).
-    # components.html runs real JS in a same-origin iframe, which lets us
-    # reach through to window.parent.document and inject the bar directly
-    # into the real page — that's also the only way position:fixed ends up
-    # anchored to the actual viewport instead of a tiny iframe box. The
-    # bar's markup has to land in *this* document specifically (not
-    # window.top) because its CSS classes (.bottom-bar-wrap, .navlink, ...)
-    # are defined in the app's own stylesheet (theme.inject), which only
-    # exists in the app's iframe document — window.parent reaches exactly
-    # that iframe both locally (where it IS the top window) and on
-    # Community Cloud (where the app iframe fills the full viewport, so
-    # position:fixed inside it still reads as anchored to the real screen).
+    # st.markdown silently strips <script> tags, so this can't live there.
+    # components.html runs real JS in a same-origin iframe, which reaches the
+    # app's document as window.parent.document: the bar is injected THERE
+    # (its CSS lives in the app document, and position:fixed then anchors to
+    # the real viewport). Community Cloud's own badge lives one level further
+    # out, in Cloud's wrapper page, so hiding it needs window.top.
     #
-    # Community Cloud's own badge (crown for signed-out visitors, "Manage
-    # app"/profile avatar for the owner) is a different story — it's
-    # rendered in Cloud's outer wrapper page, a level further out than the
-    # app iframe, so hiding it needs window.top specifically (the one
-    # target that always reaches the true outermost page regardless of
-    # nesting depth) rather than window.parent.
+    # Team memory: a URL `me` is saved to localStorage; a bare URL with a
+    # saved team reloads once with it (that's a fresh visit, so the server
+    # can't know the team any other way — see _me for why not a cookie). The
+    # reload runs through P.eval: this iframe is sandboxed without
+    # allow-top-navigation, so it may not navigate its parent itself.
+    valid = json.dumps(list(MANAGERS))
     components.html(
         "<script>(function(){"
-        "const doc = window.parent.document;"
-        "const topDoc = window.top.document;"
+        "const P = window.parent, doc = P.document, topDoc = window.top.document;"
+        f"const VALID = {valid};"
+        "try {"
+        "  const q = new URLSearchParams(P.location.search);"
+        "  const me = q.get('me');"
+        "  if (me && VALID.includes(me)) { P.localStorage.setItem('kreeper_me', me); }"
+        "  else { const saved = P.localStorage.getItem('kreeper_me');"
+        "    if (saved && VALID.includes(saved)) { q.set('me', saved);"
+        "      P.eval('location.replace(' + JSON.stringify(P.location.pathname + '?' + q.toString()) + ')');"
+        "      return; } }"
+        "} catch (e) {}"
         "if (!topDoc.getElementById('kreeper-hide-cloud-chrome')) {"
         "  const s = topDoc.createElement('style');"
         "  s.id = 'kreeper-hide-cloud-chrome';"
@@ -4117,21 +4161,9 @@ def render_bottom_bar() -> None:
         "root.id = 'kreeper-bottom-bar-root';"
         f"root.innerHTML = {json.dumps(bar_html)};"
         "doc.body.appendChild(root);"
-        "const scrim = doc.getElementById('bb-scrim');"
-        "function closeAll(){ doc.querySelectorAll('.bb-pop').forEach(p=>p.classList.remove('on')); scrim.classList.remove('on'); }"
-        "doc.querySelectorAll('[data-toggle]').forEach(function(btn){"
-        "  btn.addEventListener('click', function(e){"
-        "    e.stopPropagation();"
-        "    const pop = doc.getElementById(btn.dataset.toggle);"
-        "    const wasOn = pop.classList.contains('on');"
-        "    closeAll();"
-        "    if (!wasOn){ pop.classList.add('on'); scrim.classList.add('on'); }"
-        "  });"
-        "});"
-        "scrim.addEventListener('click', closeAll);"
+        f"P.eval({json.dumps(_NAV_HANDLER_JS)});"
         "})();</script>",
         height=0,
     )
-
 
 render_bottom_bar()

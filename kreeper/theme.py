@@ -580,6 +580,12 @@ table.lb th{ white-space:nowrap; }
   border-radius:10px; font-size:13.5px; font-weight:600; color:var(--ink) !important;
   text-decoration:none !important; cursor:pointer; transition:background .15s; }
 .bb-pop-item:hover{ background:rgba(255,255,255,.05); }
+/* the masthead team dropdown: same sheet, hung from the top-right chip */
+.bb-pop.bb-pop-me{ top:64px; bottom:auto; left:auto; right:16px; transform:translateY(-8px) scale(.98);
+  width:min(300px, calc(100% - 32px)); }
+.bb-pop.bb-pop-me.on{ transform:none; }
+.bb-pop-item .sub{ font-size:11px; font-weight:500; color:var(--muted); margin-left:12px; white-space:nowrap; }
+span.mechip{ cursor:pointer; user-select:none; }
 .bb-pop-item.leaf-active{ background:linear-gradient(90deg, rgba(255,90,160,.16), rgba(160,107,255,.12)); }
 .bb-pop-item.leaf-active .lbl{ background:var(--grad); -webkit-background-clip:text;
   background-clip:text; -webkit-text-fill-color:transparent; }
