@@ -45,6 +45,9 @@ def _patched(by_week=None):
         patch("kreeper.sleeper.get_rosters", return_value=ROSTERS),
         patch("kreeper.sleeper.get_league", return_value=_league()),
         patch("kreeper.sleeper.get_matchups", side_effect=_matchups_fn(by_week)),
+        # no Sleeper clock -> every week with scores counts (week_is_final's
+        # fallback); the finality rules have their own tests below
+        patch("kreeper.sleeper.get_nfl_state", return_value={}),
     ]
 
 
@@ -273,3 +276,62 @@ def test_recent_moves_maps_roster_to_owner():
 def test_recent_moves_honours_limit():
     wk = {1: [_tx("waiver", {str(i): 1}, 1) for i in range(10)]}
     assert len(_run_moves(wk, limit=3)) == 3
+
+
+# ------------------------------------------------------------- week_is_final
+def _final(week, state, games=None, season="2026"):
+    with patch("kreeper.sleeper.get_nfl_state", return_value=state), \
+         patch("kreeper.sleeper.get_league", return_value={"season": season}), \
+         patch("kreeper.gameday.load_week", return_value=games or {}):
+        return season_mod.week_is_final("fake", week)
+
+
+from kreeper import season as season_mod  # noqa: E402
+
+
+def test_week_before_sleepers_current_week_is_final():
+    assert _final(3, {"season": "2026", "season_type": "regular", "week": 4}) is True
+
+
+def test_current_week_with_a_game_left_is_not_final():
+    """Monday of week 4: Sleeper has scores for it, but MNF can still flip a
+    result, so it must not reach the standings yet."""
+    games = {"NO": {"state": "pre"}, "KC": {"state": "post"}}
+    assert _final(4, {"season": "2026", "season_type": "regular", "week": 4}, games) is False
+
+
+def test_current_week_is_final_once_every_game_is_over():
+    games = {"NO": {"state": "post"}, "KC": {"state": "post"}}
+    assert _final(4, {"season": "2026", "season_type": "regular", "week": 4}, games) is True
+
+
+def test_current_week_not_final_when_espn_is_unreachable():
+    assert _final(4, {"season": "2026", "season_type": "regular", "week": 4}, {}) is False
+
+
+def test_past_season_is_always_final():
+    assert _final(12, {"season": "2026", "season_type": "regular", "week": 2}, season="2025") is True
+
+
+def test_no_sleeper_clock_falls_back_to_trusting_scores():
+    assert _final(9, {}) is True
+
+
+def test_unfinished_week_stays_out_of_standings():
+    """Weeks 1-2 final, week 3 still has a game to play: records stop at 2."""
+    ctxs = [
+        patch("kreeper.sleeper.get_rosters", return_value=ROSTERS),
+        patch("kreeper.sleeper.get_league", return_value={**_league(), "season": "2026"}),
+        patch("kreeper.sleeper.get_matchups", side_effect=_matchups_fn(PLAYED)),
+        patch("kreeper.sleeper.get_nfl_state",
+              return_value={"season": "2026", "season_type": "regular", "week": 3}),
+        patch("kreeper.gameday.load_week", return_value={"NO": {"state": "in"}}),
+    ]
+    for c in ctxs:
+        c.start()
+    try:
+        table = season.standings("fake")
+    finally:
+        for c in ctxs:
+            c.stop()
+    assert all(r["weeks_played"] == 2 for r in table)

@@ -17,8 +17,8 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
-from kreeper import (config, draftboard, engine, faab, history, lottery, phase, season,
-                     sleeper, storage, theme)
+from kreeper import (config, draftboard, engine, faab, gameday, history, lottery, phase,
+                     season, sleeper, storage, theme)
 from kreeper.adp import consensus as adp_consensus
 from kreeper.names import normalize_name
 
@@ -1047,39 +1047,524 @@ def _render_home_money(lid: str) -> None:
         'takes the balance.</p>', unsafe_allow_html=True)
 
 
+# ------------------------------------------------------------------ this week
+# The Draft Room's weekly screens, rebuilt for Kreeper: a live matchup card,
+# lineup advice, every matchup slot by slot. These are the only pages that
+# know whose phone they're on — see _me(). Everything league-wide stays
+# league-wide.
+ME_COOKIE = "kreeper_me"
+_START_CHIP = '<span class="chip good">start</span>'
+_POSC = {"QB": "#ff7aa8", "RB": "#3fd67c", "WR": "#5ea8ff", "TE": "#f0b840"}
+
+
+def _me():
+    """The manager this device belongs to, or None.
+
+    Picked once on the team picker, which links to `?me=<owner_id>`; that
+    visit stores it in a year-long cookie (see _persist_me), so every later
+    visit — including the plain `?p=` nav links, which reload the page —
+    knows without asking again. No passwords: it only decides whose matchup
+    leads, and anyone can switch from the masthead chip."""
+    q = st.query_params.get("me")
+    if q in MANAGERS:
+        st.session_state["me"] = q
+        return q
+    s = st.session_state.get("me")
+    if s in MANAGERS:
+        return s
+    try:
+        c = st.context.cookies.get(ME_COOKIE)
+    except Exception:  # noqa: BLE001 — no cookie support / no request context
+        c = None
+    if c in MANAGERS:
+        st.session_state["me"] = c
+        return c
+    return None
+
+
+def _persist_me() -> None:
+    """Write the picked team to a cookie on the app's own document. Runs only
+    on the `?me=` visit. components.html because st.markdown strips scripts;
+    window.parent is the app's document (same origin, first party), which is
+    the document whose cookies reach Streamlit's request."""
+    q = st.query_params.get("me")
+    if q in MANAGERS:
+        components.html(
+            "<script>window.parent.document.cookie = "
+            f"'{ME_COOKIE}={q}; path=/; max-age=31536000; SameSite=Lax';</script>",
+            height=0)
+
+
+def _initials(owner: str) -> str:
+    parts = config.manager_name(owner).split()
+    if not parts:
+        return "?"
+    return (parts[0][0] + (parts[-1][0] if len(parts) > 1 else parts[0][1:2])).upper()
+
+
+@st.cache_data(ttl=86400, show_spinner=False)
+def get_player_meta() -> dict:
+    """{pid: (name, pos, nfl_team)} for every skill-position player."""
+    out = {}
+    for pid, p in sleeper.get_players().items():
+        pos = p.get("position")
+        if pos in gameday.SKILL:
+            nm = p.get("full_name") or f'{p.get("first_name", "")} {p.get("last_name", "")}'.strip()
+            out[str(pid)] = (nm or str(pid), pos, p.get("team") or "")
+    return out
+
+
+@st.cache_data(ttl=86400, show_spinner=False)
+def _pos_team_maps():
+    meta = get_player_meta()
+    return {p: m[1] for p, m in meta.items()}, {p: m[2] for p, m in meta.items()}
+
+
+def _pname(pid: str) -> str:
+    return get_player_meta().get(str(pid), (str(pid), "", ""))[0]
+
+
+@st.cache_data(ttl=30, show_spinner=False)
+def get_week_ctx(week: int) -> dict:
+    """Everything the weekly pages need for one week, cached 30s so a page
+    refreshing every 30s for eight phones is still one call per source.
+
+    sides: {owner: {mid, starters, players, actual}}; starters are aligned
+    to `slots` the way Sleeper stores them."""
+    lid = LEAGUE["sleeper_league_id"]
+    games = gameday.load_week(SEASON, week)
+    live = gameday.any_live(games)
+    rows = sleeper.get_matchups(lid, week, ttl=30 if live else 600) or []
+    rosters = sleeper.get_rosters(lid)
+    r2o = {int(r["roster_id"]): str(r.get("owner_id")) for r in rosters}
+    roster_players = {r2o[int(r["roster_id"])]: [str(p) for p in (r.get("players") or [])] for r in rosters}
+    slots = [s for s in (sleeper.get_league(lid).get("roster_positions") or [])
+             if s not in ("BN", "IR", "TAXI")]
+    sides = {}
+    for m in rows:
+        o = r2o.get(int(m.get("roster_id") or 0))
+        if not o or m.get("matchup_id") is None:
+            continue
+        sides[o] = {"owner": o, "mid": m["matchup_id"],
+                    "starters": [str(p) for p in (m.get("starters") or [])],
+                    "players": [str(p) for p in (m.get("players") or [])] or roster_players.get(o, []),
+                    "actual": {str(k): float(v or 0) for k, v in (m.get("players_points") or {}).items()}}
+    return {"week": week, "games": games, "live": live, "slots": slots, "sides": sides,
+            "proj": gameday.week_projections(SEASON, week)}
+
+
+def _outlook(ctx: dict, side: dict, starters=None) -> dict:
+    pos_of, team_of = _pos_team_maps()
+    return gameday.side_outlook(starters if starters is not None else side["starters"],
+                                side["actual"], ctx["proj"], pos_of, team_of, ctx["games"])
+
+
+def _pairs(ctx: dict, me=None) -> list:
+    """[(side_a, side_b)] for every matchup, `me` first and on the left."""
+    by_mid = {}
+    for s in ctx["sides"].values():
+        by_mid.setdefault(s["mid"], []).append(s)
+    out = []
+    for mid in sorted(by_mid):
+        pair = by_mid[mid]
+        if len(pair) != 2:
+            continue
+        a, b = pair
+        if b["owner"] == me:
+            a, b = b, a
+        out.append((a, b))
+    out.sort(key=lambda ab: ab[0]["owner"] != me)
+    return out
+
+
+def _wp(a: dict, b: dict) -> float:
+    return gameday.win_prob(a["final"], a["sd"], b["final"], b["sd"])
+
+
+def _week_started(ctx: dict) -> bool:
+    return any(g.get("state") != "pre" for g in ctx["games"].values())
+
+
+def _slot_chip(pos: str, slot: str = "") -> str:
+    c = _POSC.get(pos, "#8a8a95")
+    return f'<span class="slot" style="--c:{c}">{slot or pos or "&mdash;"}</span>'
+
+
+def _two_div(owner: str, win: bool = False) -> str:
+    return (f'<div class="two{" w" if win else ""}"><b>{_team_of(owner)}</b>'
+            f'<span>{config.manager_name(owner)}</span></div>')
+
+
+def _hero_html(a: str, b: str, *, pill: str, big_a: float, big_b: float, kicker: str,
+               wp: float, sub_a: str, sub_b: str, cells: list) -> str:
+    cell = "".join(f'<div class="hc"><i>{k}</i><b class="{c}">{v}</b><span>{s}</span></div>'
+                   for k, v, s, c in cells)
+    return (
+        '<div class="hero"><div class="hrow">'
+        f'<div class="who"><span class="av">{_initials(a)}</span><div><b>{_team_of(a)}</b><em>{sub_a}</em></div></div>'
+        f'<div class="wk"><span class="wkpill">&#9679; {pill}</span></div>'
+        f'<div class="who r"><div><b>{_team_of(b)}</b><em>{sub_b}</em></div><span class="av dim">{_initials(b)}</span></div>'
+        '</div>'
+        f'<div class="hnum"><span class="big">{big_a:.1f}</span><span class="hk">{kicker}</span>'
+        f'<span class="big dim">{big_b:.1f}</span></div>'
+        f'<div class="wpbar"><i style="width:{wp * 100:.0f}%"></i></div>'
+        f'<div class="hrow lab"><span><b>{wp * 100:.0f}%</b> YOU</span><span class="hk">win probability</span>'
+        f'<span>{(1 - wp) * 100:.0f}%</span></div>'
+        f'<div class="hcells">{cell}</div></div>')
+
+
+def _advice(me: str, week: int) -> dict | None:
+    """Lineup advice for `me` in `week`, or None if they have no game."""
+    ctx = get_week_ctx(week)
+    side = ctx["sides"].get(me)
+    if not side or not ctx["slots"]:
+        return None
+    pos_of, team_of = _pos_team_maps()
+    locked = {p for p in side["players"]
+              if gameday.status(ctx["games"], team_of.get(p, "")) in ("in", "post")}
+    adv = gameday.lineup_advice(side["starters"], side["players"], ctx["slots"], ctx["proj"],
+                                pos_of, locked=locked)
+    adv["byes"] = [p for p in side["players"] if pos_of.get(p) in gameday.SKILL
+                   and team_of.get(p) and team_of[p] not in ctx["games"] and ctx["games"]]
+    adv["ctx"], adv["side"], adv["week"] = ctx, side, week
+    return adv
+
+
+def _todo_html(me: str, adv: dict) -> str:
+    wk = adv["week"]
+    cards = []
+    for i, o, gain in adv["swaps"][:3]:
+        cards.append(("&uarr;", f"Start {_pname(i)}, bench {_pname(o)}",
+                      f"Week {wk} &middot; worth <b>+{gain:.1f}</b> to your total.",
+                      f"+{gain:.1f}", "points", ""))
+    for h in adv["holes"]:
+        cards.append(("+", f"No {h} for Week {wk}",
+                      "Nobody on your roster can fill it. Claim one before waivers run Wednesday.",
+                      "0.0", "projected", "bad"))
+    if adv["byes"]:
+        cards.append(("&#9650;", f'Week {wk} takes {len(adv["byes"])} of yours',
+                      ", ".join(_pname(p) for p in adv["byes"]) + ".",
+                      str(len(adv["byes"])), "on bye", "bad"))
+    if not cards:
+        cards.append(("&#10003;", f"Your Week {wk} lineup is the best one you have",
+                      "Nothing to change.", "", "", "good"))
+    html = "".join(
+        f'<div class="todo {c}"><span class="ic">{ic}</span><div><b>{t}</b><span>{s}</span></div>'
+        f'<div class="tv"><b>{v}</b><i>{k}</i></div></div>' for ic, t, s, v, k, c in cards)
+    left = (faab.team_budgets(LEAGUE["sleeper_league_id"]).get(me) or {}).get("remaining")
+    if left is not None:
+        html += f'<div class="todo-foot">Waivers run Wednesday &middot; <b>${left}</b> FAAB left.</div>'
+    return html
+
+
+def _lineup_rows(ctx: dict, side: dict, *, flag=frozenset(), show_actual=True) -> str:
+    """Slot / player / bar / points rows for one lineup as set."""
+    pos_of, team_of = _pos_team_maps()
+    vals = []
+    for pid in side["starters"]:
+        played = gameday.status(ctx["games"], team_of.get(pid, "")) in ("in", "post")
+        vals.append(side["actual"].get(pid, 0.0) if (show_actual and played) else ctx["proj"].get(pid, 0.0))
+    mx = max(vals + [1.0])
+    rows = []
+    for slot, pid, v in zip(ctx["slots"], side["starters"], vals):
+        if not pid or pid == "0":
+            rows.append(f'<tr class="swap"><td>{_slot_chip("", slot)}</td><td class="two"><b>Empty</b>'
+                        '<span>nobody in this slot</span></td><td class="barc"></td><td class="num">0.0</td></tr>')
+            continue
+        pos, tm = pos_of.get(pid, ""), team_of.get(pid, "")
+        rows.append(
+            f'<tr class="{"swap" if pid in flag else ""}"><td>{_slot_chip(pos, slot)}</td>'
+            f'<td class="two"><b>{_pname(pid)}</b><span>{tm} &middot; {gameday.game_label(ctx["games"], tm)}</span></td>'
+            f'<td class="barc"><div class="bar"><i style="width:{100 * v / mx:.0f}%;background:{_POSC.get(pos, "")}"></i></div></td>'
+            f'<td class="num">{v:.1f}</td></tr>')
+    return '<table class="dt">' + "".join(rows) + "</table>"
+
+
+def _picker_html(compact: bool = False) -> str:
+    me = _me()
+    cards = "".join(
+        f'<a class="tp{" on" if o == me else ""}" href="?p=home&me={o}" target="_self">'
+        f'<b>{m.get("team") or m["name"]}</b><em>{m["name"]}</em></a>'
+        for o, m in MANAGERS.items())
+    blurb = ("It decides whose matchup and lineup lead Home and the This Week pages. "
+             "Asked once, remembered on this device; switch any time from the masthead. "
+             "Everything league-wide stays league-wide.")
+    return (f'<div class="card picker"><div class="eyebrow">{"Make it yours" if compact else "This device"}</div>'
+            f'<h3>Which team is yours?</h3><p>{blurb}</p><div class="tpgrid">{cards}</div></div>')
+
+
+def render_team_picker() -> None:
+    st.markdown(_picker_html(), unsafe_allow_html=True)
+
+
+def _need_me(what: str):
+    """The current owner, or render the picker and return None."""
+    me = _me()
+    if me is None:
+        st.caption(f"{what} is about your team — pick it once and this device remembers.")
+        st.markdown(_picker_html(compact=True), unsafe_allow_html=True)
+    return me
+
+
+def _render_home_my_week(me: str, cur: int) -> None:
+    """Home's top: your live matchup, what to do, and your lineup."""
+    ctx = get_week_ctx(cur)
+    pair = next((ab for ab in _pairs(ctx, me) if ab[0]["owner"] == me), None)
+    if pair:
+        a, b = (_outlook(ctx, s) for s in pair)
+        started = _week_started(ctx)
+        done = gameday.week_complete(ctx["games"])
+        aw = gameday.advice_week(cur, ctx["games"])
+        adv = _advice(me, aw)
+        rec = next((r for r in get_standings() if r["owner"] == me), None)
+        lineup_cell = (("Week %d lineup" % aw,
+                        (f'{len(adv["swaps"])} change{"s" if len(adv["swaps"]) != 1 else ""}'
+                         + (f' + {len(adv["holes"])} hole' if adv["holes"] else "")),
+                        f'worth +{adv["best_total"] - adv["set_total"]:.1f} pts',
+                        "amber" if adv["swaps"] or adv["holes"] else "good") if adv else
+                       ("Lineup", "&mdash;", "no game that week", ""))
+        st.markdown(_hero_html(
+            me, pair[1]["owner"],
+            pill=f"Week {cur} &middot; {'final' if done else 'live' if started else 'preview'}",
+            big_a=a["points"] if started else a["final"], big_b=b["points"] if started else b["final"],
+            kicker="final" if done else "live" if started else "projected", wp=_wp(a, b),
+            sub_a=f'you &middot; {a["left"]} still to play', sub_b=f'{b["left"]} still to play',
+            cells=[("Projected final", f'{a["final"]:.0f}&ndash;{b["final"]:.0f}', "actual + what's left", "good"),
+                   ("Still to play", str(a["left"]), f'theirs {b["left"]}', ""),
+                   lineup_cell,
+                   ("Record", f'{rec["wins"]}&ndash;{rec["losses"]}' if rec else "&mdash;",
+                    f'#{rec["rank"]} in the league' if rec else "", "")]),
+            unsafe_allow_html=True)
+        left = sorted((g for g in ctx["games"].values() if g.get("state") == "pre" and g.get("home")),
+                      key=gameday.kickoff_ts)
+        if left and not done:
+            nxt = left[0]
+            st.markdown(f'<div class="lockline">Week {cur} &middot; next kickoff <b>{nxt["opp"]} @ '
+                        f'{[t for t, g in ctx["games"].items() if g is nxt][0]}</b> '
+                        f'{gameday.kickoff_label(nxt)} &middot; {len(left)} game{"s" if len(left) != 1 else ""} to go</div>',
+                        unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="lockline"></div>', unsafe_allow_html=True)
+        todo = _todo_html(me, adv) if adv else ""
+        st.markdown(
+            f'<div class="wk-cols"><div><div class="eyebrow">What to do</div>{todo}</div>'
+            f'<div><div class="eyebrow">Your lineup &middot; Week {cur}</div>'
+            f'{_lineup_rows(ctx, pair[0])}</div></div>', unsafe_allow_html=True)
+
+
+def _render_around_league(cur: int, me=None) -> None:
+    ctx = get_week_ctx(cur)
+    pairs = _pairs(ctx, me)
+    if not pairs:
+        return
+    done = gameday.week_complete(ctx["games"])
+    st.markdown(theme.section_head('Around the <span class="g">League</span>',
+                                   f"week {cur} &middot; {'final' if done else 'all four games'}"),
+                unsafe_allow_html=True)
+    rows = []
+    for sa, sb in pairs:
+        a, b = _outlook(ctx, sa), _outlook(ctx, sb)
+        to_play = a["left"] + b["left"]
+        rows.append(f'<tr>{_two_cell(sa["owner"], a["final"] > b["final"])}'
+                    f'{_two_cell(sb["owner"], b["final"] > a["final"])}'
+                    f'<td class="num">{a["points"]:.1f} &ndash; {b["points"]:.1f}</td>'
+                    f'<td class="num mut">{f"{to_play} to play" if to_play else "final"}</td></tr>')
+    st.markdown('<table class="dt">' + "".join(rows) + "</table>", unsafe_allow_html=True)
+
+
+def _faceoff_html(ctx: dict, sa: dict, sb: dict) -> str:
+    pos_of, team_of = _pos_team_maps()
+
+    def cell(side, pid, right=False):
+        if not pid or pid == "0":
+            return f'<div class="fo{" r" if right else ""}"><div class="fn"><b>Empty</b><em>&mdash;</em></div><div class="fp">0.0</div></div>'
+        tm = team_of.get(pid, "")
+        s = gameday.status(ctx["games"], tm)
+        val = (f'{side["actual"].get(pid, 0.0):.1f}' if s in ("post", "in", "bye")
+               else f'<span class="proj">{ctx["proj"].get(pid, 0.0):.1f}</span>')
+        cls = {"pre": "live", "in": "inplay"}.get(s, "")
+        return (f'<div class="fo {"r" if right else ""} {cls}"><div class="fn"><b>{_pname(pid)}</b>'
+                f'<em>{pos_of.get(pid, "")} &middot; <span class="gl">{gameday.game_label(ctx["games"], tm)}</span>'
+                f'<span class="gs">{gameday.game_label(ctx["games"], tm, short=True)}</span></em></div>'
+                f'<div class="fp">{val}</div></div>')
+
+    rows = []
+    for slot, pa, pb in zip(ctx["slots"], sa["starters"], sb["starters"]):
+        done = all(gameday.status(ctx["games"], team_of.get(p, "")) in ("post", "bye") for p in (pa, pb))
+        d = sa["actual"].get(pa, 0.0) - sb["actual"].get(pb, 0.0) if done else None
+        mid = _slot_chip(pos_of.get(pa) or pos_of.get(pb, ""), slot) + (
+            f'<i class="{"pos" if d > 0 else "neg" if d < 0 else ""}">{d:+.1f}</i>' if d is not None else "<i>&middot;</i>")
+        rows.append(f'<div class="forow">{cell(sa, pa)}<div class="fm">{mid}</div>{cell(sb, pb, True)}</div>')
+    return "".join(rows)
+
+
+def render_live() -> None:
+    st.markdown(theme.section_head('<span class="g">Live</span>', "every Kreeper matchup", page=True),
+                unsafe_allow_html=True)
+    cur = season.current_week()
+    if not cur:
+        st.info("🏈 Live scores show up here once the season kicks off.")
+        return
+    me = _me()
+    auto = st.toggle("Auto-refresh while a game is on", value=True, key="live_auto")
+    every = 30 if (auto and get_week_ctx(cur)["live"]) else None
+
+    @st.fragment(run_every=every)
+    def _body():
+        ctx = get_week_ctx(cur)
+        from zoneinfo import ZoneInfo
+        now = dt.datetime.now(ZoneInfo("America/New_York"))
+        st.caption(f"Updated {now:%-I:%M:%S %p} ET · "
+                   + ("refreshes every 30s while a game is on" if every
+                      else "no game on right now — reload to update" if auto else "auto-refresh off"))
+        homes = sorted(((t, g) for t, g in ctx["games"].items() if g.get("home")),
+                       key=lambda tg: ({"in": 0, "pre": 1, "post": 2}.get(tg[1]["state"], 3),
+                                       gameday.kickoff_ts(tg[1])))
+        tiles = "".join(
+            f'<div class="gm {g["state"]}"><span>{g["opp"]}</span><b>{"" if g["state"] == "pre" else int(g["opp_score"])}</b>'
+            f'<span>{t}</span><b>{"" if g["state"] == "pre" else int(g["score"])}</b>'
+            f'<em>{gameday.game_label(ctx["games"], t, short=True)}</em></div>' for t, g in homes)
+        if tiles:
+            st.markdown(f'<div class="eyebrow">The slate &middot; week {cur}</div><div class="strip">{tiles}</div>',
+                        unsafe_allow_html=True)
+        pairs = _pairs(ctx, me)
+        st.markdown(theme.section_head("Every <span class=\"g\">Matchup</span>",
+                                       "yours first" if me else ""), unsafe_allow_html=True)
+        cards = []
+        for i, (sa, sb) in enumerate(pairs):
+            a, b = _outlook(ctx, sa), _outlook(ctx, sb)
+            wp = _wp(a, b)
+            mine = me is not None and sa["owner"] == me
+            cards.append(
+                f'<div class="lcard{" mine" if mine else ""}"><div class="lhead">'
+                f'{_two_div(sa["owner"], a["final"] > b["final"])}'
+                f'<div class="ls"><b>{a["points"]:.1f}</b><span>&ndash;</span><b class="dim">{b["points"]:.1f}</b></div>'
+                f'{_two_div(sb["owner"], b["final"] > a["final"])}</div>'
+                f'<div class="wpbar sm"><i style="width:{wp * 100:.0f}%"></i></div>'
+                f'<div class="lfoot"><span><b>{wp * 100:.0f}%</b> &middot; {a["left"]} to play</span>'
+                f'<span class="mid">proj {a["final"]:.0f}&ndash;{b["final"]:.0f}</span>'
+                f'<span>{b["left"]} to play &middot; <b>{(1 - wp) * 100:.0f}%</b></span></div>'
+                + (f'<div class="eyebrow pad">Slot by slot</div>{_faceoff_html(ctx, sa, sb)}' if mine else "")
+                + "</div>")
+        if me and cards and pairs[0][0]["owner"] == me:
+            st.markdown(cards[0] + f'<div class="lgrid">{"".join(cards[1:])}</div>', unsafe_allow_html=True)
+        else:
+            st.markdown(f'<div class="lgrid">{"".join(cards)}</div>', unsafe_allow_html=True)
+        if not me:
+            st.caption("Pick your team (masthead, top right) to see your matchup slot by slot.")
+
+    _body()
+
+
+def render_matchup() -> None:
+    st.markdown(theme.section_head('<span class="g">Matchup</span>', "your next game", page=True),
+                unsafe_allow_html=True)
+    me = _need_me("Matchup")
+    cur = season.current_week()
+    if me is None:
+        return
+    if not cur:
+        st.info("🏈 Matchups show up here once the season kicks off.")
+        return
+    aw = gameday.advice_week(cur, get_week_ctx(cur)["games"])
+    adv = _advice(me, aw)
+    ctx = get_week_ctx(aw)
+    pair = next((ab for ab in _pairs(ctx, me) if ab[0]["owner"] == me), None)
+    if not adv or not pair:
+        st.info(f"No matchup for you in Week {aw}.")
+        return
+    sa, sb = pair
+    a, b = _outlook(ctx, sa), _outlook(ctx, sb)
+    best = [p for _, p in adv["best"] if p]
+    fixed = _outlook(ctx, sa, starters=best)
+    pre = sorted((g for g in ctx["games"].values() if g.get("state") == "pre"), key=gameday.kickoff_ts)
+    started = _week_started(ctx)
+    st.markdown(_hero_html(
+        me, sb["owner"], pill=f"Week {aw} &middot; {'live' if started else 'preview'}",
+        big_a=a["final"], big_b=b["final"], kicker="projected final", wp=_wp(a, b),
+        sub_a="you &middot; lineup as set", sub_b="their lineup as set",
+        cells=[("Lineup", f'{len(adv["swaps"])} change{"s" if len(adv["swaps"]) != 1 else ""}'
+                + (f' + {len(adv["holes"])} hole' if adv["holes"] else ""),
+                f'worth +{adv["best_total"] - adv["set_total"]:.1f} pts'
+                + (f' &middot; no {", ".join(adv["holes"])}' if adv["holes"] else ""),
+                "amber" if adv["swaps"] or adv["holes"] else "good"),
+               ("On bye", str(len(adv["byes"])), "of your skill players", "bad" if adv["byes"] else ""),
+               ("Next lock", gameday.kickoff_label(pre[0]) if pre else "&mdash;",
+                "first game still to kick off" if pre else "every game has started", ""),
+               ("Win prob if fixed", f"{_wp(fixed, b) * 100:.0f}%",
+                f"from {_wp(a, b) * 100:.0f}% as it stands", "good")]),
+        unsafe_allow_html=True)
+    flag = {o for _, o, _g in adv["swaps"]}
+    st.markdown(
+        f'<div class="lockline"></div><div class="wk-cols">'
+        f'<div><div class="eyebrow">Your lineup as set on Sleeper</div>{_lineup_rows(ctx, sa, flag=flag)}</div>'
+        f'<div><div class="eyebrow">{_team_of(sb["owner"])} &middot; as set</div>{_lineup_rows(ctx, sb)}</div>'
+        '</div>', unsafe_allow_html=True)
+    st.caption("Projections from Sleeper. A player on bye projects 0. Win probability treats each "
+               "lineup's total as a range, wider for riskier positions — Draft Room's model.")
+
+
+def render_lineup() -> None:
+    st.markdown(theme.section_head('<span class="g">Lineup</span>', "start / sit", page=True),
+                unsafe_allow_html=True)
+    me = _need_me("Lineup")
+    cur = season.current_week()
+    if me is None:
+        return
+    if not cur:
+        st.info("🏈 Lineup advice shows up here once the season kicks off.")
+        return
+    aw = gameday.advice_week(cur, get_week_ctx(cur)["games"])
+    adv = _advice(me, aw)
+    if not adv:
+        st.info(f"No game for you in Week {aw}.")
+        return
+    ctx, side = adv["ctx"], adv["side"]
+    pos_of, team_of = _pos_team_maps()
+    flag_out = {o for _, o, _g in adv["swaps"]}
+    flag_in = {i for i, _o, _g in adv["swaps"]}
+    bench = sorted((p for p in side["players"] if p not in side["starters"] and pos_of.get(p) in gameday.SKILL),
+                   key=lambda p: -ctx["proj"].get(p, 0.0))
+    brows = "".join(
+        f'<tr class="{"swap" if p in flag_in else ""}"><td class="two"><b>{_pname(p)}<span class="pos">{pos_of.get(p, "")}</span></b>'
+        f'<span>{team_of.get(p, "")}</span></td>'
+        f'<td class="num mut">{gameday.game_label(ctx["games"], team_of.get(p, ""), short=True)}</td>'
+        f'<td class="num">{ctx["proj"].get(p, 0.0):.1f}</td>'
+        f'<td>{_START_CHIP if p in flag_in else ""}</td></tr>'
+        for p in bench)
+    st.markdown(
+        f'<div class="wk-cols"><div><div class="eyebrow">What to do &middot; Week {aw}</div>{_todo_html(me, adv)}'
+        f'<div class="eyebrow pad">Your bench</div><table class="dt">{brows}</table></div>'
+        f'<div><div class="eyebrow">Your lineup as set &middot; projected</div>'
+        f'{_lineup_rows(ctx, side, flag=flag_out, show_actual=False)}</div></div>',
+        unsafe_allow_html=True)
+    st.caption(f'As set: {adv["set_total"]:.1f} projected. Best available: {adv["best_total"]:.1f}. '
+               "Players whose game has started are left where they are.")
+
+
 def _render_home_in_season() -> None:
-    """Live season. Ordered the way the question actually gets asked: what
-    happened this week, what the money is doing, who's actually playing well,
-    and what everyone's been up to. Deliberately league-wide — no "your team"
-    card, since the page is read by eight people and a selector at the top
-    just makes seven of them scroll past someone else's record.
+    """Live season, as a Command Center: your matchup, what to do and your
+    lineup first (for whichever team this device picked — see _me), then the
+    league-wide Home: every matchup, the money, power rankings, recent moves.
+    With no team picked, the picker sits where your matchup would be.
     """
     table = get_standings()
-    if not any(r["weeks_played"] for r in table):
-        # Week 1 hasn't been scored yet — nothing to lead with.
+    cur = season.current_week()
+    if not cur:
+        # The season hasn't kicked off — nothing live to lead with.
         _home_quick_glance()
         render_odds()
         return
 
-    results = get_season_results()
-    total = season.regular_season_weeks()
+    # ---- your week (the Command Center) ----
+    me = _me()
+    if me:
+        _render_home_my_week(me, cur)
+    else:
+        st.markdown(_picker_html(compact=True), unsafe_allow_html=True)
 
-    # ---- this week's scores ----
-    if results:
-        last = max(results)
-        st.markdown(theme.section_head(
-            f'Week <span class="g">{last}</span>',
-            "final scores" if last >= total else f"{total - last} weeks to play"),
-            unsafe_allow_html=True)
-        rows = []
-        for g in results[last]:
-            a, b = g["home"], g["away"]
-            aw = (not g["tie"]) and g["winner"] == a["owner"]
-            bw = (not g["tie"]) and g["winner"] == b["owner"]
-            rows.append(f'<tr>{_two_cell(a["owner"], aw)}{_two_cell(b["owner"], bw)}'
-                        f'<td class="num">{a["points"]:.1f} &ndash; {b["points"]:.1f}</td></tr>')
-        st.markdown('<div class="neonwrap"><table class="lb"><tbody>'
-                    + "".join(rows) + '</tbody></table></div>', unsafe_allow_html=True)
+    # ---- every matchup this week ----
+    _render_around_league(cur, me)
 
     # ---- the money ----
     _render_home_money(LEAGUE["sleeper_league_id"])
@@ -3181,16 +3666,19 @@ def render_superlatives() -> None:
 # the section links live in the fixed bottom bar (render_bottom_bar, called at
 # the end of the script so it always paints last / on top).
 def _masthead_right(current: str) -> str:
-    """Right-hand side of the masthead. In-season the phase chip's job is done
-    better by the season line — "2025 · Week 12 of 14" says both which phase
-    we're in and exactly where in it — so it takes the chip's place there. In
-    every other phase the chip still carries the wave and the countdown."""
+    """Right-hand side of the masthead. In-season: the season line ("2026 ·
+    Week 4 of 13", which says both the phase and where in it we are) and the
+    whose-phone chip, which opens the team picker. In every other phase the
+    liquid phase chip still carries the wave and the countdown."""
     if current == "in_season":
-        table = get_standings()
-        played = max((r["weeks_played"] for r in table), default=0)
+        wk = season.current_week()
         total = season.regular_season_weeks()
-        wk = f'Week {played} of {total}' if played else "Kickoff"
-        return f'<div class="mh-meta">{SEASON} &middot; {wk}</div>'
+        line = f'Week {wk} of {total}' if wk else "Kickoff"
+        me = _me()
+        chip = (f'<a class="mechip" href="?p=pick" target="_self"><span class="av sm">{_initials(me)}</span>'
+                f'{_team_of(me)} <i>&#9662;</i></a>' if me else
+                '<a class="mechip" href="?p=pick" target="_self">Pick your team <i>&#9662;</i></a>')
+        return f'<div class="mh-right"><div class="mh-meta">{SEASON} &middot; {line}</div>{chip}</div>'
     return _topbar_chip_html(current)
 
 
@@ -3202,6 +3690,7 @@ st.markdown(
     f'</div>',
     unsafe_allow_html=True,
 )
+_persist_me()
 
 # The sidebar is gone — the masthead carries the identity, the bottom bar
 # carries the nav, and a third chrome surface on the left was only eating
@@ -3242,8 +3731,9 @@ PRESEASON_LEAVES = {
     "draft": [("board", "Draft Board"), ("projected", "Projected Draft"), ("capital", "Draft Capital & Keeper Cost")],
     "players": [("adp", "ADP"), ("trends", "ADP Trends")],
 }
-INSEASON_GROUPS = [("trades", "Trades"), ("league", "League"), ("history", "History")]
+INSEASON_GROUPS = [("week", "This Week"), ("trades", "Trades"), ("league", "League"), ("history", "History")]
 INSEASON_LEAVES = {
+    "week": [("live", "Live"), ("matchup", "Matchup"), ("lineup", "Lineup")],
     "trades": [("recent", "Recent Trades"), ("market", "Trade Market"), ("analyzer", "Trade Analyzer")],
     "league": [("standings", "Standings & Scoreboard"), ("power", "Power Rankings"),
                 ("faab", "FAAB Pot"), ("odds", "Title Odds"), ("superlatives", "Superlatives"),
@@ -3278,17 +3768,21 @@ elif page == "preseason":
             render_adp()
         else:
             render_adp_trends()
+elif page == "pick":
+    render_team_picker()
 elif page == "inseason":
-    g = st.query_params.get("g", "trades")
+    g = st.query_params.get("g", "week")
     if g not in INSEASON_LEAVES:
-        g = "trades"
+        g = "week"
 
     leaves = INSEASON_LEAVES[g]
     t = st.query_params.get("t", leaves[0][0])
     if t not in dict(leaves):
         t = leaves[0][0]
 
-    if g == "trades":
+    if g == "week":
+        {"live": render_live, "matchup": render_matchup, "lineup": render_lineup}[t]()
+    elif g == "trades":
         {"recent": render_recent_trades, "market": render_trade_targets,
          "analyzer": render_trade_analyzer}[t]()
     elif g == "league":

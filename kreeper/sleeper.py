@@ -85,12 +85,16 @@ def get_nfl_state() -> Dict[str, Any]:
     return _disk("nfl_state", 3600, lambda: _get("state/nfl") or {})
 
 
-def get_matchups(league_id: str, week: int) -> List[Dict[str, Any]]:
+def get_matchups(league_id: str, week: int, ttl: int = 1800) -> List[Dict[str, Any]]:
     """Real per-roster scores for one week: [{roster_id, points, ...}, ...]. Used
     to determine bracket results from actual points rather than trusting the
     bracket API's own w/l fields, which have been observed stale/wrong for
-    multi-week playoff rounds (see kreeper/lottery.py)."""
-    return _disk(f"matchups_{league_id}_{week}", 1800,
+    multi-week playoff rounds (see kreeper/lottery.py).
+
+    `ttl` is 30 min by default; the live pages pass 30s while a game is on.
+    The cache is on disk, so that's one Sleeper call per 30s however many
+    people have the page open."""
+    return _disk(f"matchups_{league_id}_{week}", ttl,
                  lambda: _get(f"league/{league_id}/matchups/{week}") or [])
 
 

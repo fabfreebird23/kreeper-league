@@ -18,7 +18,7 @@ from __future__ import annotations
 import random
 from typing import Any, Dict, List, Optional, Tuple
 
-from . import config, sleeper
+from . import config, gameday, sleeper
 
 
 def _roster_to_owner(league_id: str) -> Dict[int, str]:
@@ -91,6 +91,34 @@ def week_results(league_id: Optional[str] = None, week: int = 1) -> List[Dict[st
     return out
 
 
+def week_is_final(league_id: Optional[str] = None, week: int = 1) -> bool:
+    """True once a week can no longer change. Sleeper posts points as games
+    finish, so on a Monday the week already has scores — and a record built
+    from them shows a result Monday night can still flip.
+
+    Past seasons and weeks before Sleeper's current one are final. The current
+    week is final once ESPN shows every game over. If Sleeper's clock can't be
+    read at all, fall back to trusting the posted scores rather than blanking
+    the standings.
+    """
+    league_id = league_id or config.league()["sleeper_league_id"]
+    state = sleeper.get_nfl_state() or {}
+    try:
+        cur = int(state.get("week") or 0)
+    except (TypeError, ValueError):
+        cur = 0
+    if not cur:
+        return True
+    lg_season = str(sleeper.get_league(league_id).get("season") or config.current_season())
+    if str(state.get("season") or lg_season) != lg_season or str(state.get("season_type")) == "off":
+        return True
+    if week < cur:
+        return True
+    if week > cur:
+        return False
+    return gameday.week_complete(gameday.load_week(int(lg_season), week))
+
+
 def season_results(league_id: Optional[str] = None,
                    through_week: Optional[int] = None) -> Dict[int, List[Dict[str, Any]]]:
     """{week: [result, ...]} for every played regular-season week."""
@@ -99,7 +127,7 @@ def season_results(league_id: Optional[str] = None,
     out: Dict[int, List[Dict[str, Any]]] = {}
     for wk in range(1, last + 1):
         res = week_results(league_id, wk)
-        if res:
+        if res and week_is_final(league_id, wk):
             out[wk] = res
     return out
 
