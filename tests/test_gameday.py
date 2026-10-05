@@ -128,3 +128,25 @@ def test_superflex_takes_a_second_qb():
     pos = {"q1": "QB", "q2": "QB", "r": "RB"}
     lu = dict(gd.optimal_lineup(pos, slots, {"q1": 20, "q2": 18, "r": 10}, pos))
     assert lu["SUPER_FLEX"] == "q2"
+
+
+
+def test_injury_risk_out_is_certain_and_healthy_is_small():
+    assert gd.injury_risk("Out", None, "WR")["pct"] == 100
+    assert gd.injury_risk("Out", None, "WR")["level"] == "out"
+    healthy = gd.injury_risk(None, None, "RB")
+    assert healthy["pct"] == 6 and healthy["level"] == "ok"
+    assert gd.injury_risk(None, None, "K")["pct"] <= 1
+
+
+def test_injury_risk_questionable_moves_with_practice():
+    dnp = gd.injury_risk("Questionable", "DNP", "WR")["pct"]
+    lim = gd.injury_risk("Questionable", "Limited", "WR")["pct"]
+    full = gd.injury_risk("Questionable", "Full", "WR")["pct"]
+    assert dnp > lim > full
+    assert gd.injury_risk("Doubtful", None, "RB")["level"] == "high"
+
+
+def test_injury_risk_is_moot_once_his_game_is_final():
+    assert gd.injury_risk("Questionable", "DNP", "WR", "post")["pct"] is None
+    assert gd.injury_risk(None, None, "RB", "in")["pct"] == 3

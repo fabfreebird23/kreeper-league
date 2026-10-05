@@ -1220,6 +1220,44 @@ def _pname(pid: str) -> str:
     return get_player_meta().get(str(pid), (str(pid), "", ""))[0]
 
 
+@st.cache_data(ttl=3600, show_spinner=False)
+def get_injury_map() -> dict:
+    """{pid: (injury_status, practice_participation, body_part)} for every
+    flagged lineup-position player, from Sleeper's player blob (refreshed
+    daily — Sleeper asks for no more than that)."""
+    out = {}
+    for pid, p in sleeper.get_players().items():
+        if p.get("position") in gameday.LINEUP_POS and (p.get("injury_status") or p.get("practice_participation")):
+            out[str(pid)] = (p.get("injury_status"), p.get("practice_participation"), p.get("injury_body_part"))
+    return out
+
+
+def _risk(ctx: dict, pid: str) -> dict:
+    """gameday.injury_risk for one player in this week's context, plus the
+    evidence behind it for the hover text."""
+    pos_of, team_of = _pos_team_maps()
+    status, practice, part = get_injury_map().get(str(pid), (None, None, None))
+    r = gameday.injury_risk(status, practice, pos_of.get(str(pid), ""),
+                            gameday.status(ctx["games"], team_of.get(str(pid), "")))
+    r["why"] = " · ".join(x for x in (status, part, f"practice: {practice}" if practice else None) if x)
+    return r
+
+
+def _risk_td(ctx: dict, pid: str) -> str:
+    r = _risk(ctx, pid)
+    if r["pct"] is None:
+        return '<td class="risk"><span class="rkp ok">&mdash;</span></td>'
+    lab = f'{r["label"]} ' if r["label"] else ""
+    tip = r["why"] or "no injury tag — the usual in-game risk for his position"
+    return f'<td class="risk" title="{tip}"><span class="rkp {r["level"]}">{lab}{r["pct"]}%</span></td>'
+
+
+_RISK_NOTE = ("Risk % = the chance a player misses the game or gets hurt in it: his injury tag "
+              "(moved by this week's practice report) plus a typical in-game rate for his "
+              "position. Projections are discounted by the chance he misses, so an Out player "
+              "projects 0. An estimate, not a medical model; tags refresh daily.")
+
+
 @st.cache_data(ttl=30, show_spinner=False)
 def get_week_ctx(week: int) -> dict:
     """Everything the weekly pages need for one week, cached 30s so a page
@@ -1245,8 +1283,17 @@ def get_week_ctx(week: int) -> dict:
                     "starters": [str(p) for p in (m.get("starters") or [])],
                     "players": [str(p) for p in (m.get("players") or [])] or roster_players.get(o, []),
                     "actual": {str(k): float(v or 0) for k, v in (m.get("players_points") or {}).items()}}
+    # Projections are Sleeper's, discounted by each player's chance of missing
+    # the game. Sleeper is slow to zero an Out player, and undiscounted the
+    # lineup advice told people to START him (Breece Hall, Out, quad).
+    proj = dict(gameday.week_projections(SEASON, week))
+    for pid, (status, practice, _part) in get_injury_map().items():
+        if pid in proj:
+            miss = gameday.injury_risk(status, practice, "")["miss"]
+            if miss:
+                proj[pid] = round(proj[pid] * (1 - miss), 2)
     return {"week": week, "games": games, "live": live, "slots": slots, "sides": sides,
-            "proj": gameday.week_projections(SEASON, week)}
+            "proj": proj}
 
 
 def _outlook(ctx: dict, side: dict, starters=None) -> dict:
@@ -1341,6 +1388,14 @@ def _todo_html(me: str, adv: dict) -> str:
         cards.append(("&#9650;", f'Week {wk} takes {len(adv["byes"])} of yours',
                       ", ".join(_pname(p) for p in adv["byes"]) + ".",
                       str(len(adv["byes"])), "on bye", "bad"))
+    ctx_ = adv["ctx"]
+    hurt = [(p, _risk(ctx_, p)) for p in adv["side"]["starters"] if p and p != "0"]
+    hurt = sorted(((p, r) for p, r in hurt if r["level"] in ("high", "out")), key=lambda x: -(x[1]["pct"] or 0))
+    if hurt:
+        cards.append(("+", f'{len(hurt)} starter{"s" if len(hurt) != 1 else ""} at real risk this week',
+                      ", ".join(f'{_pname(p)} ({r["label"] or "—"}, {r["pct"]}%)' for p, r in hurt[:3])
+                      + ". Line up a backup before he locks.",
+                      f'{hurt[0][1]["pct"]}%', "risk", "bad"))
     if not cards:
         cards.append(("&#10003;", f"Your Week {wk} lineup is the best one you have",
                       "Nothing to change.", "", "", "good"))
@@ -1365,14 +1420,15 @@ def _lineup_rows(ctx: dict, side: dict, *, flag=frozenset(), show_actual=True) -
     for slot, pid, v in zip(ctx["slots"], side["starters"], vals):
         if not pid or pid == "0":
             rows.append(f'<tr class="swap"><td>{_slot_chip("", slot)}</td><td class="two"><b>Empty</b>'
-                        '<span>nobody in this slot</span></td><td class="barc"></td><td class="num">0.0</td></tr>')
+                        '<span>nobody in this slot</span></td><td class="barc"></td><td class="risk"></td>'
+                        '<td class="num">0.0</td></tr>')
             continue
         pos, tm = pos_of.get(pid, ""), team_of.get(pid, "")
         rows.append(
             f'<tr class="{"swap" if pid in flag else ""}"><td>{_slot_chip(pos, slot)}</td>'
             f'<td class="two"><b>{_pname(pid)}</b><span>{tm} &middot; {gameday.game_label(ctx["games"], tm)}</span></td>'
             f'<td class="barc"><div class="bar"><i style="width:{100 * v / mx:.0f}%;background:{_POSC.get(pos, "")}"></i></div></td>'
-            f'<td class="num">{v:.1f}</td></tr>')
+            f'{_risk_td(ctx, pid)}<td class="num">{v:.1f}</td></tr>')
     return '<table class="dt">' + "".join(rows) + "</table>"
 
 
@@ -1447,6 +1503,7 @@ def _render_home_my_week(me: str, cur: int) -> None:
             f'<div class="wk-cols"><div><div class="eyebrow">What to do</div>{todo}</div>'
             f'<div><div class="eyebrow">Your lineup &middot; Week {cur}</div>'
             f'{_lineup_rows(ctx, pair[0])}</div></div>', unsafe_allow_html=True)
+        st.caption(_RISK_NOTE)
 
 
 def _render_around_league(cur: int, me=None) -> None:
@@ -1600,7 +1657,7 @@ def render_matchup() -> None:
         f'<tr class="{"swap" if p in flag_in else ""}"><td class="two"><b>{_pname(p)}<span class="pos">{pos_of.get(p, "")}</span></b>'
         f'<span>{team_of.get(p, "")}</span></td>'
         f'<td class="num mut">{gameday.game_label(ctx["games"], team_of.get(p, ""), short=True)}</td>'
-        f'<td class="num">{ctx["proj"].get(p, 0.0):.1f}</td>'
+        f'{_risk_td(ctx, p)}<td class="num">{ctx["proj"].get(p, 0.0):.1f}</td>'
         f'<td>{_START_CHIP if p in flag_in else ""}</td></tr>'
         for p in bench)
     st.markdown(
@@ -1614,7 +1671,7 @@ def render_matchup() -> None:
         st.markdown(_lineup_rows(ctx, sb, show_actual=started), unsafe_allow_html=True)
     st.caption(f'As set: {adv["set_total"]:.1f} projected; best available {adv["best_total"]:.1f}. '
                "Projections from Sleeper; a player on bye projects 0. Players whose game has started "
-               "stay where they are. Win probability treats each lineup's total as a range, wider "
+               "stay where they are. " + _RISK_NOTE + " Win probability treats each lineup's total as a range, wider "
                "for riskier positions — Draft Room's model.")
 
 

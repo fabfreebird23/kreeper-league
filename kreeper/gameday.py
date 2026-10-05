@@ -322,3 +322,44 @@ def side_outlook(starters: Sequence[str], actual: Dict[str, float], proj: Dict[s
             var += player_sd(pos_of.get(pid, ""), pj) ** 2
             left += 1
     return {"points": round(pts, 2), "final": round(final, 1), "sd": math.sqrt(var), "left": left}
+
+
+# ------------------------------------------------------------- injury risk
+# Chance a player does NOT play this week, from his Sleeper injury tag, moved
+# by his latest practice report (a Questionable who sat out practice is a far
+# bigger risk than one who practised in full). Rough league-wide rates, not a
+# medical model: about three in four Doubtful players sit, about one in four
+# Questionable players do.
+_MISS = {"OUT": 1.0, "IR": 1.0, "PUP": 1.0, "SUS": 1.0, "NA": 1.0, "COV": 1.0,
+         "DOUBTFUL": 0.75, "QUESTIONABLE": 0.25, "PROBABLE": 0.05, "DTD": 0.25}
+_Q_PRACTICE = {"DNP": 0.50, "LIMITED": 0.25, "FULL": 0.10}
+# Chance a player who suits up gets hurt badly enough to leave the game —
+# approximate per-game rates by position. Backs take the most contact.
+_IN_GAME = {"QB": 0.03, "RB": 0.06, "WR": 0.04, "TE": 0.04, "K": 0.005, "DEF": 0.0}
+
+
+def injury_risk(status: Optional[str], practice: Optional[str], pos: str,
+                game_state: str = "pre") -> Dict[str, Any]:
+    """{pct, miss, label, level} — the chance he doesn't give you a full game.
+
+    pct = P(misses the game) + P(plays) * P(hurt during it). `game_state` is
+    the NFL game's state: once it's final the question is moot (pct None);
+    mid-game only the in-game half remains, halved for the time already
+    played. `level` is "ok" / "watch" / "high" / "out" for colouring.
+    """
+    if game_state in ("post", "bye"):
+        return {"pct": None, "miss": 0.0, "label": "", "level": "ok"}
+    key = (status or "").strip().upper().replace(" ", "")
+    miss = _MISS.get(key, 0.0)
+    if key == "QUESTIONABLE":
+        pk = (practice or "").strip().upper().replace(" ", "").replace("PARTICIPATION", "")
+        miss = _Q_PRACTICE.get(pk, miss)
+    in_game = _IN_GAME.get((pos or "").upper(), 0.04)
+    if key and miss < 1.0:
+        in_game += 0.02           # already banged up: more likely to aggravate it
+    if game_state == "in":
+        miss, in_game = 0.0, in_game * 0.5
+    pct = miss + (1 - miss) * in_game
+    level = ("out" if miss >= 1.0 else "high" if pct >= 0.45 else
+             "watch" if pct >= 0.15 else "ok")
+    return {"pct": round(100 * pct), "miss": miss, "label": (status or "").strip(), "level": level}
