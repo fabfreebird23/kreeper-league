@@ -732,6 +732,15 @@ def _select_keepers(team_lb, cap, pos_cap, seed_positions=None,
     return chosen
 
 
+def draft_keepers() -> dict:
+    """The keepers as they stood AT THE DRAFT, once it has run: every
+    submitted keeper, by the team that kept him — including players traded
+    or dropped since (Walker and Pickens kept by Ned, Maye by Heath).
+    Before the draft it's current_keepers(), where a keeper traded away no
+    longer counts for the team that gave him up."""
+    return storage.load(SEASON) if current_draft_done() else current_keepers()
+
+
 def _projected_kept_ids() -> set:
     """player_ids likely off the draft board: everyone declared as a keeper, plus
     each team's most valuable eligible keepers (respecting roster + positional
@@ -2394,12 +2403,21 @@ def render_trade_analyzer() -> None:
 
 def render_keeper_landscape() -> None:
     st.markdown(theme.section_head(f'Keeper <span class="g">Landscape</span>', page=True), unsafe_allow_html=True)
-    st.caption("Positional scarcity — who's likely kept vs. left in the pool.")
-    kept = _projected_kept_ids()
-    pid_owner = {}
-    for o, pids in CANDS.items():
-        for pid in pids:
-            pid_owner[str(pid)] = config.manager_name(o)
+    done = current_draft_done()
+    if done:
+        # The draft has run: show who was actually kept, by the team that kept
+        # him — not a projection, and not whoever rosters him now.
+        st.caption("Positional scarcity — who was kept at the draft vs. who went into the pool.")
+        pid_owner = {str(x["player_id"]): config.manager_name(o)
+                     for o, picks in draft_keepers().items() for x in picks if x.get("player_id")}
+        kept = set(pid_owner)
+    else:
+        st.caption("Positional scarcity — who's likely kept vs. left in the pool.")
+        kept = _projected_kept_ids()
+        pid_owner = {}
+        for o, pids in CANDS.items():
+            for pid in pids:
+                pid_owner[str(pid)] = config.manager_name(o)
     name_idx = get_name_index()
     by_pos = {p: [] for p in ("RB", "WR", "QB", "TE")}
     seen = set()
@@ -2421,7 +2439,7 @@ def render_keeper_landscape() -> None:
             kept_n = sum(1 for *_, o in players if o)
             avail_n = len(players) - kept_n
             tone = "thin" if avail_n <= len(players) * 0.35 else ("moderate" if avail_n <= len(players) * 0.6 else "deep")
-            st.caption(f"Top {len(players)} {pos}s — **{kept_n} likely kept**, "
+            st.caption(f"Top {len(players)} {pos}s — **{kept_n} {'kept' if done else 'likely kept'}**, "
                        f"**{avail_n} available**. Draft pool: {tone}.")
             rows = []
             for rank, nm, pid, owner in players:
@@ -3004,7 +3022,7 @@ def render_draft_board() -> None:
     # at the same round (when the team owns two of that pick) split across both
     # cells instead of stacking. Each cell is used at most once.
     from collections import defaultdict
-    data = current_keepers()
+    data = draft_keepers()
     owner_to_slot = board["owner_to_slot"]
     owner_to_roster = board["owner_to_roster"]
     owned_slots = defaultdict(list)  # (round, roster_id) -> [slots that roster owns]
