@@ -17,6 +17,44 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
+def _fresh_kreeper() -> None:
+    """Drop stale kreeper.* modules after a deploy, so a push never needs a
+    Reboot.
+
+    Streamlit re-executes THIS file on every run, but everything it imports
+    stays in sys.modules for the life of the process — and Streamlit Cloud
+    keeps the process across a push. So new app.py code ran against the last
+    deploy's theme.py / sleeper.py, and anything new on them (a helper, a
+    constant) raised AttributeError until someone pressed Reboot.
+
+    Fingerprint the package's files (size + mtime, which a git checkout
+    changes); if the loaded copy was built from different files — or predates
+    this guard and carries no fingerprint at all — forget every kreeper
+    module so the imports below load fresh. A plain rerun keeps them. Same
+    fix as the Draft Room's _fresh_draftkit.
+    """
+    import hashlib
+    import pathlib
+    import sys
+    root = pathlib.Path(__file__).resolve().parent / "kreeper"
+    h = hashlib.sha1()
+    for f in sorted(root.rglob("*.py")):
+        try:
+            st_ = f.stat()
+        except OSError:
+            continue
+        h.update(f"{f.relative_to(root)}:{st_.st_size}:{st_.st_mtime_ns}".encode())
+    fp = h.hexdigest()
+    loaded = sys.modules.get("kreeper")
+    if loaded is not None and getattr(loaded, "_fingerprint", None) != fp:
+        for name in [m for m in sys.modules if m == "kreeper" or m.startswith("kreeper.")]:
+            del sys.modules[name]
+    import kreeper
+    kreeper._fingerprint = fp
+
+
+_fresh_kreeper()
+
 from kreeper import (config, draftboard, engine, faab, gameday, history, lottery, phase,
                      season, sleeper, storage, theme)
 from kreeper.adp import consensus as adp_consensus
