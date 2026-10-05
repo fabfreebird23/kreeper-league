@@ -112,3 +112,19 @@ def test_advice_week_stays_while_a_game_is_live():
 def test_advice_week_after_every_game_is_final_is_next_week():
     assert gd.advice_week(4, {"KC": _g("post", "2026-10-04T17:00:00Z")}) == 5
     assert gd.advice_week(4, {}) == 4
+
+
+def test_kicker_and_defense_fill_their_own_slots():
+    """B&B lineups carry K and DEF: each fills only its own slot, never FLEX."""
+    slots = ["QB", "RB", "WR", "FLEX", "K", "DEF"]
+    pos = {"q": "QB", "r1": "RB", "r2": "RB", "w": "WR", "k": "K", "d": "DEF", "k2": "K"}
+    proj = {"q": 20, "r1": 15, "r2": 12, "w": 14, "k": 8, "k2": 9, "d": 7}
+    lu = dict(gd.optimal_lineup(pos, slots, proj, pos))
+    assert lu["K"] == "k2" and lu["DEF"] == "d" and lu["FLEX"] == "r2"
+
+
+def test_superflex_takes_a_second_qb():
+    slots = ["QB", "SUPER_FLEX"]
+    pos = {"q1": "QB", "q2": "QB", "r": "RB"}
+    lu = dict(gd.optimal_lineup(pos, slots, {"q1": 20, "q2": 18, "r": 10}, pos))
+    assert lu["SUPER_FLEX"] == "q2"

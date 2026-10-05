@@ -29,7 +29,11 @@ _ABBR = {"WSH": "WAS", "JAC": "JAX", "LA": "LAR"}          # ESPN -> Sleeper
 _PROJ = "https://api.sleeper.com/projections/nfl"
 _PROJ_HEADERS = {"User-Agent": "kreeper-league/1.0 (league site)"}
 SKILL = ("QB", "RB", "WR", "TE")
+# Everything a lineup slot can hold. Leagues without K/DEF slots never ask for
+# them, so projecting and pooling them is harmless there.
+LINEUP_POS = SKILL + ("K", "DEF")
 FLEX_OK = ("RB", "WR", "TE")
+SUPERFLEX_OK = ("QB", "RB", "WR", "TE")
 
 
 def _cache_dir():
@@ -167,7 +171,7 @@ def week_projections(season: int, week: int) -> Dict[str, float]:
             pass
     out: Dict[str, float] = {}
     try:
-        for pos in SKILL:
+        for pos in LINEUP_POS:
             r = requests.get(f"{_PROJ}/{season}/{int(week)}",
                              params={"season_type": "regular", "position[]": pos, "order_by": "pts_ppr"},
                              headers=_PROJ_HEADERS, timeout=15)
@@ -196,7 +200,7 @@ def week_projections(season: int, week: int) -> Dict[str, float]:
 # Rough within-season coefficient of variation of weekly PPR scoring by
 # position (Draft Room's numbers). Gets the ORDER of risk right, which is all
 # a win-probability bar needs.
-_CV = {"QB": 0.34, "RB": 0.52, "WR": 0.58, "TE": 0.62}
+_CV = {"QB": 0.34, "RB": 0.52, "WR": 0.58, "TE": 0.62, "K": 0.48, "DEF": 0.75}
 _FLOOR_SD = 1.5
 
 
@@ -214,7 +218,11 @@ def win_prob(a_mean: float, a_sd: float, b_mean: float, b_sd: float) -> float:
 
 # ------------------------------------------------------------------ lineups
 def slot_accepts(slot: str, pos: str) -> bool:
-    return pos in FLEX_OK if slot == "FLEX" else slot == pos
+    if slot == "FLEX":
+        return pos in FLEX_OK
+    if slot == "SUPER_FLEX":
+        return pos in SUPERFLEX_OK
+    return slot == pos
 
 
 def optimal_lineup(pids: Iterable[str], slots: Sequence[str], proj: Dict[str, float],
@@ -226,11 +234,11 @@ def optimal_lineup(pids: Iterable[str], slots: Sequence[str], proj: Dict[str, fl
     pid None only if there's no eligible player at all. Ties go to `prefer`
     (the current starters) so an equal projection never reads as a change."""
     prefer = {str(p) for p in prefer}
-    pool = sorted({str(p) for p in pids if pos_of.get(str(p)) in SKILL},
+    pool = sorted({str(p) for p in pids if pos_of.get(str(p)) in LINEUP_POS},
                   key=lambda p: (-float(proj.get(p, 0.0)), p not in prefer, p))
     used: set = set()
     picks: Dict[int, Optional[str]] = {}
-    order = sorted(range(len(slots)), key=lambda i: slots[i] == "FLEX")
+    order = sorted(range(len(slots)), key=lambda i: slots[i] in ("FLEX", "SUPER_FLEX"))
     for i in order:
         pick = next((p for p in pool if p not in used and slot_accepts(slots[i], pos_of[p])), None)
         if pick:

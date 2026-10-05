@@ -1418,7 +1418,7 @@ def _render_around_league(cur: int, me=None) -> None:
         return
     done = gameday.week_complete(ctx["games"])
     st.markdown(theme.section_head('Around the <span class="g">League</span>',
-                                   f"week {cur} &middot; {'final' if done else 'all four games'}"),
+                                   f"week {cur} &middot; {'final' if done else f'all {len(pairs)} games'}"),
                 unsafe_allow_html=True)
     rows = []
     for sa, sb in pairs:
@@ -2573,7 +2573,11 @@ def render_my_keepers() -> None:
     elif deadline:
         st.caption(f"⏳ Submissions close **{deadline:%b %d, %Y · %-I:%M %p}**.")
 
-    name = st.selectbox("Who are you?", list(NAME_TO_ID.keys()), index=None,
+    # Start on the team this device picked (masthead dropdown), if any.
+    _names = list(NAME_TO_ID.keys())
+    _mine = _me()
+    _idx = _names.index(MANAGERS[_mine]["name"]) if _mine and MANAGERS[_mine]["name"] in _names else None
+    name = st.selectbox("Who are you?", _names, index=_idx,
                         placeholder="Pick your name…")
     if not name:
         st.info("Select your name to load your roster.")
