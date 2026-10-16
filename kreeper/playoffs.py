@@ -49,6 +49,9 @@ def _settings(league_id: str) -> dict:
     rtype = int(st.get("playoff_round_type") or 0)
     weeks = rounds + (1 if rtype == 1 else rounds if rtype == 2 else 0)
     return {"playoff_teams": n, "start": start, "last_regular": start - 1,
+            # B&B and 7½ Men also play the league median every week: a second
+            # result, a win for every team in the top half. 6-4 after five weeks.
+            "median": bool(int(st.get("league_average_match") or 0)),
             "playoff_weeks": list(range(start, min(18, start + weeks - 1) + 1)), "slots": slots}
 
 
@@ -102,7 +105,8 @@ def team_strength(league_id: str, season: int, week: int, slots: List[str]) -> d
 
 # ------------------------------------------------------------------ sim
 def simulate(teams: dict, schedule: Dict[int, List[Tuple[str, str]]], playoff_teams: int,
-             me: Optional[str] = None, n_sims: int = 10000, seed: int = 7) -> dict:
+             me: Optional[str] = None, n_sims: int = 10000, seed: int = 7,
+             median: bool = False) -> dict:
     """The rest of the season on the real fixture list.
 
     {"teams": {owner: {playoff_pct, avg_seed}}, "seeds": [% per seed] for `me`,
@@ -127,11 +131,13 @@ def simulate(teams: dict, schedule: Dict[int, List[Tuple[str, str]]], playoff_te
         pf = {o: teams[o]["pf"] for o in owners}
         my_res = {}
         for wk in weeks:
+            week_pts = {}
             for a, b in schedule[wk]:
                 if a not in teams or b not in teams:
                     continue
                 sa = rng.gauss(teams[a]["mean"], teams[a]["sd"])
                 sb = rng.gauss(teams[b]["mean"], teams[b]["sd"])
+                week_pts[a], week_pts[b] = sa, sb
                 pf[a] += sa
                 pf[b] += sb
                 win_a = sa >= sb
@@ -139,6 +145,9 @@ def simulate(teams: dict, schedule: Dict[int, List[Tuple[str, str]]], playoff_te
                 if me in (a, b):
                     my_res[wk] = win_a if me == a else not win_a
                     my_opp[wk] = b if me == a else a
+            if median and week_pts:
+                for o in sorted(week_pts, key=week_pts.get, reverse=True)[:len(week_pts) // 2]:
+                    wins[o] += 1
         order = sorted(owners, key=lambda o: (-wins[o], -pf[o]))
         for i, o in enumerate(order):
             seed_sum[o] += i + 1
@@ -275,7 +284,9 @@ def playoff_slate(league_id: str, season: int, week: int, owner: str, slots: Lis
 def outlook(league_id: Optional[str] = None, season: Optional[int] = None,
             week: Optional[int] = None, me: Optional[str] = None, n_sims: int = 10000) -> dict:
     """Everything the Playoffs page shows, in one call."""
-    league_id = league_id or config.league()["sleeper_league_id"]
+    if not league_id:
+        lg = config.league()
+        league_id = lg.get("sleeper_league_id") or lg.get("id")
     state = sleeper.get_nfl_state() if hasattr(sleeper, "get_nfl_state") else {}
     season = int(season or (state or {}).get("season") or time.gmtime().tm_year)
     week = int(week or (state or {}).get("week") or 1)
@@ -283,6 +294,7 @@ def outlook(league_id: Optional[str] = None, season: Optional[int] = None,
     teams = team_strength(league_id, season, week, s["slots"])
     weeks_left = max(0, s["last_regular"] - week + 1)
     fx = fixtures(league_id, week, s["last_regular"]) if weeks_left else {}
-    sim = simulate(teams, fx, min(s["playoff_teams"], len(teams)), me=me, n_sims=n_sims) if fx else {}
+    sim = simulate(teams, fx, min(s["playoff_teams"], len(teams)), me=me, n_sims=n_sims,
+                   median=s["median"]) if fx else {}
     return {"season": season, "week": week, "settings": s, "teams": teams, "sim": sim,
             "weeks_left": weeks_left, "fixtures": fx}
