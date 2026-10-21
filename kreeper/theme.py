@@ -1098,6 +1098,26 @@ table.dt td.risk{ width:1%; white-space:nowrap; text-align:right; padding-left:4
 .kx .ls-r b{ font-family:'Oswald',sans-serif; font-weight:500; font-size:15px; }
 [data-testid="stMarkdownContainer"] .kx .ls-s{ font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted) !important; }
 [data-testid="stMarkdownContainer"] .kx .ls-r.lsav .ls-s{ color:#d4b15e !important; font-weight:700; }
+
+/* ==== the remaining tools, in the editorial look ========================= */
+/* draft board: keepers gold, traded picks royal */
+.dboard .db-keep{ background:rgba(212,177,94,.16) !important; color:#f2deaa !important; box-shadow:inset 0 0 0 1px rgba(212,177,94,.45) !important; }
+.dboard .db-traded{ background:rgba(42,91,176,.22) !important; color:#cfe0ff !important; }
+.dboard th{ font-family:'Roboto Mono',monospace !important; font-size:10px !important; letter-spacing:.12em !important; color:var(--gold) !important; }
+.dboard td.db-rd{ font-family:'Anton',sans-serif !important; font-size:18px !important; color:var(--muted) !important; }
+/* every remaining table: mono gold headers, Anton rank, Oswald names, B&W faces */
+table.lb thead th{ font-family:'Roboto Mono',monospace !important; font-size:10px !important; letter-spacing:.12em !important; color:var(--gold) !important; }
+table.lb td.rk{ font-family:'Anton',sans-serif !important; font-weight:400 !important; font-size:18px !important; color:var(--muted) !important; }
+table.lb td.pl{ font-family:'Oswald',sans-serif !important; font-weight:500 !important; font-size:15px !important; }
+table.lb td.pl img{ filter:grayscale(1); }
+table.lb tr.kept td{ background:rgba(212,177,94,.10); }
+table.lb td.num{ font-variant-numeric:tabular-nums; }
+/* rules as cards: gold kicker, Playfair title */
+.rule-block{ background:var(--panel) !important; border:1px solid var(--line) !important; border-left:4px solid var(--gold) !important; border-radius:12px !important; }
+.rule-block h4{ font-family:'Playfair Display',serif !important; font-style:italic; font-size:22px !important; text-transform:none !important; letter-spacing:0 !important; }
+.rule-k{ font-family:'Roboto Mono',monospace !important; font-size:10.5px !important; letter-spacing:.1em; text-transform:uppercase; color:var(--gold) !important; }
+.motion{ border-left:4px solid var(--royal-hi) !important; border-radius:12px !important; }
+.motion .mo-head{ font-family:'Oswald',sans-serif !important; font-weight:500 !important; font-size:17px !important; }
 </style>
 """
 
