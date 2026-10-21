@@ -1351,6 +1351,9 @@ def _two_div(owner: str, win: bool = False) -> str:
 _THUMB = "https://sleepercdn.com/content/nfl/players/thumb/{}.jpg"
 
 
+_NOFACE = '<span class="xl-f"></span>'
+
+
 def _ph_img(pid, cls: str) -> str:
     return (f'<img class="{cls}" src="{_THUMB.format(pid)}" alt="" onerror="this.style.visibility=\'hidden\'">'
             if pid else "")
@@ -2528,7 +2531,7 @@ def render_keeper_landscape() -> None:
             st.caption(f"Top {len(players)} {pos}s — **{kept_n} {'kept' if done else 'likely kept'}**, "
                        f"**{avail[pos]} available**.")
             rows = "".join(
-                f'<div class="ls-r{" av" if not owner else ""}"><span class="ls-n">{rank}</span>{_ph_img(pid, "xl-f")}'
+                f'<div class="ls-r{" lsav" if not owner else ""}"><span class="ls-n">{rank}</span>{_ph_img(pid, "xl-f") or _NOFACE}'
                 f'<b>{nm}</b><span class="ls-s">{("kept &middot; " + owner) if owner else "available"}</span></div>'
                 for rank, nm, pid, owner in players)
             st.markdown(f'<div class="kx">{rows}</div>', unsafe_allow_html=True)
