@@ -1086,6 +1086,18 @@ table.dt td.risk{ width:1%; white-space:nowrap; text-align:right; padding-left:4
   .kx .sp{ grid-template-columns:80px 1fr 40px; } .kx .sp span{ display:none; }
   .kx .lt{ grid-template-columns:28px minmax(0,1fr) 70px 50px; }
 }
+
+/* pre-season: contract faces, the landscape as a ranked list */
+.ccard .ccard-top{ display:flex; align-items:center; gap:12px; }
+.ccard .ccard-top .cost{ margin-left:auto; }
+.ccard .cface{ width:52px; height:52px; border-radius:10px; object-fit:cover !important; object-position:top !important; filter:grayscale(1);
+  background:var(--panel2); flex:none; }
+.kx .ls-r{ display:grid; grid-template-columns:40px 34px minmax(0,1fr) auto; gap:10px; align-items:center; padding:7px 8px; border-bottom:1px solid var(--line); }
+.kx .ls-r.av{ background:linear-gradient(90deg,rgba(212,177,94,.12),transparent 70%); border-radius:8px; }
+[data-testid="stMarkdownContainer"] .kx .ls-n{ font-family:'Anton',sans-serif; font-size:20px; color:var(--muted) !important; }
+.kx .ls-r b{ font-family:'Oswald',sans-serif; font-weight:500; font-size:15px; }
+[data-testid="stMarkdownContainer"] .kx .ls-s{ font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted) !important; }
+[data-testid="stMarkdownContainer"] .kx .ls-r.av .ls-s{ color:#d4b15e !important; font-weight:700; }
 </style>
 """
 

@@ -2512,30 +2512,26 @@ def render_keeper_landscape() -> None:
         owner = pid_owner.get(str(pid)) if str(pid) in kept else None
         by_pos[pos].append((int(rank), ar["name"], str(pid), owner))
 
+    tops = {pos: sorted(by_pos[pos], key=lambda x: x[0])[:18] for pos in by_pos}
+    avail = {pos: sum(1 for *_, o in tops[pos] if not o) for pos in tops}
+    thin = min(avail, key=lambda p: avail[p] / max(1, len(tops[p]))) if tops else None
+    st.markdown(_bh("ink", "Keeper landscape · " + ("kept at the draft" if done else "likely kept"),
+                    str(sum(avail.values())),
+                    f"of the top {sum(len(v) for v in tops.values())} are in the draft pool"
+                    + (f" — thinnest at <b>{thin}</b>, {avail[thin]} of {len(tops[thin])} left" if thin else "")),
+                unsafe_allow_html=True)
     tabs = st.tabs(["RB", "WR", "QB", "TE"])
     for tab, pos in zip(tabs, ["RB", "WR", "QB", "TE"]):
         with tab:
-            players = sorted(by_pos[pos], key=lambda x: x[0])[:18]
-            kept_n = sum(1 for *_, o in players if o)
-            avail_n = len(players) - kept_n
-            tone = "thin" if avail_n <= len(players) * 0.35 else ("moderate" if avail_n <= len(players) * 0.6 else "deep")
+            players = tops[pos]
+            kept_n = len(players) - avail[pos]
             st.caption(f"Top {len(players)} {pos}s — **{kept_n} {'kept' if done else 'likely kept'}**, "
-                       f"**{avail_n} available**. Draft pool: {tone}.")
-            rows = []
-            for rank, nm, pid, owner in players:
-                if owner:
-                    status = f'<span style="color:#b3232a;">kept · {owner}</span>'
-                else:
-                    status = '<span class="kept-badge">AVAILABLE</span>'
-                rows.append(
-                    f'<tr><td class="rk">{rank}</td>'
-                    f'<td class="pl">{theme.img_tag(pid)}{nm}</td>'
-                    f'<td>{status}</td></tr>'
-                )
-            head = '<tr><th>ADP</th><th>Player</th><th>Status</th></tr>'
-            st.markdown('<div class="neonwrap"><table class="lb"><thead>' + head
-                        + '</thead><tbody>' + "".join(rows) + '</tbody></table></div>',
-                        unsafe_allow_html=True)
+                       f"**{avail[pos]} available**.")
+            rows = "".join(
+                f'<div class="ls-r{" av" if not owner else ""}"><span class="ls-n">{rank}</span>{_ph_img(pid, "xl-f")}'
+                f'<b>{nm}</b><span class="ls-s">{("kept &middot; " + owner) if owner else "available"}</span></div>'
+                for rank, nm, pid, owner in players)
+            st.markdown(f'<div class="kx">{rows}</div>', unsafe_allow_html=True)
 
 
 def render_mock_draft() -> None:
@@ -2722,7 +2718,8 @@ def _contract_card_html(row: pd.Series) -> str:
     return (
         f'<div class="{css_cls}">'
         f'<div class="ccard-top">'
-        f'<div><h4>{row["Player"]}</h4><div class="pos">{row["Pos"]} · {row["NFL"] or "FA"}</div></div>'
+        + (_ph_img(row.get("player_id"), "cface") if row.get("player_id") else "")
+        + f'<div><h4>{row["Player"]}</h4><div class="pos">{row["Pos"]} · {row["NFL"] or "FA"}</div></div>'
         f'<div class="cost"><b>{cost_big}</b><small>{cost_small}</small></div>'
         f'</div>'
         f'<div class="pips">{pips}</div>'
@@ -2738,6 +2735,17 @@ def _contract_cards_grid_html(df: pd.DataFrame) -> str:
 
 def render_contract_cards(name: str, df: pd.DataFrame, show_title: bool = True) -> None:
     eligible_n = int(df["Eligible"].sum())
+    if show_title and not df.empty:
+        _best, _bv = None, None
+        for _, r in df[df["Eligible"]].iterrows():
+            m = re.match(r"Round (\d+)", str(r["Reg. Cost"]))
+            v = keeper_value(r["ADP Rank"], int(m.group(1))) if (m and r["ADP Rank"]) else None
+            if v is not None and (_bv is None or v > _bv):
+                _best, _bv = r, v
+        st.markdown(_bh("ink", f"Contracts · {name}", str(eligible_n),
+                        "eligible to keep" + (f' — <b>{_best["Player"]}</b> is the best value, {_bv:+d}'
+                                              if _best is not None else ""),
+                        photo=_best.get("player_id") if _best is not None else None), unsafe_allow_html=True)
     head = (
         f'<div class="kr-section-head"><h3>Contracts — <span class="g">{name}</span></h3>'
         f'<span class="tag">{eligible_n} eligible</span></div>'
