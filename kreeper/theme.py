@@ -983,7 +983,8 @@ table.dt td.risk{ width:1%; white-space:nowrap; text-align:right; padding-left:4
 /* the keeper tray: black-and-white portraits, gold rounds */
 .ktray .kt{ background:#101013; border:0; border-radius:4px; padding:0 0 10px; overflow:hidden; box-shadow:inset 0 -3px 0 #2a5bb0; }
 .ktray .kt i{ padding-top:8px; }
-.ktray .kt .kh-img{ width:100%; height:118px; border-radius:0; object-fit:cover; object-position:top; filter:grayscale(1); margin:0 0 6px; }
+/* the thumbs are 350x254: keep that shape (capped) so a wide tile shows the face, not a crop of the forehead */
+.ktray .kt .kh-img{ width:100%; height:auto; aspect-ratio:350 / 254; max-height:190px; border-radius:0; object-fit:cover; object-position:center top; filter:grayscale(1); margin:0 0 6px; }
 .ktray .kt b{ font-family:'Playfair Display',serif; font-size:14.5px; }
 .ktray .kt.empty{ box-shadow:none; }
 @media (max-width:1100px){
