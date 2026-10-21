@@ -55,7 +55,7 @@ def _fresh_kreeper() -> None:
 
 _fresh_kreeper()
 
-from kreeper import (config, draftboard, engine, faab, gameday, history, lottery, phase,
+from kreeper import (config, nextyear, draftboard, engine, faab, gameday, history, lottery, phase,
                      playoffs, playoffs_view,
                      season, sleeper, storage, theme)
 from kreeper.adp import consensus as adp_consensus
@@ -1784,7 +1784,10 @@ def _keeper_outlook_rows(owner: str) -> list:
         pm = H.player_meta(pid)
         if pm.position not in gameday.SKILL:
             continue
-        rank = adp_rank_for(pm.name, pm.position)
+        # next season's price: the projected 2027 ADP (kreeper/nextyear.py),
+        # this season's consensus only for anyone FantasyCalc doesn't price
+        rank = (nextyear.rank(pid, NT, nextyear.ppr_for(LEAGUE.get("scoring", "ppr")))
+                or adp_rank_for(pm.name, pm.position))
         adp_rd = engine.adp_rank_to_round(rank, NT) if rank else None
         prof = hist.keeper_profile(owner, pid, nxt)
         r = {"_pid": pid, "name": pm.name, "Pos": pm.position, "adp": rank, "adp_rd": adp_rd,
@@ -1921,7 +1924,7 @@ def _keeper_card_html(r: dict) -> str:
     val = (f'<div class="kv {"good" if v > 0 else "bad" if v < 0 else ""}"><b>{v:+d}</b><i>value</i></div>'
            if v is not None else
            f'<div class="kv"><b>&mdash;</b><i>{"blocked" if r["blocked"] else "no ADP"}</i></div>')
-    adp = f'ADP R{r["adp_rd"]} (#{int(r["adp"])})' if r["adp"] else "no ADP"
+    adp = f'{SEASON + 1} ADP R{r["adp_rd"]} (#{int(r["adp"])})' if r["adp"] else "no ADP"
     return (f'<div class="kcard2 {r["verdict"]}">{_headshot(r["_pid"])}<div class="kc-main">'
             f'<div class="kc-top"><b>{r["name"]}</b><span class="pos">{r["Pos"]} &middot; {r["nfl"] or "FA"}</span>'
             f'<span class="chip {tone}">{lab}</span></div>'
@@ -1992,8 +1995,9 @@ def render_keeper_outlook() -> None:
     st.caption(f"**Value** is what keeping him is worth: his talent (a draft-value curve, the #1 player ≈ 100) "
                f"minus what that round's pick would actually land in our draft once ~40 keepers are off the board. "
                f"That's why an elite player kept in the 1st still scores well — a 1st-round pick only lands about "
-               f"the 35th-best player — and why a stud at a last-round price scores best of all. ADP is this year's "
-               f"consensus. Costs follow the house rules: the round he came from, up {bump} rounds in year 2, ADP in "
+               f"the 35th-best player — and why a stud at a last-round price scores best of all. ADP is next "
+               f"summer's, projected from FantasyCalc's trade market: dynasty and redraft value averaged, and "
+               f"dynasty alone for a player on IR or out for the year. Costs follow the house rules: the round he came from, up {bump} rounds in year 2, ADP in "
                f"year 3; rookie keepers take your last rounds with no clock; a cost lands on a {nxt} pick you own. "
                f"Set My Keepers does the exact allocation before the draft.")
 
