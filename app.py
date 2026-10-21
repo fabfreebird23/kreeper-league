@@ -1595,6 +1595,37 @@ def _faceoff_html(ctx: dict, sa: dict, sb: dict) -> str:
     return "".join(rows)
 
 
+def _h2h_html(ctx: dict, sa: dict, sb: dict) -> str:
+    """Slot by slot as head-to-head rows: points (actual once his game has
+    started, projection before) and an edge bar that fills toward the winner."""
+    pos_of, team_of = _pos_team_maps()
+
+    def val(side, pid):
+        if not pid or pid == "0":
+            return 0.0, False
+        stt = gameday.status(ctx["games"], team_of.get(pid, ""))
+        if stt in ("in", "post"):
+            return side["actual"].get(pid, 0.0), True
+        return ctx["proj"].get(pid, 0.0), False
+    rows = []
+    for slot, pa, pb in zip(ctx["slots"], sa["starters"], sb["starters"]):
+        va, la = val(sa, pa)
+        vb, lb = val(sb, pb)
+        d = va - vb
+        w = min(100.0, abs(d) / 20 * 100)
+        fill = f'<i style="width:{w:.0f}%"></i>'
+        na = _pname(pa) if pa and pa != "0" else "Empty"
+        nb = _pname(pb) if pb and pb != "0" else "Empty"
+        rows.append(
+            f'<div class="khs"><span class="xl-s">{slot}</span><b class="hn">{na}</b>'
+            f'<b class="hp{" win" if d > 0 else ""}{"" if la else " pj"}">{va:.1f}</b>'
+            f'<div class="he"><div class="hh l">{fill if d > 0 else ""}</div><span>{d:+.1f}</span>'
+            f'<div class="hh r">{fill if d < 0 else ""}</div></div>'
+            f'<b class="hp{" win" if d < 0 else ""}{"" if lb else " pj"}{" zero" if vb == 0 else ""}">{vb:.1f}</b>'
+            f'<b class="hn r">{nb}</b></div>')
+    return "".join(rows)
+
+
 def render_live() -> None:
     st.markdown(theme.section_head('<span class="g">Live</span>', "every Kreeper matchup", page=True),
                 unsafe_allow_html=True)
@@ -1632,21 +1663,19 @@ def render_live() -> None:
             a, b = _outlook(ctx, sa), _outlook(ctx, sb)
             wp = _wp(a, b)
             mine = me is not None and sa["owner"] == me
+
+            def half(side, o, cls):
+                r = _rec_of(side["owner"])
+                img = _ph_img(_top_pid(ctx, side), "mm-f")
+                txt = (f'<div><span>{_team_of(side["owner"])}{" &middot; " + r if r else ""}</span>'
+                       f'<b>{o["points"]:.1f}</b><i>proj {o["final"]:.0f} &middot; {o["left"]} to play</i></div>')
+                return f'<div class="mm-s {cls}">' + (img + txt if cls == "a" else txt + img) + '</div>'
             cards.append(
-                f'<div class="lcard{" mine" if mine else ""}"><div class="lhead">'
-                f'{_two_div(sa["owner"], a["final"] > b["final"])}'
-                f'<div class="ls"><b>{a["points"]:.1f}</b><span>&ndash;</span><b class="dim">{b["points"]:.1f}</b></div>'
-                f'{_two_div(sb["owner"], b["final"] > a["final"])}</div>'
-                f'<div class="wpbar sm"><i style="width:{wp * 100:.0f}%"></i></div>'
-                f'<div class="lfoot"><span><b>{wp * 100:.0f}%</b> &middot; {a["left"]} to play</span>'
-                f'<span class="mid">proj {a["final"]:.0f}&ndash;{b["final"]:.0f}</span>'
-                f'<span>{b["left"]} to play &middot; <b>{(1 - wp) * 100:.0f}%</b></span></div>'
-                + (f'<div class="eyebrow pad">Slot by slot</div>{_faceoff_html(ctx, sa, sb)}' if mine else "")
-                + "</div>")
-        if me and cards and pairs[0][0]["owner"] == me:
-            st.markdown(cards[0] + f'<div class="lgrid">{"".join(cards[1:])}</div>', unsafe_allow_html=True)
-        else:
-            st.markdown(f'<div class="lgrid">{"".join(cards)}</div>', unsafe_allow_html=True)
+                f'<div class="mm{" me" if mine else ""}">{half(sa, a, "a")}'
+                f'<div class="mm-m"><b>{wp * 100:.0f}<sup>%</sup></b><div class="mm-bar"><i style="width:{wp * 100:.0f}%"></i></div></div>'
+                f'{half(sb, b, "b")}</div>'
+                + (f'<div class="eyebrow pad">Your matchup &middot; slot by slot</div>{_h2h_html(ctx, sa, sb)}' if mine else ""))
+        st.markdown('<div class="kx">' + "".join(cards) + '</div>', unsafe_allow_html=True)
         if not me:
             st.caption("Pick your team (masthead, top right) to see your matchup slot by slot.")
 
@@ -2181,27 +2210,28 @@ def render_record_book() -> None:
     champ_season = max(seasons, key=lambda s: s["season"])
     titles_leader = max(agg.items(), key=lambda kv: kv[1]["titles"], default=None)
     best_wp = max(agg.items(), key=lambda kv: kv[1]["w"] / max(1, kv[1]["w"] + kv[1]["l"]), default=None)
-    tiles = [
-        (1.0, champ_season["champ"] or "—", "champ", "Reigning Champion",
-         f'{champ_season["season"]} season', theme.PURPLE),
-        (min(1.0, titles_leader[1]["titles"] / max(1, titles_leader[1]["seasons"])) if titles_leader else 0.0,
-         config.manager_name(titles_leader[0]) if titles_leader else "—", "titles", "Most Titles",
-         f'{titles_leader[1]["titles"]} title(s)' if titles_leader else "", theme.ACCENT),
-    ]
+    me = _me()
+    _mine = agg.get(me) if me else None
+    _mine_titles = [x["season"] for x in seasons if me and NAME_TO_ID.get(x["champ"] or "") == me]
+    _grid = [("Reigning champ", (champ_season["champ"] or "&mdash;").split()[0], str(champ_season["season"]))]
     if best_wp:
-        wp = best_wp[1]["w"] / max(1, best_wp[1]["w"] + best_wp[1]["l"])
-        tiles.append((wp, f'{wp*100:.0f}%', "win%", "Best Win%", config.manager_name(best_wp[0]), theme.TEAL))
-    _glance_box(tiles)
-
-    st.markdown("##### Champions")
-    champ_rows = "".join(
-        f'<tr><td class="rk">{s["season"]}</td>'
-        f'<td class="pl">{s["champ"] or "—"}</td>'
-        f'<td>runner-up: {s["runner"] or "—"}</td></tr>'
-        for s in seasons)
-    st.markdown('<div class="neonwrap"><table class="lb"><thead>'
-                '<tr><th>Season</th><th>Champion</th><th></th></tr></thead><tbody>'
-                + champ_rows + '</tbody></table></div>', unsafe_allow_html=True)
+        _grid.append(("Best all-time", f'{best_wp[1]["w"]}&ndash;{best_wp[1]["l"]}', config.manager_name(best_wp[0])))
+    _pf = max(agg.items(), key=lambda kv: kv[1]["pf"], default=None)
+    if _pf:
+        _grid.append(("Most points", f'{int(_pf[1]["pf"]):,}', config.manager_name(_pf[0])))
+    if _mine:
+        _grid.append(("Your record", f'{_mine["w"]}&ndash;{_mine["l"]}',
+                      f'{_mine["w"] / max(1, _mine["w"] + _mine["l"]):.3f} &middot; {_mine["titles"]} title{"s" if _mine["titles"] != 1 else ""}'))
+    _first = min(x["season"] for x in seasons)
+    _champs = {x["champ"] for x in seasons if x["champ"]}
+    st.markdown(_bh("ink", f"League record book · since {_first}", str(len(_champs)),
+                    f'champion{"s" if len(_champs) != 1 else ""} in {len(seasons)} season{"s" if len(seasons) != 1 else ""}'
+                    + (f' — <b>you won {", ".join(map(str, _mine_titles))}</b>' if _mine_titles else ""),
+                    grid=_grid[:4]), unsafe_allow_html=True)
+    st.markdown('<div class="kx chs">' + "".join(
+        f'<div class="ch"><em>{x["season"]}</em><b>{x["champ"] or "&mdash;"}</b>'
+        f'<span>{("over " + x["runner"]) if x.get("runner") else ""}</span></div>' for x in seasons) + '</div>',
+        unsafe_allow_html=True)
 
     st.markdown("##### All-Time Standings")
     rows = []
@@ -2295,9 +2325,11 @@ def get_recent_trades(limit: int = 8) -> list:
         adds = tx.get("adds") or {}
         picks = tx.get("draft_picks") or []
         receives = {rid: [] for rid in roster_ids}
+        pid_of = {}
         for pid, rid in adds.items():
             if rid in receives:
                 receives[rid].append(H.player_meta(pid).name)
+                pid_of[H.player_meta(pid).name] = str(pid)
         for p in picks:
             owner = p.get("owner_id")
             if owner in receives:
@@ -2305,7 +2337,7 @@ def get_recent_trades(limit: int = 8) -> list:
         teams = [(config.manager_name(r2o.get(rid, "")), receives.get(rid, [])) for rid in roster_ids]
         ts = tx.get("status_updated")
         date = dt.datetime.fromtimestamp(ts / 1000).strftime("%b %d, %Y") if ts else ""
-        out.append({"teams": teams, "date": date})
+        out.append({"teams": teams, "date": date, "pid_of": pid_of})
     return out
 
 
@@ -2316,23 +2348,30 @@ def render_recent_trades() -> None:
     if not trades:
         st.info("No completed trades on record yet.")
         return
+    # each trade as a card: faces for players, gold chips for picks
+    me = _me()
+    mine = [t for t in trades if any(NAME_TO_ID.get(nm) == me for nm, _ in t["teams"])] if me else []
+    if me and mine:
+        # the trade that brought you the most players, not the biggest pick swap
+        _big = max(mine, key=lambda t: sum(1 for nm, a in t["teams"] if NAME_TO_ID.get(nm) == me
+                                           for x in a if x in t.get("pid_of", {})))
+        _got = next((a for nm, a in _big["teams"] if NAME_TO_ID.get(nm) == me), [])
+        _ppl = [x for x in _got if x in _big.get("pid_of", {})]
+        st.markdown(_bh("ink", f"Trades · {len(trades)} this season", str(len(mine)),
+                        "of them yours" + (f' — one brought you <b>{", ".join(_ppl[:2])}</b>' if _ppl else ""),
+                        photo=_big["pid_of"].get(_ppl[0]) if _ppl else None), unsafe_allow_html=True)
+
+    def chips(assets, pid_of):
+        return "".join(f'<span class="ktp">{_ph_img(pid_of[a], "ktp-f")}{a}</span>' if a in pid_of
+                       else f'<span class="ktp pk">{a}</span>' for a in assets) or '<span class="ktp pk">nothing</span>'
     cards = []
     for t in trades:
-        header = ' <span class="vs">traded with</span> '.join(f'<b>{nm}</b>' for nm, _ in t["teams"])
-        cols = "".join(
-            f'<div><b>{nm} receives</b>'
-            + "".join(f'<span class="gasset-chip">{a}</span>' for a in assets)
-            + '</div>'
-            for nm, assets in t["teams"]
-        )
+        (na, aa), (nb, ab) = (t["teams"] + [("", [])])[:2]
         cards.append(
-            '<div class="gpanel"><div class="gpanel-in">'
-            f'<div class="gtrade-teams">{header}</div>'
-            f'<div class="gtrade-assets">{cols}</div>'
-            f'<div class="gtrade-date">{t["date"]}</div>'
-            '</div></div>'
-        )
-    st.markdown('<div class="gtrades">' + "".join(cards) + '</div>', unsafe_allow_html=True)
+            f'<div class="tc"><div class="tc-h"><b>{na}</b><span>traded with</span><b>{nb}</b><em>{t["date"]}</em></div>'
+            f'<div class="tc-c"><div><span class="tl">{na} gets</span>{chips(aa, t.get("pid_of", {}))}</div>'
+            f'<div class="tc-x">&#8644;</div><div><span class="tl">{nb} gets</span>{chips(ab, t.get("pid_of", {}))}</div></div></div>')
+    st.markdown('<div class="kx">' + "".join(cards) + '</div>', unsafe_allow_html=True)
 
 
 def render_trade_analyzer() -> None:
@@ -2575,27 +2614,19 @@ def render_trade_targets() -> None:
         st.info(f"No keeper-eligible players cost Round {rnd} right now.")
         return
 
+    vmax = max(1, int(view["Value"].abs().max()))
     rows = []
-    for i, (_, r) in enumerate(view.iterrows(), 1):
+    for _, r in view.iterrows():
         val = int(r["Value"])
-        color = "#0c7a6e" if val > 0 else ("#b3232a" if val < 0 else "#8b86a0")
         rk = ' <span class="rk-badge">RK</span>' if r.get("Rookie") else ""
         rows.append(
-            f'<tr><td class="rk">{i}</td>'
-            f'<td class="pl">{theme.img_tag(r["_pid"])}{r["Player"]}{rk}</td>'
-            f'<td class="pos"><span class="posdot p-{r["Pos"]}"></span>{r["Pos"]}</td>'
-            f'<td>{r["Owner"]}</td>'
-            f'<td class="num">{r["Keep Yr"]}</td>'
-            f'<td class="num">{r["ADP"]}</td>'
-            f'<td class="num" style="color:{color};font-weight:600;">{val:+d}</td></tr>'
-        )
-    head = (f'<tr><th>#</th><th>Player</th><th>Pos</th><th>Owner</th>'
-            f'<th>Keep&nbsp;Yr</th><th>ADP</th><th>Value</th></tr>')
+            f'<div class="mk">{_ph_img(r["_pid"], "xl-f")}<div class="mk-n"><b>{r["Player"]}{rk}</b>'
+            f'<span>{r["Owner"]} &middot; {r["Pos"]} &middot; keep year {r["Keep Yr"]} &middot; ADP {r["ADP"]}</span></div>'
+            f'<div class="mk-b"><i class="{"neg" if val < 0 else ""}" style="width:{max(4, 100 * abs(val) / vmax):.0f}%"></i></div>'
+            f'<em class="{"neg" if val < 0 else ""}">{val:+d}</em></div>')
     st.markdown(f'<p style="margin:.2rem 0 .6rem;">Keepable at <b>Round {rnd}</b>:{owned_note}</p>',
                 unsafe_allow_html=True)
-    st.markdown('<div class="neonwrap"><table class="lb lb-trade"><thead>' + head
-                + '</thead><tbody>' + "".join(rows) + '</tbody></table></div>',
-                unsafe_allow_html=True)
+    st.markdown('<div class="kx">' + "".join(rows) + '</div>', unsafe_allow_html=True)
     st.caption(f"Value = Round {rnd} − the player's ADP round.")
     if me in NAME_TO_ID and "Ned" in me:
         st.caption("You're Ned. The whole league is your trade partner.")
@@ -3257,29 +3288,26 @@ def _lottery_bar_panels(items: list, eyebrow: str, weight_label: str = "Weight",
                          weight_fmt=lambda w: f"{w:g}") -> None:
     """Shared bar-chart rendering for all three lottery states (pre-season,
     in-progress, and final) — `items` is [(oid, weight, sub_html), ...],
-    any ordering; sorted here by weight descending so every state looks
-    and behaves the same regardless of where its numbers come from."""
+    any ordering; sorted here by weight descending. A hero leads with your
+    share when a team is picked; your row carries the royal wash."""
     items = sorted(items, key=lambda x: -x[1])
     max_weight = max(w for _, w, _ in items) or 1
-    n = len(items)
-
-    weight_rows_html = "".join(
-        f'<div class="lottery-row">'
-        f'<div class="lottery-row-label"><b>{config.manager_name(oid)}</b>'
-        f'<span class="lottery-row-sub">{sub}</span></div>'
-        f'<div class="lottery-row-bar"><div class="lottery-bar-track">'
-        f'<div class="lottery-bar-fill{" dim" if i == n - 1 else ""}" '
-        f'style="width:{round(100 * w / max_weight)}%;">{weight_fmt(w)}</div>'
-        f'</div></div><div class="lottery-row-val">#{i + 1}</div>'
-        f'</div>'
-        for i, (oid, w, sub) in enumerate(items)
-    )
-    st.markdown(
-        f'<div class="kr-section"><div class="kr-section-head"><h3>{weight_label}</h3>'
-        f'<span class="tag">{eyebrow}</span></div>'
-        f'<div class="lottery-rows">{weight_rows_html}</div></div>',
-        unsafe_allow_html=True,
-    )
+    total = sum(w for _, w, _ in items) or 1
+    me = _me()
+    mine = next(((i, w) for i, (oid, w, _s) in enumerate(items) if oid == me), None)
+    if mine:
+        i, w = mine
+        st.markdown(_bh("ink", f"Draft-order lottery · {eyebrow}", f"{100 * w / total:.1f}%",
+                        f"your share of the balls — <b>{_ordinal(i + 1)}</b> most of {len(items)}"),
+                    unsafe_allow_html=True)
+    rows = "".join(
+        f'<div class="lt{" me" if oid == me else ""}"><span class="lt-n">#{i + 1}</span>'
+        f'<div class="lt-t"><b>{config.manager_name(oid)}</b><span>{sub}</span></div>'
+        f'<div class="lt-b"><i style="width:{round(100 * w / max_weight)}%"></i></div>'
+        f'<em>{weight_fmt(w)}</em></div>'
+        for i, (oid, w, sub) in enumerate(items))
+    st.markdown(f'<div class="eyebrow pad">{weight_label} &middot; {eyebrow}</div><div class="kx">{rows}</div>',
+                unsafe_allow_html=True)
 
 
 def render_lottery() -> None:
@@ -3999,34 +4027,23 @@ def render_faab() -> None:
     budgets = faab.team_budgets(lid)
     pot = faab.projected_pot(lid)
 
-    st.markdown(
-        f'<div class="faab-pot"><b>${pot["pot"]}</b>'
-        f'<span>in the pot · ${pot["total_spent"]} spent of ${pot["total_budget"]} '
-        f'league-wide ({pot["teams"]} teams &times; ${pot["total_budget"] // max(1, pot["teams"])})</span></div>',
-        unsafe_allow_html=True,
-    )
-
-    _render_payouts(lid, pot)
-
     leader_id = max(budgets, key=lambda o: budgets[o]["spent"]) if budgets else None
     dm_preview = faab.dead_money(lid)
     total_dead = sum(rec["dead"] for rec in dm_preview.values())
     pct_spent = round(100 * pot["total_spent"] / max(1, pot["total_budget"]))
-    tiles = [
-        (f"${pot['total_spent']}", "In The Pot", f"{pct_spent}% of ${pot['total_budget']} spent"),
-        (f"${pot['unspent']}", "Still Unspent", f"{100 - pct_spent}% left to spend"),
-        (config.manager_name(leader_id).split()[0] if leader_id else "—", "Biggest Spender",
-         f"${budgets[leader_id]['spent']} in" if leader_id else ""),
-        (f"${total_dead}", "Dead Money", "spent on dropped players"),
-    ]
-    st.markdown(
-        '<div class="tiles">' + "".join(
-            f'<div class="tile"><div class="num accent">{num}</div>'
-            f'<div class="lbl">{lbl}</div><div class="sub">{sub}</div></div>'
-            for num, lbl, sub in tiles
-        ) + '</div>',
-        unsafe_allow_html=True,
-    )
+    me = _me()
+    _mb = budgets.get(me) if me else None
+    _grid = [("Still unspent", f"${pot['unspent']}", f"{100 - pct_spent}% left"),
+             ("Dead money", f"${total_dead}", "spent on dropped players"),
+             ("Biggest spender", config.manager_name(leader_id).split()[0] if leader_id else "&mdash;",
+              f"${budgets[leader_id]['spent']} in" if leader_id else ""),
+             (("Yours", f"${_mb['spent']}", f"${_mb['remaining']} left &middot; ${(dm_preview.get(me) or {}).get('dead', 0)} dead")
+              if _mb else ("Teams", str(pot["teams"]), f"${pot['total_budget'] // max(1, pot['teams'])} each"))]
+    st.markdown(_bh("ink", f"FAAB pot · ${pot['total_spent']} of ${pot['total_budget']} spent", f"${pot['pot']}",
+                    "in the pot" + (f" — <b>{config.manager_name(leader_id).split()[0]}</b> has put in "
+                                    f"${budgets[leader_id]['spent']} of it" if leader_id and budgets[leader_id]['spent'] else ""),
+                    grid=_grid), unsafe_allow_html=True)
+    _render_payouts(lid, pot)
 
     curve = faab.burndown(lid)
     if any(t["total"] for t in curve["teams"]):
@@ -4040,44 +4057,21 @@ def render_faab() -> None:
         hi = NAME_TO_ID.get(focus)
         st.markdown(theme.burndown_svg(curve, names, highlight=hi), unsafe_allow_html=True)
 
-    def ring_color(pct: float) -> str:
-        if pct >= 75:
-            return theme.RED
-        if pct >= 40:
-            return theme.AMBER
-        return theme.TEAL
-
-    cards = []
+    # spend per team: gold for dollars on players still rostered, dark for dead money
+    rows = []
     for owner_id, b in sorted(budgets.items(), key=lambda kv: -kv[1]["spent"]):
-        pct = b["spent"] / max(1, b["total"])
-        ring = theme.liquid_ring_html(pct, f'${b["spent"]}', "owed", size=76, accent=ring_color(pct * 100))
-        cards.append(
-            f'<div class="faab-card"><h4>{config.manager_name(owner_id)}</h4>'
-            f'{ring}<div class="rem">${b["remaining"]} left of ${b["total"]}</div></div>'
-        )
-    st.markdown('<div class="faab-grid">' + "".join(cards) + "</div>", unsafe_allow_html=True)
-
-    st.markdown(theme.section_head('Dead Money', 'spent on players since dropped'), unsafe_allow_html=True)
-    st.caption("FAAB spent on adds you've since dropped.")
-    dm = dm_preview
-    rows = sorted(dm.items(), key=lambda kv: -kv[1]["dead"])
-    max_dead = max((rec["dead"] for _, rec in rows), default=0) or 1
-    body = "".join(
-        f'<tr><td class="pl">{config.manager_name(o)}</td>'
-        f'<td class="num" style="color:var(--red);font-weight:700;">${rec["dead"]}</td>'
-        f'<td class="num" style="color:var(--teal);">${rec["live"]}</td>'
-        f'<td class="num">{len(rec["moves"])}</td>'
-        f'<td style="min-width:110px;"><div class="burnbar-track">'
-        f'<div class="burnbar-fill" style="width:{round(100 * rec["dead"] / max_dead)}%;'
-        f'background:var(--red);"></div></div></td></tr>'
-        for o, rec in rows
-    )
-    st.markdown(
-        '<div class="neonwrap"><table class="lb"><thead><tr>'
-        '<th>Team</th><th>Dead $</th><th>Live $</th><th>Waiver Adds</th><th>Burn</th>'
-        f'</tr></thead><tbody>{body}</tbody></table></div>',
-        unsafe_allow_html=True,
-    )
+        dead = (dm_preview.get(owner_id) or {}).get("dead", 0)
+        live = max(0, b["spent"] - dead)
+        tot = max(1, b["total"])
+        rows.append(
+            f'<div class="sp{" me" if owner_id == me else ""}"><b>{config.manager_name(owner_id)}</b>'
+            f'<div class="sp-b"><i class="live" style="width:{100 * live / tot:.0f}%"></i>'
+            f'<i class="dead" style="width:{100 * dead / tot:.0f}%"></i></div>'
+            f'<em>${b["spent"]}</em><span>${b["remaining"]} left' + (f' &middot; ${dead} dead' if dead else "") + '</span></div>')
+    st.markdown(theme.section_head('Spend by team', 'gold live · dark dead'), unsafe_allow_html=True)
+    st.markdown('<div class="kx">' + "".join(rows) + "</div>", unsafe_allow_html=True)
+    st.caption("Dead money is FAAB spent on adds a team has since dropped — still in the pot, "
+               "but buying nothing.")
 
 
 def render_superlatives() -> None:

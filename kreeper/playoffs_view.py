@@ -91,9 +91,21 @@ def render(out: dict, me: Optional[str], name_of: Callable[[str], str], slate: O
         facts.append((f"{pt}", "", "make the playoffs", f"of {len(teams)} teams"))
     facts.append((pw_txt, "", "Playoff weeks", "from this league's settings"))
     facts.append((str(out["weeks_left"]), "", "Weeks to play", "before the bracket"))
-    st.markdown('<div class="po-strip">' + "".join(
-        f'<span class="po-sf"><b class="{c}">{_e(v)}</b>{_e(l)}<i>{_e(sub)}</i></span>' for v, c, l, sub in facts)
-        + '</div>', unsafe_allow_html=True)
+    if me and mine:
+        # Kreeper draws the strip as its page hero (the .kx classes live in
+        # kreeper/theme.py): your odds as the cover number, the rest in the grid
+        seeds = sim.get("seeds") or []
+        likely = (seeds.index(max(seeds)) + 1) if seeds else None
+        grid = "".join(f'<div><span>{_e(l)}</span><b>{_e(v)}</b><i>{_e(sub)}</i></div>'
+                       for v, _c, l, sub in facts[1:])
+        st.markdown(f'<div class="kx bh ink has-grid"><div class="bh-l"><span class="bh-k">Playoff picture · '
+                    f'10,000 seasons</span><b class="bh-n">{mine["playoff_pct"]}%</b><em>to make it'
+                    + (f' — most likely the <b>{_ordinal(likely)} seed</b>' if likely else "")
+                    + f'</em></div><div class="bh-grid">{grid}</div></div>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="po-strip">' + "".join(
+            f'<span class="po-sf"><b class="{c}">{_e(v)}</b>{_e(l)}<i>{_e(sub)}</i></span>' for v, c, l, sub in facts)
+            + '</div>', unsafe_allow_html=True)
 
     if not sim:
         st.markdown('<div class="po-note">The regular season is over — the bracket is set.</div>'
