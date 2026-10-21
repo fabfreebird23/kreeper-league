@@ -1348,22 +1348,53 @@ def _two_div(owner: str, win: bool = False) -> str:
             f'<span>{config.manager_name(owner)}</span></div>')
 
 
+_THUMB = "https://sleepercdn.com/content/nfl/players/thumb/{}.jpg"
+
+
+def _ph_img(pid, cls: str) -> str:
+    return (f'<img class="{cls}" src="{_THUMB.format(pid)}" alt="" onerror="this.style.visibility=\'hidden\'">'
+            if pid else "")
+
+
+def _top_pid(ctx: dict, side: dict):
+    """The side's best projected starter — the face its scoreboard half wears."""
+    ps = [p for p in (side.get("starters") or []) if p and p != "0"]
+    return max(ps, key=lambda p: ctx["proj"].get(p, 0.0)) if ps else None
+
+
+def _rec_of(owner: str) -> str:
+    r = next((x for x in get_standings() if x["owner"] == owner), None)
+    return f'{r["wins"]}-{r["losses"]}' if r else ""
+
+
 def _hero_html(a: str, b: str, *, pill: str, big_a: float, big_b: float, kicker: str,
-               wp: float, sub_a: str, sub_b: str, cells: list) -> str:
-    cell = "".join(f'<div class="hc"><i>{k}</i><b class="{c}">{v}</b><span>{s}</span></div>'
-                   for k, v, s, c in cells)
+               wp: float, sub_a: str, sub_b: str, cells: list, photo_a=None, photo_b=None) -> str:
+    """The matchup as the Draft Room's scoreboard, in Kreeper's colours: your
+    side royal with your best player, theirs black, the win probability as the
+    gold cover number in the middle, then four tiles."""
+    tiles = "".join(f'<div><span>{k}</span><b class="{c}">{v}</b><i>{s_}</i></div>' for k, v, s_, c in cells)
+    ra, rb = _rec_of(a), _rec_of(b)
+    lab = f"{kicker} · {pill}".replace("&middot;", "·").upper()
     return (
-        '<div class="hero"><div class="hrow">'
-        f'<div class="who"><span class="av">{_initials(a)}</span><div><b>{_team_of(a)}</b><em>{sub_a}</em></div></div>'
-        f'<div class="wk"><span class="wkpill">&#9679; {pill}</span></div>'
-        f'<div class="who r"><div><b>{_team_of(b)}</b><em>{sub_b}</em></div><span class="av dim">{_initials(b)}</span></div>'
-        '</div>'
-        f'<div class="hnum"><span class="big">{big_a:.1f}</span><span class="hk">{kicker}</span>'
-        f'<span class="big dim">{big_b:.1f}</span></div>'
-        f'<div class="wpbar"><i style="width:{wp * 100:.0f}%"></i></div>'
-        f'<div class="hrow lab"><span><b>{wp * 100:.0f}%</b> YOU</span><span class="hk">win probability</span>'
-        f'<span>{(1 - wp) * 100:.0f}%</span></div>'
-        f'<div class="hcells">{cell}</div></div>')
+        f'<div class="kx xb"><div class="xb-s me">{_ph_img(photo_a, "xb-ph")}<div class="xb-t">'
+        f'<span>{_team_of(a)}{" &middot; " + ra if ra else ""}</span><b>{big_a:.1f}</b><i>{sub_a}</i></div></div>'
+        f'<div class="xb-m"><span class="xb-k">{lab}</span><b>{wp * 100:.0f}<sup>%</sup></b><em>win probability</em>'
+        f'<div class="xb-bar"><i style="width:{wp * 100:.0f}%"></i></div></div>'
+        f'<div class="xb-s op"><div class="xb-t"><span>{_team_of(b)}{" &middot; " + rb if rb else ""}</span>'
+        f'<b>{big_b:.1f}</b><i>{sub_b}</i></div>{_ph_img(photo_b, "xb-ph")}</div></div>'
+        f'<div class="kx xb-tiles">{tiles}</div>')
+
+
+def _bh(tone: str, kick: str, num, line: str, *, photo=None, grid=None) -> str:
+    """A page's cover: royal when it wants you to act, black with a gold edge
+    when it's telling you where you stand."""
+    g = ""
+    if grid:
+        g = '<div class="bh-grid">' + "".join(f'<div><span>{k}</span><b>{v}</b><i>{s_}</i></div>'
+                                              for k, v, s_ in grid) + '</div>'
+    ph = _ph_img(photo, "bh-duo") if (photo and not grid) else ""
+    return (f'<div class="kx bh {tone}{" has-grid" if grid else ""}"><div class="bh-l"><span class="bh-k">{kick}</span>'
+            f'<b class="bh-n">{num}</b><em>{line}</em></div>{g}{ph}</div>')
 
 
 def _advice(me: str, week: int) -> dict | None:
@@ -1410,8 +1441,8 @@ def _todo_html(me: str, adv: dict) -> str:
         cards.append(("&#10003;", f"Your Week {wk} lineup is the best one you have",
                       "Nothing to change.", "", "", "good"))
     html = "".join(
-        f'<div class="todo {c}"><span class="ic">{ic}</span><div><b>{t}</b><span>{s}</span></div>'
-        f'<div class="tv"><b>{v}</b><i>{k}</i></div></div>' for ic, t, s, v, k, c in cards)
+        f'<div class="todo {c}{" hot" if (i == 0 and c != "good") else ""}"><span class="ic">{ic}</span><div><b>{t}</b><span>{s}</span></div>'
+        f'<div class="tv"><b>{v}</b><i>{k}</i></div></div>' for i, (ic, t, s, v, k, c) in enumerate(cards))
     left = (faab.team_budgets(LEAGUE["sleeper_league_id"]).get(me) or {}).get("remaining")
     if left is not None:
         html += f'<div class="todo-foot">Waivers run Wednesday &middot; <b>${left}</b> FAAB left.</div>'
@@ -1419,7 +1450,8 @@ def _todo_html(me: str, adv: dict) -> str:
 
 
 def _lineup_rows(ctx: dict, side: dict, *, flag=frozenset(), show_actual=True) -> str:
-    """Slot / player / bar / points rows for one lineup as set."""
+    """One lineup as one list: slot, face, name and game, a royal-to-gold bar,
+    the risk chip and the points. A flagged row (one to bench) turns royal."""
     pos_of, team_of = _pos_team_maps()
     vals = []
     for pid in side["starters"]:
@@ -1429,17 +1461,18 @@ def _lineup_rows(ctx: dict, side: dict, *, flag=frozenset(), show_actual=True) -
     rows = []
     for slot, pid, v in zip(ctx["slots"], side["starters"], vals):
         if not pid or pid == "0":
-            rows.append(f'<tr class="swap"><td>{_slot_chip("", slot)}</td><td class="two"><b>Empty</b>'
-                        '<span>nobody in this slot</span></td><td class="barc"></td><td class="risk"></td>'
-                        '<td class="num">0.0</td></tr>')
+            rows.append(f'<div class="xl swap"><span class="xl-s">{slot}</span><span></span>'
+                        '<div class="xl-n"><b>Empty</b><i>nobody in this slot</i></div><div class="xl-b"></div>'
+                        '<div class="xl-r"></div><b class="xl-p">0.0</b></div>')
             continue
-        pos, tm = pos_of.get(pid, ""), team_of.get(pid, "")
+        tm = team_of.get(pid, "")
+        risk = _risk_td(ctx, pid).replace('<td class="risk"', '<div class="xl-r"').replace("</td>", "</div>")
         rows.append(
-            f'<tr class="{"swap" if pid in flag else ""}"><td>{_slot_chip(pos, slot)}</td>'
-            f'<td class="two"><b>{_pname(pid)}</b><span>{tm} &middot; {gameday.game_label(ctx["games"], tm)}</span></td>'
-            f'<td class="barc"><div class="bar"><i style="width:{100 * v / mx:.0f}%;background:{_POSC.get(pos, "")}"></i></div></td>'
-            f'{_risk_td(ctx, pid)}<td class="num">{v:.1f}</td></tr>')
-    return '<table class="dt">' + "".join(rows) + "</table>"
+            f'<div class="xl{" swap" if pid in flag else ""}"><span class="xl-s">{slot}</span>{_ph_img(pid, "xl-f")}'
+            f'<div class="xl-n"><b>{_pname(pid)}</b><i>{tm} &middot; {gameday.game_label(ctx["games"], tm)}</i></div>'
+            f'<div class="xl-b"><i style="width:{100 * v / mx:.0f}%"></i></div>{risk}'
+            f'<b class="xl-p">{v:.1f}</b></div>')
+    return '<div class="kx xl-wrap">' + "".join(rows) + "</div>"
 
 
 def _picker_html(compact: bool = False) -> str:
@@ -1487,7 +1520,7 @@ def _render_home_my_week(me: str, cur: int) -> None:
                         "amber" if adv["swaps"] or adv["holes"] else "good") if adv else
                        ("Lineup", "&mdash;", "no game that week", ""))
         st.markdown(_hero_html(
-            me, pair[1]["owner"],
+            me, pair[1]["owner"], photo_a=_top_pid(ctx, pair[0]), photo_b=_top_pid(ctx, pair[1]),
             pill=f"Week {cur} &middot; {'final' if done else 'live' if started else 'preview'}",
             big_a=a["points"] if started else a["final"], big_b=b["points"] if started else b["final"],
             kicker="final" if done else "live" if started else "projected", wp=_wp(a, b),
@@ -1644,7 +1677,7 @@ def render_matchup() -> None:
     pre = sorted((g for g in ctx["games"].values() if g.get("state") == "pre"), key=gameday.kickoff_ts)
     started = _week_started(ctx)
     st.markdown(_hero_html(
-        me, sb["owner"], pill=f"Week {aw} &middot; {'live' if started else 'preview'}",
+        me, sb["owner"], photo_a=_top_pid(ctx, sa), photo_b=_top_pid(ctx, sb), pill=f"Week {aw} &middot; {'live' if started else 'preview'}",
         big_a=a["final"], big_b=b["final"], kicker="projected final", wp=_wp(a, b),
         sub_a="you &middot; lineup as set", sub_b="their lineup as set",
         cells=[("Lineup", f'{len(adv["swaps"])} change{"s" if len(adv["swaps"]) != 1 else ""}'
@@ -1885,9 +1918,16 @@ def render_keeper_outlook() -> None:
              ("Blocked", str(len(blocked)), blocked[0]["name"] if blocked else "nobody aged out",
               "bad" if blocked else ""),
              ("Escalation", f"&minus;{bump} rds", f'year 2 &middot; year {config.rules().get("max_keep_years", 3)} is ADP', "")]
-    st.markdown('<div class="hero kh"><div class="hcells">' + "".join(
-        f'<div class="hc"><i>{k}</i><b class="{c}">{v}</b><span>{s}</span></div>' for k, v, s, c in cells)
-        + "</div></div>", unsafe_allow_html=True)
+    _late = [r for r in keeps if (r.get("cost") or 0) >= DRAFT_ROUNDS - 2]
+    if _late:
+        _num, _line = str(len(_late)), (f"of your {len(keeps)} would cost a round-{DRAFT_ROUNDS - 2}-or-later pick — "
+                                        f'<b>{_late[0]["name"]}</b> at R{_late[0]["cost"]}')
+    elif best:
+        _num, _line = f'{best["Value"]:+d}', f'keeper value — <b>{best["name"]}</b> is your best keep'
+    else:
+        _num, _line = "0", "keepers worth their price yet"
+    st.markdown(_bh("ink", f"{nxt} keepers · if the season ended today", _num, _line,
+                    grid=[(k, v, s_) for k, v, s_, _c in cells]), unsafe_allow_html=True)
     st.markdown(f'<div class="eyebrow pad">The five it would keep</div>{_keeper_tray_html(rows)}',
                 unsafe_allow_html=True)
 
@@ -3743,37 +3783,46 @@ def render_standings() -> None:
     total = season.regular_season_weeks()
     leader = table[0]
     top_scorer = max(table, key=lambda r: r["points_for"])
-    _glance_box([
-        (played / max(1, total), f"{played}", "of " + str(total), "Weeks Played",
-         f"{total - played} to play", theme.PURPLE),
-        (1.0, f'{leader["wins"]}-{leader["losses"]}', "rec", "First Place",
-         config.manager_name(leader["owner"]), theme.TEAL),
-        (1.0, f'{top_scorer["points_for"]:.0f}', "pf", "Most Points",
-         config.manager_name(top_scorer["owner"]), theme.AMBER),
-    ])
-
+    # the cover: your place (or the leader's, before a team is picked), then
+    # the table as a ranked list — points-for bars, streaks, the line in gold
+    me = _me()
+    mine = next((r for r in table if r["owner"] == me), None)
+    cut = next((r for r in table if r["rank"] == PLAYOFF_TEAMS), None)
+    _grid = [("First place", f'{leader["wins"]}&ndash;{leader["losses"]}', config.manager_name(leader["owner"])),
+             ("Most points", f'{top_scorer["points_for"]:,.0f}', config.manager_name(top_scorer["owner"])),
+             ("Weeks played", str(played), f"{total - played} to play"),
+             ("Playoff line", f'{cut["wins"]}&ndash;{cut["losses"]}' if cut else "&mdash;",
+              f'{config.manager_name(cut["owner"])}, #{PLAYOFF_TEAMS}' if cut else "")]
+    if mine:
+        _pf_rank = sorted(table, key=lambda r: -r["points_for"]).index(mine) + 1
+        _rec = f'{mine["wins"]}&ndash;{mine["losses"]}'
+        _line = (f"{_rec} with the league's most points — the record undersells you"
+                 if _pf_rank == 1 and mine["rank"] > 1 else
+                 f"{_rec}, {_ordinal(_pf_rank)} in points for" +
+                 (" — inside the line" if mine["rank"] <= PLAYOFF_TEAMS else
+                  f" — {mine['rank'] - PLAYOFF_TEAMS} spot{'s' if mine['rank'] - PLAYOFF_TEAMS != 1 else ''} out"))
+        st.markdown(_bh("ink", f"Standings · week {played + 1} of {total}", _ordinal(mine["rank"]), _line,
+                        grid=_grid), unsafe_allow_html=True)
+    else:
+        st.markdown(_bh("ink", f"Standings · week {played + 1} of {total}", f'{leader["wins"]}&ndash;{leader["losses"]}',
+                        f'{config.manager_name(leader["owner"])} leads the league', grid=_grid),
+                    unsafe_allow_html=True)
+    lo = min(r["points_for"] for r in table)
+    span = max(1.0, max(r["points_for"] for r in table) - lo)
     body = []
     for r in table:
         rec = f'{r["wins"]}-{r["losses"]}' + (f'-{r["ties"]}' if r["ties"] else "")
-        cut = " playoff-cut" if r["rank"] == PLAYOFF_TEAMS else ""
-        badge = ('<span class="kept-badge">IN</span>' if r["rank"] <= PLAYOFF_TEAMS else "")
-        streak = r["streak"]
-        scolor = ("var(--teal)" if streak.startswith("W")
-                  else "var(--red)" if streak.startswith("L") else "var(--muted)")
+        if r["rank"] == PLAYOFF_TEAMS + 1:
+            body.append(f'<div class="sr-cut"><span>PLAYOFF LINE &middot; TOP {PLAYOFF_TEAMS} MAKE THE BRACKET</span></div>')
+        w = 18 + 82 * (r["points_for"] - lo) / span
+        stk = r["streak"] or ""
         body.append(
-            f'<tr class="{cut.strip()}"><td class="rk">{r["rank"]}</td>'
-            f'<td class="pl">{config.manager_name(r["owner"])} {badge}</td>'
-            f'<td class="num" style="font-family:var(--font-display);font-weight:600;font-size:15px;">{rec}</td>'
-            f'<td class="num">{r["points_for"]:.1f}</td>'
-            f'<td class="num">{r["points_against"]:.1f}</td>'
-            f'<td class="num" style="color:{scolor};font-weight:700;">{streak}</td></tr>'
-        )
-    st.markdown(
-        '<div class="neonwrap"><table class="lb"><thead><tr>'
-        '<th>#</th><th>Team</th><th>Record</th><th>PF</th><th>PA</th><th>Streak</th>'
-        f'</tr></thead><tbody>{"".join(body)}</tbody></table></div>',
-        unsafe_allow_html=True,
-    )
+            f'<div class="sr{" me" if r["owner"] == me else ""}"><span class="sr-n">{r["rank"]}</span>'
+            f'<div class="sr-t"><b>{config.manager_name(r["owner"])}</b>'
+            f'<span>{rec} &middot; {r["points_for"]:.0f} for &middot; {r["points_against"]:.0f} against</span></div>'
+            f'<div class="sr-b"><i style="width:{w:.0f}%"></i><em>{r["points_for"]:.0f}</em></div>'
+            f'<span class="sr-k {"w" if stk.startswith("W") else ""}">{stk or "&mdash;"}</span></div>')
+    st.markdown('<div class="kx">' + "".join(body) + "</div>", unsafe_allow_html=True)
     st.caption(f"Top {PLAYOFF_TEAMS} make the championship bracket — the line sits under "
                f"#{PLAYOFF_TEAMS}. Everyone below plays the consolation bracket "
                f"(and the last-place finisher buys the draft meal).")

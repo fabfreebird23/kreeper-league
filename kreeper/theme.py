@@ -50,7 +50,7 @@ def card_color(i: int) -> str:
 
 CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Oswald:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Oswald:wght@500;600;700&family=Anton&family=Playfair+Display:ital,wght@0,700;1,700&family=Roboto+Mono:wght@500&display=swap');
 
 :root{
   /* Type system: Oswald for display (the condensed scoreboard voice the
@@ -872,14 +872,142 @@ a.tp:hover, a.tp.on{ background:linear-gradient(var(--panel2),var(--panel2)) pad
    amber worth watching, coral high, solid coral out. Doubled classes beat
    the markdown-span colour reset. */
 table.dt td.risk{ width:1%; white-space:nowrap; text-align:right; padding-left:4px; padding-right:4px; }
-[data-testid="stMarkdownContainer"] td.risk span.rkp.rkp{ display:inline-block; font-size:10.5px; font-weight:600;
+[data-testid="stMarkdownContainer"] :is(td.risk, .xl-r) span.rkp.rkp{ display:inline-block; font-size:10.5px; font-weight:600;
   padding:2px 7px; border-radius:999px; border:1px solid var(--line); color:var(--muted) !important; }
-[data-testid="stMarkdownContainer"] td.risk span.rkp.rkp.watch{ color:var(--amber) !important;
+[data-testid="stMarkdownContainer"] :is(td.risk, .xl-r) span.rkp.rkp.watch{ color:var(--amber) !important;
   border-color:color-mix(in srgb, var(--amber) 45%, transparent); }
-[data-testid="stMarkdownContainer"] td.risk span.rkp.rkp.high{ color:var(--red) !important;
+[data-testid="stMarkdownContainer"] :is(td.risk, .xl-r) span.rkp.rkp.high{ color:var(--red) !important;
   border-color:color-mix(in srgb, var(--red) 50%, transparent); }
-[data-testid="stMarkdownContainer"] td.risk span.rkp.rkp.out{ color:#fff !important; background:var(--red); border-color:var(--red); }
+[data-testid="stMarkdownContainer"] :is(td.risk, .xl-r) span.rkp.rkp.out{ color:#fff !important; background:var(--red); border-color:var(--red); }
 
+
+/* ==== The editorial look (from the Draft Room), in royal / gold / black ====
+   Royal does the Draft Room's red job (the page wants you to act), black with
+   a gold edge its status job; gold where it had cream. Everything sits under
+   .kx so the theme's "every markdown span is --ink" rule can be reset once. */
+[data-testid="stMarkdownContainer"] .kx span{ color:inherit !important; }
+.kx{ --kr:#1f4e9c; --kr2:#2a5bb0; --kg:#d4b15e; --kink:#101013; --kl:#2a2a30; }
+/* heroes */
+.kx.bh{ position:relative; display:grid; grid-template-columns:1fr; align-items:end; border-radius:12px; overflow:hidden;
+  min-height:200px; margin:0 0 14px; }
+.kx.bh.has-grid{ grid-template-columns:1fr auto; }
+.kx.bh.royal{ background:var(--kr); } .kx.bh.ink{ background:var(--kink); box-shadow:inset 0 0 0 1px var(--kl); }
+.kx.bh.ink::after{ content:""; position:absolute; left:0; top:0; bottom:0; width:5px; background:var(--kg); z-index:3; }
+.kx.bh.ink::before{ content:""; position:absolute; right:0; top:0; bottom:0; width:42%; z-index:0;
+  background:radial-gradient(ellipse 60% 75% at 72% 100%,rgba(42,91,176,.6),transparent 70%); }
+.kx.bh.ink.has-grid::before{ display:none; }
+.kx .bh-l{ position:relative; z-index:2; padding:16px 22px 18px; }
+[data-testid="stMarkdownContainer"] .kx .bh-k{ display:block; font-size:10.5px; letter-spacing:.18em; font-weight:700; color:var(--kg) !important; text-transform:uppercase; }
+[data-testid="stMarkdownContainer"] .kx.royal .bh-k{ color:#f2deaa !important; }
+.kx .bh-n{ display:block; font-family:'Anton',sans-serif; font-weight:400; font-size:120px; line-height:.92; color:var(--ink); margin-top:20px; }
+.kx.ink .bh-n{ color:var(--kg); }
+.kx .bh-l em{ display:block; font-family:'Playfair Display',serif; font-style:italic; font-weight:700; font-size:22px; color:var(--ink);
+  margin-top:6px; max-width:46ch; line-height:1.25; }
+.kx .bh-l em b{ font-style:normal; text-decoration:underline; text-decoration-color:var(--kg); text-underline-offset:4px; }
+.kx .bh-grid{ position:relative; z-index:2; display:grid; grid-template-columns:repeat(2,minmax(140px,1fr)); align-self:stretch;
+  border-left:1px solid rgba(212,177,94,.25); }
+.kx .bh-grid div{ padding:11px 15px; border-bottom:1px solid rgba(212,177,94,.18); border-right:1px solid rgba(212,177,94,.18); }
+[data-testid="stMarkdownContainer"] .kx .bh-grid span{ display:block; font-size:10px; letter-spacing:.14em; color:var(--kg) !important; text-transform:uppercase; }
+.kx .bh-grid b{ display:block; font-family:'Anton',sans-serif; font-weight:400; font-size:34px; color:var(--ink); }
+.kx .bh-grid i{ font-style:normal; font-size:11.5px; color:var(--muted); }
+.kx .bh-duo{ position:absolute; right:3%; bottom:0; height:112%; max-height:260px; object-fit:cover !important; object-position:center bottom !important; z-index:1; }
+.kx.royal .bh-duo{ filter:grayscale(1) contrast(1.15); mix-blend-mode:multiply; opacity:.95; }
+.kx.ink .bh-duo{ filter:grayscale(1) contrast(1.2); opacity:.8;
+  -webkit-mask-image:radial-gradient(ellipse 56% 92% at 50% 100%,#000 62%,transparent 100%); mask-image:radial-gradient(ellipse 56% 92% at 50% 100%,#000 62%,transparent 100%); }
+/* scoreboard */
+.kx.xb{ display:grid; grid-template-columns:1fr 280px 1fr; border-radius:12px 12px 0 0; overflow:hidden; min-height:176px; }
+.kx .xb-s{ display:flex; align-items:flex-end; gap:14px; padding:14px 20px; overflow:hidden; min-width:0; }
+.kx .xb-s.me{ background:var(--kr); justify-content:flex-end; } .kx .xb-s.op{ background:var(--kink); box-shadow:inset 0 0 0 1px var(--kl); }
+.kx .xb-ph{ height:190px; width:auto; max-width:none; aspect-ratio:350 / 254; object-fit:cover !important; object-position:center bottom !important;
+  filter:grayscale(1) contrast(1.2); margin-bottom:-24px; flex:none; }
+.kx .xb-s.me .xb-ph{ mix-blend-mode:multiply; }
+.kx .xb-s.op .xb-ph{ opacity:.6; -webkit-mask-image:radial-gradient(ellipse 56% 92% at 50% 100%,#000 62%,transparent 100%);
+  mask-image:radial-gradient(ellipse 56% 92% at 50% 100%,#000 62%,transparent 100%); }
+.kx .xb-t{ min-width:0; } .kx .xb-t b{ white-space:nowrap; } .kx .xb-t i{ display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+[data-testid="stMarkdownContainer"] .kx .xb-t span{ display:block; font-size:10.5px; letter-spacing:.16em; font-weight:700; color:#f2deaa !important;
+  text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+[data-testid="stMarkdownContainer"] .kx .xb-s.op .xb-t span{ color:var(--kg) !important; }
+.kx .xb-t b{ display:block; font-family:'Anton',sans-serif; font-weight:400; font-size:76px; line-height:.98; color:var(--ink); }
+.kx .xb-s.op .xb-t b{ color:#b9b9c2; }
+.kx .xb-t i{ font-style:normal; font-size:12px; color:#cfe0ff; } .kx .xb-s.op .xb-t i{ color:var(--muted); }
+.kx .xb-m{ background:#08080a; box-shadow:inset 0 1px 0 var(--kl), inset 0 -1px 0 var(--kl); display:flex; flex-direction:column;
+  align-items:center; justify-content:center; padding:10px; }
+[data-testid="stMarkdownContainer"] .kx .xb-k{ font-family:'Roboto Mono',monospace; font-size:10px; letter-spacing:.14em; color:var(--kg) !important; text-transform:uppercase; }
+.kx .xb-m b{ font-family:'Anton',sans-serif; font-weight:400; font-size:84px; line-height:1; color:var(--kg); }
+.kx .xb-m sup{ font-size:30px; }
+.kx .xb-m em{ font-family:'Playfair Display',serif; font-style:italic; font-size:16px; color:var(--muted); }
+.kx .xb-bar{ width:80%; height:6px; background:var(--kl); border-radius:99px; margin-top:10px; overflow:hidden; }
+.kx .xb-bar i{ display:block; height:100%; background:linear-gradient(90deg,var(--kr2),var(--kg)); }
+.kx.xb-tiles{ display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--kl); border:1px solid var(--kl); border-top:0;
+  border-radius:0 0 12px 12px; overflow:hidden; margin-bottom:12px; }
+.kx.xb-tiles div{ background:var(--kink); padding:10px 14px; min-width:0; }
+[data-testid="stMarkdownContainer"] .kx.xb-tiles span{ display:block; font-size:10px; letter-spacing:.14em; color:var(--dim) !important; text-transform:uppercase; }
+.kx.xb-tiles b{ display:block; font-family:'Anton',sans-serif; font-weight:400; font-size:28px; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.kx.xb-tiles b.amber{ color:var(--kg); }
+.kx.xb-tiles i{ font-style:normal; font-size:11.5px; color:var(--muted); }
+/* the lineup as one list */
+.kx.xl-wrap{ display:block; }
+.kx .xl{ display:grid; grid-template-columns:42px 34px minmax(0,1fr) minmax(50px,140px) 64px 48px; gap:10px; align-items:center;
+  padding:7px 6px; border-bottom:1px solid #1d1d22; }
+.kx .xl.swap{ background:var(--kr); border-radius:10px; border:0; margin:3px 0; }
+[data-testid="stMarkdownContainer"] .kx .xl-s{ font-family:'Roboto Mono',monospace; font-size:10px; color:var(--dim) !important; }
+.kx .xl-f{ width:34px; height:34px; border-radius:50%; object-fit:cover !important; object-position:top !important; background:var(--panel2); filter:grayscale(1); }
+.kx .xl-n{ min-width:0; } .kx .xl-n b{ display:block; font-family:'Oswald',sans-serif; font-weight:500; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.kx .xl-n i{ display:block; font-style:normal; font-size:11px; color:var(--dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.kx .xl.swap .xl-n i{ color:#cfe0ff; }
+.kx .xl-b{ height:9px; background:var(--panel2); border-radius:99px; overflow:hidden; }
+.kx .xl-b i{ display:block; height:100%; background:linear-gradient(90deg,var(--kr),var(--kr2) 60%,var(--kg)); }
+.kx .xl.swap .xl-b{ background:rgba(0,0,0,.3); } .kx .xl.swap .xl-b i{ background:var(--kg); }
+.kx .xl-r{ text-align:center; }
+.kx .xl-p{ font-family:'Anton',sans-serif; font-weight:400; font-size:21px; text-align:right; color:var(--ink); }
+/* standings as a ranked list */
+.kx .sr{ display:grid; grid-template-columns:36px minmax(0,1.3fr) minmax(0,1.6fr) 56px; gap:10px; align-items:center; padding:8px 10px;
+  border-bottom:1px solid #1d1d22; }
+.kx .sr.me{ background:linear-gradient(90deg,rgba(42,91,176,.45),transparent 70%); border-radius:10px; }
+.kx .sr-n{ font-family:'Anton',sans-serif; font-size:26px; color:var(--dim); } .kx .sr.me .sr-n{ color:var(--kg); }
+.kx .sr-t{ min-width:0; } .kx .sr-t b{ display:block; font-family:'Oswald',sans-serif; font-weight:500; font-size:15px; }
+[data-testid="stMarkdownContainer"] .kx .sr-t span{ font-size:11px; color:var(--dim) !important; }
+.kx .sr-b{ position:relative; height:16px; background:var(--panel2); border-radius:4px; }
+.kx .sr-b i{ position:absolute; left:0; top:0; bottom:0; background:#3a3a44; border-radius:4px; } .kx .sr.me .sr-b i{ background:var(--kr2); }
+.kx .sr-b em{ position:absolute; right:6px; top:1px; font-style:normal; font-family:'Roboto Mono',monospace; font-size:10.5px; color:var(--ink); }
+[data-testid="stMarkdownContainer"] .kx .sr-k{ font-family:'Roboto Mono',monospace; font-size:11px; text-align:center; padding:3px 0; border-radius:6px;
+  border:1px solid var(--kl); color:var(--dim) !important; }
+[data-testid="stMarkdownContainer"] .kx .sr-k.w{ color:var(--kg) !important; border-color:rgba(212,177,94,.5); }
+.kx .sr-cut{ border-top:2px solid var(--kg); margin:4px 0; padding-top:3px; }
+[data-testid="stMarkdownContainer"] .kx .sr-cut span{ font-family:'Roboto Mono',monospace; font-size:9.5px; letter-spacing:.12em; color:var(--kg) !important; }
+/* the to-do list: quiet, the first that needs you on royal */
+.todo{ --c:var(--muted); } .todo.bad{ --c:var(--gold); } .todo.good{ --c:var(--muted); }
+.todo .tv b{ font-family:'Anton',sans-serif !important; font-weight:400; font-size:28px; color:var(--ink) !important; }
+.todo.hot{ background:#1f4e9c !important; border-color:#1f4e9c !important; --c:#f2deaa; }
+[data-testid="stMarkdownContainer"] .todo.hot div > span{ color:#cfe0ff !important; }
+/* the keeper tray: black-and-white portraits, gold rounds */
+.ktray .kt{ background:#101013; border:0; border-radius:4px; padding:0 0 10px; overflow:hidden; box-shadow:inset 0 -3px 0 #2a5bb0; }
+.ktray .kt i{ padding-top:8px; }
+.ktray .kt .kh-img{ width:100%; height:118px; border-radius:0; object-fit:cover; object-position:top; filter:grayscale(1); margin:0 0 6px; }
+.ktray .kt b{ font-family:'Playfair Display',serif; font-size:14.5px; }
+.ktray .kt.empty{ box-shadow:none; }
+@media (max-width:1100px){
+  /* the hub's content column is narrow: the photo sits BEHIND the score */
+  .kx.xb{ grid-template-columns:1fr 220px 1fr; }
+  .kx .xb-s{ position:relative; min-height:176px; }
+  .kx .xb-ph{ position:absolute; bottom:0; height:150px; margin:0; z-index:0; }
+  .kx .xb-s.me .xb-ph{ left:-10px; } .kx .xb-s.op .xb-ph{ right:-10px; opacity:.45; }
+  .kx .xb-t{ position:relative; z-index:1; } .kx .xb-s.me .xb-t{ text-align:right; }
+  .kx .xb-t b{ font-size:60px; } .kx .xb-m b{ font-size:66px; }
+}
+@media (max-width:760px){
+  .kx.bh.has-grid{ grid-template-columns:1fr; } .kx .bh-grid{ border-left:0; border-top:1px solid rgba(212,177,94,.25); }
+  .kx .bh-n{ font-size:84px; } .kx .bh-l em{ font-size:18px; } .kx .bh-duo{ opacity:.5; }
+  .kx.xb{ grid-template-columns:1fr 1fr; min-height:0; }
+  .kx .xb-m{ grid-column:1 / -1; grid-row:2; flex-direction:row; flex-wrap:wrap; gap:4px 10px; padding:8px 12px; }
+  .kx .xb-m b{ font-size:44px; } .kx .xb-bar{ width:100%; }
+  .kx .xb-s{ position:relative; padding:10px 12px; min-height:118px; }
+  .kx .xb-ph{ position:absolute; bottom:0; height:104px; margin:0; z-index:0; } .kx .xb-s.me .xb-ph{ left:-14px; } .kx .xb-s.op .xb-ph{ right:-14px; opacity:.4; }
+  .kx .xb-t{ position:relative; z-index:1; } .kx .xb-s.me .xb-t{ text-align:right; } .kx .xb-t b{ font-size:44px; white-space:nowrap; }
+  .kx.xb-tiles{ grid-template-columns:repeat(2,1fr); } .kx.xb-tiles b{ font-size:22px; }
+  .kx .xl{ grid-template-columns:34px 30px minmax(0,1fr) 56px 40px; gap:6px; } .kx .xl-b{ display:none; }
+  .kx .sr{ grid-template-columns:26px minmax(0,1fr) 90px 48px; gap:6px; }
+}
 </style>
 """
 
