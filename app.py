@@ -1108,63 +1108,6 @@ def _move_player_html(pid: str) -> str:
     return f'{nm}<span class="pos">{pos}</span>' if pos else nm
 
 
-def _render_home_money(lid: str) -> None:
-    """The money, as four bowls and a ledger. Both pots are shown at their
-    rule amounts until the brackets finish and faab.pot_split/entry_pot can
-    name real winners — better than hiding the money for sixteen weeks."""
-    pot = faab.projected_pot(lid)
-    split = faab.pot_split(lid)
-    entry = faab.entry_pot(lid)
-    fee = config.entry_fee()
-    entry_total = fee * len(MANAGERS)
-
-    champ = entry["champion"]["amount"] if entry else entry_total - fee * 2
-    runner = entry["runner_up"]["amount"] if entry else fee * 2
-    # Unknown until the 3rd-place game is played: whose spend gets refunded,
-    # and therefore what's left for 5th.
-    refund = split["third_place"]["refund"] if split else None
-    fifth = split["fifth_place"]["amount"] if split else None
-
-    st.markdown(theme.section_head('The <span class="g">Money</span>',
-                                   f'${entry_total:,.0f} entry pot &middot; ${pot["pot"]:,} in the FAAB pot'),
-                unsafe_allow_html=True)
-
-    bowls = [
-        (1.0, f'${champ:,.0f}', "Winner",
-         f'balance of the ${entry_total:,.0f} entry pot', theme.ROYAL),
-        (runner / max(1.0, champ), f'${runner:,.0f}', "Runner-up",
-         f'double the ${fee:,.0f} buy-in', theme.GOLD),
-        (fifth / max(1, pot["pot"]) if fifth is not None else 1.0,
-         f'${fifth:,.0f}' if fifth is not None else f'${pot["pot"]:,}',
-         "5th Place", "remainder of the FAAB pot", theme.TEAL),
-        (refund / max(1, pot["pot"]) if refund is not None else 0.0,
-         f'${refund:,.0f}' if refund is not None else "TBD",
-         "3rd-Place Game", "winner gets their own spend back", theme.AMBER),
-    ]
-    st.markdown(
-        '<div class="money-bowls">' + "".join(
-            f'<div class="bowl">{theme.liquid_ring_html(pct, big, "", size=132, accent=color)}'
-            f'<div class="bl">{label}</div><div class="bn">{note}</div></div>'
-            for pct, big, label, note, color in bowls
-        ) + "</div>", unsafe_allow_html=True)
-
-    budgets = faab.team_budgets(lid)
-    led = "".join(
-        f'<tr>{_two_cell(o)}<td class="num">${b["spent"]}</td>'
-        f'<td class="num" style="color:var(--muted);">${b["remaining"]}</td></tr>'
-        for o, b in sorted(budgets.items(), key=lambda kv: -kv[1]["spent"]))
-    st.markdown(
-        '<div class="neonwrap"><table class="lb"><thead><tr><th>Manager</th>'
-        '<th style="text-align:right;">In the pot</th>'
-        f'<th style="text-align:right;">Unspent</th></tr></thead><tbody>{led}</tbody></table></div>',
-        unsafe_allow_html=True)
-    st.markdown(
-        '<p class="sec-note">Every dollar <b>spent</b> on waivers goes into the FAAB pot. '
-        'The winner of the 3rd-place game takes back exactly what they spent; 5th place '
-        'takes the rest. The entry pot is separate: 2nd doubles their buy-in, the champion '
-        'takes the balance.</p>', unsafe_allow_html=True)
-
-
 # ------------------------------------------------------------------ this week
 # The Draft Room's weekly screens, rebuilt for Kreeper: a live matchup card,
 # lineup advice, every matchup slot by slot. These are the only pages that
@@ -1287,6 +1230,9 @@ _RISK_NOTE = ("Risk % = the chance a player misses the game or gets hurt in it: 
               "(moved by this week's practice report) plus a typical in-game rate for his "
               "position. Projections are discounted by the chance he misses, so an Out player "
               "projects 0. An estimate, not a medical model; tags refresh daily.")
+# the long note lives in a hover / long-press tooltip, one short line on the page
+_RISK_TIP = (f'<span class="risk-tip" title="{_RISK_NOTE}">Risk % = chance he misses or gets hurt '
+             f'<b>&#9432;</b></span>')
 
 
 @st.cache_data(ttl=30, show_spinner=False)
@@ -1551,7 +1497,7 @@ def _render_home_my_week(me: str, cur: int) -> None:
                        ("Lineup", "&mdash;", "no game that week", ""))
         st.markdown(_hero_html(
             me, pair[1]["owner"], photo_a=_top_pid(ctx, pair[0]), photo_b=_top_pid(ctx, pair[1]),
-            pill=f"Week {cur} &middot; {'final' if done else 'live' if started else 'preview'}",
+            pill=f"Week {cur}",
             big_a=a["points"] if started else a["final"], big_b=b["points"] if started else b["final"],
             kicker="final" if done else "live" if started else "projected", wp=_wp(a, b),
             sub_a=f'you &middot; {a["left"]} still to play', sub_b=f'{b["left"]} still to play',
@@ -1573,10 +1519,9 @@ def _render_home_my_week(me: str, cur: int) -> None:
             st.markdown('<div class="lockline"></div>', unsafe_allow_html=True)
         todo = _todo_html(me, adv) if adv else ""
         st.markdown(
-            f'<div class="wk-cols"><div><div class="eyebrow">What to do</div>{todo}</div>'
-            f'<div><div class="eyebrow">Your lineup &middot; Week {cur}</div>'
-            f'{_lineup_rows(ctx, pair[0])}</div></div>', unsafe_allow_html=True)
-        st.caption(_RISK_NOTE)
+            f'<div class="eyebrow">What to do</div>{todo}'
+            f'<a class="to-matchup" href="?p=inseason&g=week&t=matchup" target="_self">'
+            f'Your lineup, start/sit and injury risk on Matchup &rarr;</a>', unsafe_allow_html=True)
 
 
 def _render_around_league(cur: int, me=None) -> None:
@@ -1795,9 +1740,15 @@ def _tape_html(ctx: dict, g: dict) -> str:
         return {k: sorted(v, key=lambda x: -proj.get(x, 0.0)) for k, v in out.items()}
 
     def val(side, pid):
-        if gameday.status(ctx["games"], team_of.get(pid, "")) in ("in", "post"):
-            return side["actual"].get(pid, 0.0), True
-        return proj.get(pid, 0.0), False
+        """(projected final, finished?) — the side outlook's rule per player:
+        done = his points, mid-game = points + half his projection, not yet
+        started = his projection. Same footing on both sides, so a live 5.6
+        never gets compared with an untouched 26.4 projection."""
+        a_, pj = side["actual"].get(pid, 0.0), proj.get(pid, 0.0)
+        stt = gameday.status(ctx["games"], team_of.get(pid, ""))
+        if stt in ("post", "bye"):
+            return a_, True
+        return (a_ + 0.5 * pj, False) if stt == "in" else (pj, False)
     pa, pb = by_pos(sa), by_pos(sb)
     want = [("QB", 0, "QB"), ("RB", 0, "RB1"), ("WR", 0, "WR1"), ("WR", 1, "WR2"), ("TE", 0, "TE")]
     rows = []
@@ -1849,7 +1800,8 @@ def _tape_html(ctx: dict, g: dict) -> str:
     note = f'<div class="gw-note">{" ".join(notes)}</div>' if notes else ""
     head = (f'<div class="gw-th">{_mgr_face(a, "gw-f")}<div><b>{_team_of(a)}</b><span>{_first(a)} &middot; {_rec_of(a)}</span></div>'
             f'<div class="r"><b>{_team_of(b)}</b><span>{_first(b)} &middot; {_rec_of(b)}</span></div>{_mgr_face(b, "gw-f")}</div>')
-    return f'<div class="kx gw-tape">{head}{"".join(rows)}{note}</div>' if rows else ""
+    key = '<div class="gw-key">projected finals &middot; <i>italic</i> = still playing or yet to play</div>'
+    return f'<div class="kx gw-tape">{head}{"".join(rows)}{key}{note}</div>' if rows else ""
 
 
 def _riding_html(g: dict) -> str:
@@ -1874,6 +1826,113 @@ def _riding_html(g: dict) -> str:
             f'<span><i class="gw-dot b"></i>if {_first(b)} wins</span><span class="dim">playoff odds</span></div>'
             + "".join(rows) +
             f'<div class="gw-note">{_first(big)} has the most riding on it: {win}% with a win, {lose}% with a loss.</div></div>')
+
+
+def _render_rooting_card(cur: int, me) -> None:
+    """Every other game this week that moves YOUR playoff odds, as one strip:
+    who to root for, what it's worth, and how that side's doing right now."""
+    if not me:
+        return
+    games = get_stakes(cur).get("games") or []
+    roots = stakes.rooting(games, me)
+    picks = [(g, roots[(g["a"], g["b"])]) for g in games
+             if roots.get((g["a"], g["b"])) and roots[(g["a"], g["b"])][1] >= 1]
+    if not picks:
+        return
+    ctx = get_week_ctx(cur)
+    chips = []
+    for g, (side, pts) in sorted(picks, key=lambda x: -x[1][1]):
+        other = g["b"] if side == g["a"] else g["a"]
+        sa, sb = ctx["sides"].get(side), ctx["sides"].get(other)
+        status = ""
+        if sa and sb:
+            oa, ob = _outlook(ctx, sa), _outlook(ctx, sb)
+            wp = _wp(oa, ob)
+            status = (f'<em class="{"up" if wp >= 0.5 else "dn"}">{wp * 100:.0f}% to win</em>')
+        chips.append(f'<div class="rc-c">{_mgr_face(side)}<div><b>{_first(side)} <i>+{pts}</i></b>'
+                     f'<span>over {_first(other)}</span>{status}</div></div>')
+    total = sum(p for _g, (_s, p) in picks)
+    st.markdown(f'<div class="kx rc"><div class="rc-h"><span>Your rooting card</span>'
+                f'<b>+{total}</b><em>about that much on your playoff odds if they all go your way</em></div>'
+                f'<div class="rc-row">{"".join(chips)}</div></div>', unsafe_allow_html=True)
+
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def get_week_review(week: int) -> dict:
+    """Last week's story from its final box scores: the blowout, the nail-biter,
+    the upset (by Sleeper's pre-game projections), points left on every bench
+    and the luckiest win."""
+    if week < 1 or not season.week_is_final(LEAGUE["sleeper_league_id"], week):
+        return {}
+    ctx = get_week_ctx(week)
+    pos_of, _team_of = _pos_team_maps()
+    pre = gameday.week_projections(SEASON, week) or {}
+    pts, proj_tot, bench = {}, {}, {}
+    for o, sd in ctx["sides"].items():
+        st_ = [p for p in sd["starters"] if p and p != "0"]
+        pts[o] = sum(sd["actual"].get(p, 0.0) for p in st_)
+        proj_tot[o] = sum(float(pre.get(p, 0) or 0) for p in st_)
+        best = gameday.optimal_lineup(sd["players"], ctx["slots"], sd["actual"], pos_of, prefer=st_)
+        bench[o] = sum(sd["actual"].get(p, 0.0) for _s, p in best if p) - pts[o]
+    games = []
+    for sa, sb in _pairs(ctx):
+        a, b = sa["owner"], sb["owner"]
+        w, l = (a, b) if pts[a] >= pts[b] else (b, a)
+        games.append({"w": w, "l": l, "margin": pts[w] - pts[l]})
+    if not games:
+        return {}
+    star = max(((p, o, sd["actual"].get(p, 0.0)) for o, sd in ctx["sides"].items()
+                for p in sd["starters"] if p and p != "0"), key=lambda x: x[2], default=None)
+    upsets = [g for g in games if proj_tot[g["w"]] < proj_tot[g["l"]]]
+    upset = max(upsets, key=lambda g: proj_tot[g["l"]] - proj_tot[g["w"]]) if upsets else None
+    lucky = min(games, key=lambda g: pts[g["w"]])
+    beaten_by = sum(1 for o in pts if pts[o] > pts[lucky["w"]])
+    return {"week": week, "pts": pts, "bench": bench,
+            "blowout": max(games, key=lambda g: g["margin"]),
+            "close": min(games, key=lambda g: g["margin"]),
+            "upset": upset, "upset_gap": proj_tot[upset["l"]] - proj_tot[upset["w"]] if upset else 0,
+            "lucky": lucky, "lucky_beaten": beaten_by,
+            "top": max(pts, key=pts.get), "star": star,
+            "benchiest": max(bench, key=bench.get)}
+
+
+def _render_week_review(week: int) -> None:
+    r = get_week_review(week)
+    if not r:
+        return
+    pts, bench = r["pts"], r["bench"]
+    st.markdown(theme.section_head(f'Week {week} in <span class="g">Review</span>', "the final box scores"),
+                unsafe_allow_html=True)
+    b, c, lk = r["blowout"], r["close"], r["lucky"]
+    tiles = [("Blowout", f'{_first(b["w"])} by {b["margin"]:.1f}', f'{pts[b["w"]]:.1f} over {_first(b["l"])}', ""),
+             ("Nail-biter", f'{_first(c["w"])} by {c["margin"]:.1f}', f'{pts[c["w"]]:.1f}&ndash;{pts[c["l"]]:.1f} over {_first(c["l"])}', "")]
+    if r["upset"]:
+        u = r["upset"]
+        tiles.append(("Upset", f'{_first(u["w"])} over {_first(u["l"])}',
+                      f'projected {r["upset_gap"]:.1f} worse before kickoff', "amber"))
+    tiles.append(("Top score", f'{_first(r["top"])} {pts[r["top"]]:.1f}', _team_of(r["top"]), "good"))
+    if r["star"]:
+        pid, o, v = r["star"]
+        tiles.append(("Player of the week", _pname(pid), f'{v:.1f} for {_first(o)}', ""))
+    bo = r["benchiest"]
+    tiles.append(("Left on the bench", f'{_first(bo)} {bench[bo]:.1f}',
+                  "points his best lineup would have added", "amber" if bench[bo] >= 10 else ""))
+    tiles.append(("Luckiest win", f'{_first(lk["w"])} {pts[lk["w"]]:.1f}',
+                  (f'{r["lucky_beaten"]} team{"s" if r["lucky_beaten"] != 1 else ""} scored more and he still won'
+                   if r["lucky_beaten"] else "the week's top score, no luck needed"), ""))
+    # fill whole rows: 6 tiles = 3 across, 7-8 = 4 across with the last one widened
+    cols = 3 if len(tiles) in (3, 6) else 4
+    gap = (-len(tiles)) % cols
+    wide = f' style="grid-column:span {gap + 1}"' if gap else ""
+    html = "".join(f'<div{wide if i == len(tiles) - 1 else ""}>'
+                   f'<span>{k}</span><b class="{cl}">{v}</b><i>{s_}</i></div>'
+                   for i, (k, v, s_, cl) in enumerate(tiles))
+    st.markdown(f'<div class="kx xb-tiles wr" style="--wr-cols:{cols}">{html}</div>', unsafe_allow_html=True)
+    rows = sorted(bench.items(), key=lambda kv: -kv[1])
+    st.markdown('<div class="kx wr-bench"><div class="eyebrow">Points left on the bench</div>'
+                + "".join(f'<div class="wr-b">{_mgr_face(o)}<b>{_first(o)}</b>'
+                          f'<div class="wr-bar"><i style="width:{100 * v / max(1.0, rows[0][1]):.0f}%"></i></div>'
+                          f'<em>{v:.1f}</em></div>' for o, v in rows) + '</div>', unsafe_allow_html=True)
 
 
 def _render_gotw(cur: int, me=None, full: bool = True) -> None:
@@ -2051,8 +2110,10 @@ def render_matchup() -> None:
                ("On bye", str(len(adv["byes"])), "of your skill players", "bad" if adv["byes"] else ""),
                ("Next lock", gameday.kickoff_label(pre[0]) if pre else "&mdash;",
                 "first game still to kick off" if pre else "every game has started", ""),
-               ("Win prob if fixed", f"{_wp(fixed, b) * 100:.0f}%",
-                f"from {_wp(a, b) * 100:.0f}% as it stands", "good")]),
+               (("Win prob if fixed", f"{_wp(fixed, b) * 100:.0f}%",
+                 f"from {_wp(a, b) * 100:.0f}% as it stands", "good") if adv["swaps"] or adv["holes"] else
+                ("Record", _rec_of(me).replace("-", "&ndash;") or "&mdash;",
+                 f"vs {_first(sb['owner'])} {_rec_of(sb['owner'])}", ""))]),
         unsafe_allow_html=True)
     pos_of, team_of = _pos_team_maps()
     flag_out = {o for _, o, _g in adv["swaps"]}
@@ -2077,8 +2138,9 @@ def render_matchup() -> None:
         st.markdown(_lineup_rows(ctx, sb, show_actual=started), unsafe_allow_html=True)
     st.caption(f'As set: {adv["set_total"]:.1f} projected; best available {adv["best_total"]:.1f}. '
                "Projections from Sleeper; a player on bye projects 0. Players whose game has started "
-               "stay where they are. " + _RISK_NOTE + " Win probability treats each lineup's total as a range, wider "
+               "stay where they are. Win probability treats each lineup's total as a range, wider "
                "for riskier positions — Draft Room's model.")
+    st.markdown(f'<div class="risk-line">{_RISK_TIP}</div>', unsafe_allow_html=True)
 
 
 # ------------------------------------------------------------- keeper outlook
@@ -2103,7 +2165,12 @@ def _history_through_this_season():
     return dataclasses.replace(H, kept_set=kept, rookie_kept_set=rook)
 
 
-def _keeper_outlook_rows(owner: str) -> list:
+def _keeper_outlook_rows(owner: str, market: bool = False) -> list:
+    """Every skill player on `owner`'s roster priced for next season, the
+    five it would keep marked. With `market`, the price the player CARRIES in
+    a trade instead (house rules: the round and clock follow the player; a
+    rookie keeper converts to a regular at a last-round pick), before the new
+    team's own pick ownership, and no five picked."""
     nxt = SEASON + 1
     hist = _history_through_this_season()
     rules = config.rules()
@@ -2124,7 +2191,10 @@ def _keeper_outlook_rows(owner: str) -> list:
         r = {"_pid": pid, "name": pm.name, "Pos": pm.position, "adp": rank, "adp_rd": adp_rd,
              "nfl": (H.players.get(pid) or {}).get("team") or "", "Rookie": False,
              "cost": None, "ladder": [], "how": "", "blocked": ""}
-        if rookie_keeper_eligible(owner, pid, season=nxt, hist=hist):
+        if market and rookie_keeper_eligible(owner, pid, season=nxt, hist=hist):
+            r.update(Rookie=True, cost=DRAFT_ROUNDS, last=True,
+                     how="Rookie keeper &middot; converts to a regular at a last-round pick on a trade")
+        elif rookie_keeper_eligible(owner, pid, season=nxt, hist=hist):
             r.update(Rookie=True, cost=DRAFT_ROUNDS, last=True,
                      ladder=[(str(nxt), f"R{DRAFT_ROUNDS}"), ("then", "no clock")],
                      how="Rookie keeper &middot; your last rounds, no 3-year clock")
@@ -2148,7 +2218,7 @@ def _keeper_outlook_rows(owner: str) -> list:
                         r["how"] = f"Kept in {SEASON} &middot; year 2 moves up {bump} rounds"
                     else:
                         r["how"] = "Year 3 &middot; costs his ADP round"
-                cost = engine.adjust_to_owned(base, owned, DRAFT_ROUNDS) if base else None
+                cost = (base if market else engine.adjust_to_owned(base, owned, DRAFT_ROUNDS)) if base else None
                 if base and cost is None:
                     r["blocked"] = (f"needs a {nxt} R1 &middot; you don't own one" if base == 1 else
                                     f"needs a {nxt} pick in R{base} or earlier &middot; you don't own one")
@@ -2165,6 +2235,8 @@ def _keeper_outlook_rows(owner: str) -> list:
                         r["ladder"] = [(str(nxt), f"R{cost} &middot; ADP"), ("", "done")]
         r["Value"] = keeper_value(rank, r["cost"]) if r["cost"] else None
         rows.append(r)
+    if market:
+        return rows
 
     # Pick the five. Rookie slots first, from rookie-eligible players. A
     # rookie who doesn't make a rookie slot can still be kept as a REGULAR —
@@ -2355,45 +2427,13 @@ def _render_home_in_season() -> None:
         st.markdown(_picker_html(compact=True), unsafe_allow_html=True)
 
     # ---- the week's biggest game, then every matchup by what's at stake ----
+    _render_rooting_card(cur, me)
     _render_gotw(cur, me)
     _render_around_league(cur, me)
 
-    # ---- the money ----
-    _render_home_money(LEAGUE["sleeper_league_id"])
-
-    # ---- power rankings ----
-    power = get_power_rankings()
-    if power:
-        st.markdown(theme.section_head(
-            'Power <span class="g">Rankings</span>',
-            "45% win rate &middot; 35% scoring &middot; 20% recent form"),
-            unsafe_allow_html=True)
-        by_owner = {r["owner"]: r for r in table}
-        top = max(r["score"] for r in power) or 1
-        prow = []
-        for r in power:
-            d = r["rank_delta"]
-            chip = (f'<span class="chip good">&#9650; {d}</span>' if d > 0
-                    else f'<span class="chip bad">&#9660; {abs(d)}</span>' if d < 0
-                    else '<span class="chip">holding</span>')
-            s = by_owner.get(r["owner"], {})
-            prow.append(
-                f'<tr><td class="rk">{r["rank"]}</td>{_two_cell(r["owner"])}'
-                f'<td class="num">{s.get("wins", 0)}&ndash;{s.get("losses", 0)}</td>'
-                f'<td class="num pf">{s.get("points_for", 0):.1f}</td>'
-                f'<td class="pw"><div class="pbar">'
-                f'<i style="width:{100 * r["score"] / top:.0f}%"></i></div></td>'
-                f'<td>{chip}</td></tr>')
-        st.markdown(
-            '<div class="neonwrap"><table class="lb"><thead><tr><th></th><th>Team</th>'
-            '<th style="text-align:right;">W&ndash;L</th>'
-            '<th class="pf" style="text-align:right;">PF</th><th>Power</th><th></th></tr></thead>'
-            f'<tbody>{"".join(prow)}</tbody></table></div>', unsafe_allow_html=True)
-        st.markdown(
-            f'<p class="sec-note">The bracket is decided on <b>record</b>, not this — the top '
-            f'{PLAYOFF_TEAMS} by record make it. Power ranks the eight by how they\'ve actually '
-            f'played; the arrow is movement against where the standings have them.</p>',
-            unsafe_allow_html=True)
+    # ---- last week, in review (the money and power rankings have their own
+    # pages: FAAB Pot and Standings) ----
+    _render_week_review(cur - 1)
 
     # ---- recent moves ----
     moves = get_recent_moves()
@@ -2550,7 +2590,8 @@ def render_managers() -> None:
     except Exception:  # noqa: BLE001
         agg = {}
     cur = season.current_week()
-    odds = (get_stakes(cur).get("base") or {}) if cur else {}
+    odds = ({o: v["playoff_pct"] for o, v in ((get_playoff_outlook(None).get("sim") or {}).get("teams") or {}).items()}
+            if cur else {})
     by_pf = {r["owner"]: i + 1 for i, r in enumerate(sorted(table, key=lambda r: -r["points_for"]))}
     me = _me()
     cards = []
@@ -2566,6 +2607,10 @@ def render_managers() -> None:
                 ("All-time", f'{w_all}&ndash;{l_all}'),
                 ("Titles", f'{titles}' + (f' &middot; {runner}&times; runner-up' if runner else "")),
                 ("Playoff odds", f'{odds[o]}%' if o in odds else "&mdash;")]
+        if me and o != me and cur:
+            h = get_h2h(me, o, cur)
+            if h["games"]:
+                rows.append(("vs you", f'{h["b"]}&ndash;{h["a"]}'))
         seasons_in = a.get("seasons", 0) + 1
         note = (f"{titles}-time champion" if titles else
                 f"{seasons_in} season{'s' if seasons_in != 1 else ''} in the league")
@@ -2631,7 +2676,7 @@ def render_record_book() -> None:
             f'<td class="num">{wp:.3f}</td>'
             f'<td class="num">{int(a["pf"])}</td>'
             f'<td class="num">{a["titles"]}</td>'
-            f'<td class="num">{a["runner"]}</td></tr>'
+            f'<td class="num">{a["titles"] + a["runner"]}</td></tr>'
         )
     head = ('<tr><th>#</th><th>Manager</th><th>All-Time</th><th>Win%</th>'
             '<th>Points</th><th>Titles</th><th>Finals</th></tr>')
@@ -2714,7 +2759,10 @@ def get_recent_trades(limit: int = 8) -> list:
         for p in picks:
             owner = p.get("owner_id")
             if owner in receives:
-                receives[owner].append(f'{p.get("season")} {_ordinal(int(p.get("round", 0)))}')
+                # whose pick it was: a swap otherwise reads "both get a 2026 11th"
+                orig = r2o.get(int(p.get("roster_id") or 0))
+                whose = (config.manager_name(orig).split() or [""])[0] + "'s " if orig else ""
+                receives[owner].append(f'{whose}{p.get("season")} {_ordinal(int(p.get("round", 0)))}')
         teams = [(config.manager_name(r2o.get(rid, "")), receives.get(rid, [])) for rid in roster_ids]
         ts = tx.get("status_updated")
         date = dt.datetime.fromtimestamp(ts / 1000).strftime("%b %d, %Y") if ts else ""
@@ -2766,9 +2814,10 @@ def render_trade_analyzer() -> None:
     adp = {str(r["_pid"]): int(r["ADP"]) for _, r in tt.iterrows()}      # ADP rank
 
     names = list(NAME_TO_ID.keys())
+    _mine = config.manager_name(_me()) if _me() else None
     c1, c2 = st.columns(2)
     with c1:
-        a = st.selectbox("Team A", names, index=0, key="ta_a")
+        a = st.selectbox("Team A", names, index=names.index(_mine) if _mine in names else 0, key="ta_a")
     with c2:
         b = st.selectbox("Team B", [n for n in names if n != a], index=0, key="ta_b")
     oa, ob = NAME_TO_ID[a], NAME_TO_ID[b]
@@ -2915,8 +2964,18 @@ def render_keeper_landscape() -> None:
             st.markdown(f'<div class="kx">{rows}</div>', unsafe_allow_html=True)
 
 
+def _last_summer(what: str) -> None:
+    """Once this year's draft is done, the pre-season pages are history: say
+    so up top and point at the page that's about next year."""
+    if current_draft_done():
+        st.markdown(f'<div class="ls-note">This is <b>{what}</b>, from before the {SEASON} draft. '
+                    f'For next year, see <a href="?p=inseason&g=week&t=keepers" target="_self">'
+                    f'{SEASON + 1} Keepers</a>.</div>', unsafe_allow_html=True)
+
+
 def render_mock_draft() -> None:
     st.markdown(theme.section_head(f'Projected <span class="g">Draft</span>', page=True), unsafe_allow_html=True)
+    _last_summer("last summer's mock draft")
     st.caption("Likely keepers in their slots; best available by ADP everywhere else.")
     rf = config.mock_draft_rookie_factor()
     c1, c2 = st.columns([2, 1])
@@ -2964,7 +3023,67 @@ def render_mock_draft() -> None:
     st.caption("**KEEP** = a kept player · **RK** = rookie.")
 
 
+@st.cache_data(ttl=1800, show_spinner=False)
+def get_keeper_market() -> list:
+    """Every rostered player's next-season keeper price as it would travel in
+    a trade (see _keeper_outlook_rows(market=True))."""
+    out = []
+    for o in MANAGERS:
+        for r in _keeper_outlook_rows(o, market=True):
+            if r["cost"] and r["Value"] is not None:
+                out.append({**r, "owner": o})
+    return out
+
+
+def _render_keeper_market_next() -> None:
+    nxt = SEASON + 1
+    st.markdown(theme.section_head(f'Keeper Trade <span class="g">Market</span>', f"{nxt} prices", page=True),
+                unsafe_allow_html=True)
+    st.caption(f"Who you could trade for and keep in {nxt}, at the round they'd cost you — "
+               "the same prices and value as 2027 Keepers.")
+    rows = get_keeper_market()
+    if not rows:
+        st.info("No keeper prices yet.")
+        return
+    me = _me()
+    c1, c2 = st.columns(2)
+    with c1:
+        rnd = st.selectbox(f"Costs a {nxt} pick in round", list(range(1, DRAFT_ROUNDS + 1)), index=1, key="tm_rd")
+    with c2:
+        pos_f = st.selectbox("Position", ["All", "QB", "RB", "WR", "TE"], key="tm_pos")
+    view = [r for r in rows if r["cost"] == rnd and (pos_f == "All" or r["Pos"] == pos_f) and r["owner"] != me]
+    view.sort(key=lambda r: (-r["Value"], r["adp"] or 999))
+    note = ""
+    if me:
+        owned = get_owned_for(nxt).get(me) or {}
+        has = any(int(owned.get(k, 0) or 0) > 0 for k in range(1, rnd + 1))
+        note = (f" You own a {nxt} R{rnd}-or-earlier pick." if has else
+                f" You don't own a {nxt} R{rnd}-or-earlier pick, so you'd need one to keep him.")
+    if not view:
+        st.info(f"Nobody on another roster costs a {nxt} round-{rnd} pick.")
+        return
+    vmax = max(1, max(abs(r["Value"]) for r in view))
+    out = []
+    for r in view:
+        val = int(r["Value"])
+        rk = ' <span class="rk-badge">RK</span>' if r.get("Rookie") else ""
+        adp = f' &middot; {nxt} ADP #{r["adp"]}' if r["adp"] else ""
+        out.append(
+            f'<div class="mk">{_ph_img(r["_pid"], "xl-f")}<div class="mk-n"><b>{r["name"]}{rk}</b>'
+            f'<span>{config.manager_name(r["owner"])} &middot; {r["Pos"]} &middot; {r["how"]}{adp}</span></div>'
+            f'<div class="mk-b"><i class="{"neg" if val < 0 else ""}" style="width:{max(4, 100 * abs(val) / vmax):.0f}%"></i></div>'
+            f'<em class="{"neg" if val < 0 else ""}">{val:+d}</em></div>')
+    st.markdown(f'<p style="margin:.2rem 0 .6rem;">Keepable at <b>{nxt} round {rnd}</b>:{note}</p>',
+                unsafe_allow_html=True)
+    st.markdown('<div class="kx">' + "".join(out[:25]) + '</div>', unsafe_allow_html=True)
+    st.caption("Value = his talent on the draft-value curve minus what that round's pick would land in a "
+               "keeper-depleted draft — the 2027 Keepers number.")
+
+
 def render_trade_targets() -> None:
+    if current_draft_done():
+        _render_keeper_market_next()
+        return
     st.markdown(theme.section_head(f'Keeper Trade <span class="g">Market</span>', page=True), unsafe_allow_html=True)
     st.caption("Players keepable at the round you pick — best value up top.")
     df = build_trade_targets()
@@ -3013,13 +3132,15 @@ def render_trade_targets() -> None:
     st.markdown(f'<p style="margin:.2rem 0 .6rem;">Keepable at <b>Round {rnd}</b>:{owned_note}</p>',
                 unsafe_allow_html=True)
     st.markdown('<div class="kx">' + "".join(rows) + '</div>', unsafe_allow_html=True)
-    st.caption(f"Value = Round {rnd} − the player's ADP round.")
+    st.caption("Value = his talent on the draft-value curve minus what that round's pick would land "
+               "in a keeper-depleted draft.")
     if me in NAME_TO_ID and "Ned" in me:
         st.caption("You're Ned. The whole league is your trade partner.")
 
 
 def render_rookies() -> None:
     st.markdown(theme.section_head(f'{SEASON} Top <span class="g">Rookies</span>'), unsafe_allow_html=True)
+    _last_summer("last summer's rookie class and draft ADP")
     st.caption("Ranked by consensus ADP — your rookie-keeper targets.")
     df = build_rookies_table(40)
     if df.empty:
@@ -3153,6 +3274,7 @@ def render_my_keepers() -> None:
     if locked:
         st.warning(f"Keeper submissions closed on **{deadline:%b %d, %Y · %-I:%M %p}**. "
                    "The board is final — selections are read-only.")
+        _last_summer(f"the locked {SEASON} keeper board")
     elif deadline:
         st.caption(f"⏳ Submissions close **{deadline:%b %d, %Y · %-I:%M %p}**.")
 
@@ -3409,8 +3531,18 @@ def team_power():
 
 @st.cache_data(ttl=1800, show_spinner="Setting the line…")
 def build_championship_odds():
-    """A for-fun Vegas-style title line, formatted for display from team_power()."""
+    """A for-fun Vegas-style title line. Before kickoff the win shares come
+    from team_power() (keeper strength + history); once games are played they
+    come from the playoff sim, which plays out the bracket, so the line is the
+    same model as the Playoffs page."""
     fair, record, keeprank, kcap, best = team_power()
+    if season.current_week():
+        try:
+            sim = (get_playoff_outlook(None).get("sim") or {}).get("teams") or {}
+        except Exception:  # noqa: BLE001
+            sim = {}
+        if sim and all("title_pct" in v for v in sim.values()):
+            fair = {o: sim.get(o, {}).get("title_pct", 0.0) / 100 for o in fair}
 
     def american(p):
         p = min(0.95, max(0.01, p * 1.16))  # ~16% overround (the house edge)
@@ -3462,7 +3594,9 @@ def render_playoffs() -> None:
 
 def render_odds() -> None:
     st.markdown(theme.section_head(f'{SEASON} Title <span class="g">Odds</span>', page=True), unsafe_allow_html=True)
-    st.caption("For fun — Vegas-style line, juice included.")
+    st.caption("For fun — Vegas-style line, juice included. "
+               + ("From the playoff sim: the rest of the season and the bracket, 10,000 times."
+                  if season.current_week() else "Pre-season: keeper strength plus each team's history."))
     rows = build_championship_odds()
     if rows:
         fav, dog = rows[0], rows[-1]
@@ -3972,8 +4106,14 @@ def render_rules() -> None:
 
     deadline = config.keeper_deadline()
     if deadline:
-        st.info(f"📌 Rule proposals are due by the keeper deadline "
-                f"(**{deadline.strftime('%b %-d, %Y')}**) and voted on at the draft.")
+        import datetime as _dt
+        if _dt.datetime.now(deadline.tzinfo) > deadline:
+            # this year's deadline has passed: point at next summer's
+            st.info(f"📌 Rule proposals for **{deadline.year + 1}** are due by next summer's keeper deadline "
+                    f"(this year's was {deadline.strftime('%b %-d')}) and voted on at the {deadline.year + 1} draft.")
+        else:
+            st.info(f"📌 Rule proposals are due by the keeper deadline "
+                    f"(**{deadline.strftime('%b %-d, %Y')}**) and voted on at the draft.")
 
     for title, items in _RULES_SECTIONS:
         rows = "".join(
@@ -4191,11 +4331,6 @@ def get_luck():
     return season.luck()
 
 
-@st.cache_data(ttl=900, show_spinner="Simulating the rest of the season…")
-def get_playoff_odds():
-    return season.playoff_odds(playoff_teams=PLAYOFF_TEAMS)
-
-
 def _no_season_yet(what: str) -> bool:
     """Shared empty state for every results-driven page. True (and renders a
     note) when no regular-season game has been played yet — these pages are
@@ -4294,7 +4429,7 @@ def render_power() -> None:
     st.markdown(theme.section_head('Power <span class="g">Rankings</span>',
                                     'record &middot; scoring &middot; form', page=True), unsafe_allow_html=True)
     st.caption("Driven by what's actually happened: 45% win rate, 35% scoring, 20% recent form. "
-               "Separate from Title Odds, which is a pre-season keeper-strength model.")
+               "Separate from Playoff and Title Odds, which simulate the games still to play.")
     if _no_season_yet("Power rankings"):
         return
 
@@ -4304,6 +4439,15 @@ def render_power() -> None:
     hottest = max(ranks, key=lambda r: r["recent_avg"], default=None)
     tiles = [(1.0, f'#{ranks[0]["rank"]}', "power", "Strongest Team",
               config.manager_name(ranks[0]["owner"]), theme.TEAL)]
+    # one name per tile: the hottest / most underrated fall to the next team
+    # when the strongest team is also those
+    shown = {ranks[0]["owner"]}
+    if hottest and hottest["owner"] in shown:
+        hottest = max((r for r in ranks if r["owner"] not in shown), key=lambda r: r["recent_avg"], default=None)
+    if hottest:
+        shown.add(hottest["owner"])
+    if best_riser and best_riser["owner"] in shown:
+        best_riser = max((r for r in risers if r["owner"] not in shown), key=lambda r: r["rank_delta"], default=None)
     if hottest:
         tiles.append((1.0, f'{hottest["recent_avg"]:.0f}', "avg", "Hottest (last 3)",
                       config.manager_name(hottest["owner"]), theme.AMBER))
@@ -4338,27 +4482,30 @@ def render_power() -> None:
     st.caption("“vs. Standings” compares power rank to where the record has them — "
                "green means the record undersells them.")
 
-    st.markdown(theme.section_head('Playoff Odds', '10,000 simulations'), unsafe_allow_html=True)
-    st.caption(f"10,000 simulations of every remaining game, drawn from each team's own "
-               f"scoring average and volatility. Top {PLAYOFF_TEAMS} make it.")
-    odds = get_playoff_odds()
-    if odds:
+    st.markdown(theme.section_head('Playoff &amp; Title Odds', '10,000 simulations'), unsafe_allow_html=True)
+    st.caption(f"The rest of the season on the real schedule, then the bracket, 10,000 times — the same "
+               f"sim as the Playoffs page. Top {PLAYOFF_TEAMS} make it.")
+    sim = (get_playoff_outlook(_me()).get("sim") or {}).get("teams") or {}
+    if sim:
+        rec = {r["owner"]: r for r in get_standings()}
         obody = []
-        for r in odds:
-            pct = r["odds"]
+        for o, v in sorted(sim.items(), key=lambda kv: (-kv[1]["playoff_pct"], kv[1]["avg_seed"])):
+            pct = v["playoff_pct"]
             color = ("var(--teal)" if pct >= 75 else "var(--amber)" if pct >= 25 else "var(--red)")
+            r = rec.get(o, {})
             obody.append(
-                f'<tr><td class="pl">{config.manager_name(r["owner"])}</td>'
+                f'<tr><td class="pl">{config.manager_name(o)}</td>'
                 f'<td class="num" style="font-family:var(--font-display);font-weight:600;font-size:16px;color:{color};">{pct:.0f}%</td>'
-                f'<td class="num">{r["current_wins"]}</td>'
-                f'<td class="num">{r["proj_wins"]:.1f}</td>'
+                f'<td class="num">{v.get("title_pct", 0):.0f}%</td>'
+                f'<td class="num">{r.get("wins", 0)}&ndash;{r.get("losses", 0)}</td>'
+                f'<td class="num">{v["avg_seed"]:.1f}</td>'
                 f'<td style="min-width:120px;"><div class="burnbar-track">'
                 f'<div class="burnbar-fill" style="width:{pct:.0f}%;background:{color};"></div>'
                 f'</div></td></tr>'
             )
         st.markdown(
             '<div class="neonwrap"><table class="lb"><thead><tr>'
-            '<th>Team</th><th>Playoff Odds</th><th>Wins Now</th><th>Proj. Wins</th><th></th>'
+            '<th>Team</th><th>Playoffs</th><th>Title</th><th>Record</th><th>Avg seed</th><th></th>'
             f'</tr></thead><tbody>{"".join(obody)}</tbody></table></div>',
             unsafe_allow_html=True,
         )
@@ -4507,21 +4654,41 @@ def render_superlatives() -> None:
     if odds:
         card("Title Favorite", odds[0]["Team"], f'{odds[0]["Odds"]} · {odds[0]["Win %"]}%')
 
-    # most all-in (fewest 2026 picks after keepers) & deepest war chest
-    cap = []
-    for o in MANAGERS:
-        nk = len(team_keeper_rows(o))
-        p26 = sum(get_owned_for(SEASON).get(o, {}).values())
-        cap.append((config.manager_name(o), max(0, p26 - nk), p26))
-    allin = min(cap, key=lambda x: x[1])
-    deep = max(cap, key=lambda x: x[2])
-    card("Most All-In", allin[0], f'only {allin[1]} picks left to draft')
-    card("Deepest War Chest", deep[0], f'{deep[2]} draft picks in 2026')
+    in_season = bool(season.current_week())
+    if not in_season:
+        # draft-capital superlatives only mean something before the draft
+        cap = []
+        for o in MANAGERS:
+            nk = len(team_keeper_rows(o))
+            p26 = sum(get_owned_for(SEASON).get(o, {}).values())
+            cap.append((config.manager_name(o), max(0, p26 - nk), p26))
+        allin = min(cap, key=lambda x: x[1])
+        deep = max(cap, key=lambda x: x[2])
+        card("Most All-In", allin[0], f'only {allin[1]} picks left to draft')
+        card("Deepest War Chest", deep[0], f'{deep[2]} draft picks in {SEASON}')
+    else:
+        luck = get_luck()
+        if luck:
+            unl = min(luck, key=lambda r: r["luck"])
+            card("Unluckiest", config.manager_name(unl["owner"]),
+                 f'{unl["wins"]} wins on {unl["expected_wins"]:.1f} expected')
+        best_wk = None
+        for wk, games in (get_season_results() or {}).items():
+            for g in games:
+                for side in (g["home"], g["away"]):
+                    o, pts = side.get("owner"), side.get("points")
+                    if o and pts and (best_wk is None or pts > best_wk[2]):
+                        best_wk = (o, wk, pts)
+        if best_wk:
+            card("Biggest Week", config.manager_name(best_wk[0]), f'{best_wk[2]:.1f} in week {best_wk[1]}')
 
     seasons, agg = build_record_book()
-    champ = max(agg.items(), key=lambda kv: (kv[1]["titles"], kv[1]["w"]))
-    if champ[1]["titles"]:
-        card("Most Titles", config.manager_name(champ[0]), f'{champ[1]["titles"]} championship(s)')
+    top_t = max((a["titles"] for a in agg.values()), default=0)
+    if top_t:
+        tied = [config.manager_name(o).split()[0] for o, a in agg.items() if a["titles"] == top_t]
+        who = tied[0] if len(tied) == 1 else ", ".join(tied[:-1]) + " & " + tied[-1]
+        card("Most Titles", who if len(tied) > 1 else config.manager_name(next(o for o, a in agg.items() if a["titles"] == top_t)),
+             f'{top_t} title{"s" if top_t != 1 else ""}' + (" each" if len(tied) > 1 else ""))
     runner = max(agg.items(), key=lambda kv: (kv[1]["runner"], -kv[1]["titles"]))
     if runner[1]["runner"] and not runner[1]["titles"]:
         card("Always a Bridesmaid", config.manager_name(runner[0]),
@@ -4530,7 +4697,7 @@ def render_superlatives() -> None:
     card("Best All-Time Record", config.manager_name(best_rec[0]),
          f'{best_rec[1]["w"]}-{best_rec[1]["l"]}')
 
-    mv = adp_consensus.adp_movement(SEASON, window_days=14)
+    mv = adp_consensus.adp_movement(SEASON, window_days=14) if not in_season else {}
     pool_moves = [m for m in mv.get("moves", []) if m["now"] <= DRAFT_SCOPE_RANK]
     if pool_moves:
         riser = max(pool_moves, key=lambda m: m["delta"])

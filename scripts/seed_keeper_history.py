@@ -41,7 +41,7 @@ REG = {
         "Heath Gentis": ["Travis Kelce", "Nick Chubb", "Rhamondre Stevenson"],
         "Ned": ["Amon-Ra St. Brown", "A.J. Brown", "Jalen Hurts"],
         "Mike Clifton": ["Christian McCaffrey", "Garrett Wilson", "Alexander Mattison"],
-        "Brandon Cliffton": ["Chris Olave", "Josh Jacobs", "Tony Pollard"],
+        "Brandon Clifton": ["Chris Olave", "Josh Jacobs", "Tony Pollard"],
     },
     2024: {
         "Tanner Prible": ["Christian McCaffrey", "A.J. Brown", "Drake London"],
@@ -51,7 +51,7 @@ REG = {
         "Heath Gentis": ["DJ Moore", "Derrick Henry", "C.J. Stroud"],
         "Ned": ["Brandon Aiyuk", "Garrett Wilson", "Kenneth Walker"],
         "Mike Clifton": ["Trey McBride", "Tyreek Hill", "James Cook"],
-        "Brandon Cliffton": ["Puka Nacua", "Sam LaPorta", "Justin Jefferson"],
+        "Brandon Clifton": ["Puka Nacua", "Sam LaPorta", "Justin Jefferson"],
     },
     2025: {
         "Tanner Prible": ["Saquon Barkley", "James Cook"],
@@ -61,7 +61,7 @@ REG = {
         "Heath Gentis": ["Tee Higgins", "Amon-Ra St. Brown", "Zay Flowers"],
         "Ned": ["Drake London", "Jaxon Smith-Njigba", "Chuba Hubbard"],
         "Mike Clifton": ["Breece Hall", "Jerry Jeudy", "Trey McBride"],
-        "Brandon Cliffton": ["Puka Nacua", "Chase Brown", "Bucky Irving"],
+        "Brandon Clifton": ["Puka Nacua", "Chase Brown", "Bucky Irving"],
     },
 }
 

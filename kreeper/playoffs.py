@@ -48,11 +48,13 @@ def _settings(league_id: str) -> dict:
     rounds = 2 if n <= 4 else 3
     rtype = int(st.get("playoff_round_type") or 0)
     weeks = rounds + (1 if rtype == 1 else rounds if rtype == 2 else 0)
+    round_weeks = [2] * rounds if rtype == 2 else [1] * (rounds - 1) + [2] if rtype == 1 else [1] * rounds
     return {"playoff_teams": n, "start": start, "last_regular": start - 1,
             # B&B and 7½ Men also play the league median every week: a second
             # result, a win for every team in the top half. 6-4 after five weeks.
             "median": bool(int(st.get("league_average_match") or 0)),
-            "playoff_weeks": list(range(start, min(18, start + weeks - 1) + 1)), "slots": slots}
+            "playoff_weeks": list(range(start, min(18, start + weeks - 1) + 1)), "slots": slots,
+            "round_weeks": round_weeks}
 
 
 def fixtures(league_id: str, first: int, last: int) -> Dict[int, List[Tuple[str, str]]]:
@@ -104,15 +106,41 @@ def team_strength(league_id: str, season: int, week: int, slots: List[str]) -> d
 
 
 # ------------------------------------------------------------------ sim
+def _bracket(rng, teams: dict, seeds: List[str], round_weeks: List[int]) -> str:
+    """Play one bracket from the seed order; returns the champion. Sleeper's
+    fixed bracket (no reseeding): 4 teams 1v4 / 2v3; 6 teams 3v6 / 4v5 with
+    1 and 2 on byes, 1 meeting the 4/5 winner; 8 teams 1v8 / 4v5 / 2v7 / 3v6.
+    A round scores the sum of its weeks (two-week rounds play twice)."""
+    rw = list(round_weeks) or [1]
+
+    def play(a, b, rnd):
+        w = rw[min(rnd, len(rw) - 1)]
+        sa = sum(rng.gauss(teams[a]["mean"], teams[a]["sd"]) for _ in range(w))
+        sb = sum(rng.gauss(teams[b]["mean"], teams[b]["sd"]) for _ in range(w))
+        return a if sa >= sb else b
+    s = seeds
+    if len(s) >= 8:
+        q = [play(s[0], s[7], 0), play(s[3], s[4], 0), play(s[1], s[6], 0), play(s[2], s[5], 0)]
+        return play(play(q[0], q[1], 1), play(q[2], q[3], 1), 2)
+    if len(s) >= 6:
+        w45, w36 = play(s[3], s[4], 0), play(s[2], s[5], 0)
+        return play(play(s[0], w45, 1), play(s[1], w36, 1), 2)
+    if len(s) >= 4:
+        return play(play(s[0], s[3], 0), play(s[1], s[2], 0), 1)
+    return play(s[0], s[1], 0) if len(s) >= 2 else s[0]
+
+
 def simulate(teams: dict, schedule: Dict[int, List[Tuple[str, str]]], playoff_teams: int,
              me: Optional[str] = None, n_sims: int = 10000, seed: int = 7,
-             median: bool = False) -> dict:
+             median: bool = False, round_weeks: Optional[List[int]] = None) -> dict:
     """The rest of the season on the real fixture list.
 
-    {"teams": {owner: {playoff_pct, avg_seed}}, "seeds": [% per seed] for `me`,
+    {"teams": {owner: {playoff_pct, avg_seed[, title_pct]}}, "seeds": [% per seed] for `me`,
      "weeks": [{week, opp, p_win, if_win, if_lose, swing}] for `me`}.
     Ties on wins go to points for (season so far + simulated), which is how
     Sleeper seeds by default. `swing` is how far one game moves `me`'s odds.
+    With `round_weeks` (weeks per playoff round, from _settings) the bracket is
+    played too and each team gets a `title_pct`.
     """
     rng = random.Random(seed)
     owners = sorted(teams)
@@ -120,6 +148,7 @@ def simulate(teams: dict, schedule: Dict[int, List[Tuple[str, str]]], playoff_te
     if n < 2:
         return {}
     made = {o: 0 for o in owners}
+    titles = {o: 0 for o in owners}
     seed_sum = {o: 0.0 for o in owners}
     seeds = [0] * n
     weeks = sorted(schedule)
@@ -153,6 +182,8 @@ def simulate(teams: dict, schedule: Dict[int, List[Tuple[str, str]]], playoff_te
             seed_sum[o] += i + 1
             if i < playoff_teams:
                 made[o] += 1
+        if round_weeks is not None:
+            titles[_bracket(rng, teams, order[:playoff_teams], round_weeks)] += 1
         if me in teams:
             rank = order.index(me)
             seeds[rank] += 1
@@ -166,7 +197,9 @@ def simulate(teams: dict, schedule: Dict[int, List[Tuple[str, str]]], playoff_te
                     m[3] += 1
                     m[2] += ok
     out = {"teams": {o: {"playoff_pct": round(100 * made[o] / n_sims),
-                         "avg_seed": round(seed_sum[o] / n_sims, 1)} for o in owners},
+                         "avg_seed": round(seed_sum[o] / n_sims, 1),
+                         **({"title_pct": round(100 * titles[o] / n_sims, 1)} if round_weeks is not None else {})}
+                     for o in owners},
            "seeds": [round(100 * s / n_sims) for s in seeds] if me in teams else [],
            "weeks": []}
     for wk in weeks:
@@ -295,6 +328,6 @@ def outlook(league_id: Optional[str] = None, season: Optional[int] = None,
     weeks_left = max(0, s["last_regular"] - week + 1)
     fx = fixtures(league_id, week, s["last_regular"]) if weeks_left else {}
     sim = simulate(teams, fx, min(s["playoff_teams"], len(teams)), me=me, n_sims=n_sims,
-                   median=s["median"]) if fx else {}
+                   median=s["median"], round_weeks=s["round_weeks"]) if fx else {}
     return {"season": season, "week": week, "settings": s, "teams": teams, "sim": sim,
             "weeks_left": weeks_left, "fixtures": fx}

@@ -19,7 +19,7 @@ league:
 # 2026 draft order (slot 1 picks first). Sleeper's draft_order isn't set yet, so
 # this overrides it on the Draft Board. Owner IDs in pick order.
 draft_order:
-  - "964703051971887104"  # 1. Brandon Cliffton
+  - "964703051971887104"  # 1. Brandon Clifton
   - "980552553920274432"  # 2. Mike Clifton
   - "980679503968018432"  # 3. Tanner Prible
   - "980547002628927488"  # 4. Ned
@@ -92,7 +92,7 @@ managers:
   "980587844647419904": { handle: Gentis1,      name: "Heath Gentis",     team: "Republican's for Mike" }
   "980547002628927488": { handle: NedSchneebs3, name: "Ned",              team: "But... business is good" }
   "980552553920274432": { handle: MikeClifton,  name: "Mike Clifton",     team: "Manager of the Year" }
-  "964703051971887104": { handle: badlife,      name: "Brandon Cliffton", team: "FAABfreebird" }
+  "964703051971887104": { handle: badlife,      name: "Brandon Clifton", team: "FAABfreebird" }
 
 # ADP sources to pull and average into a consensus. Toggle any off if it gets flaky.
 adp_sources:

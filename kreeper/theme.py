@@ -1023,6 +1023,7 @@ table.dt td.risk{ width:1%; white-space:nowrap; text-align:right; padding-left:4
 [data-testid="stMarkdownContainer"] .kx .gw-n span{ margin-left:5px; font-size:10px; font-weight:500; color:var(--muted) !important; }
 .kx .gw-p{ font-family:'Anton',sans-serif; font-weight:400; font-size:22px; text-align:center; color:#9d9da6; }
 .kx .gw-p.w{ color:var(--ink); } .kx .gw-p.pj{ font-style:italic; }
+.kx .gw-key{ margin-top:6px; font-size:10.5px; color:var(--muted); } .kx .gw-key i{ font-style:italic; color:var(--ink); }
 .kx .gw-e{ display:grid; grid-template-columns:1fr 36px 1fr; align-items:center; }
 [data-testid="stMarkdownContainer"] .kx .gw-e span{ text-align:center; font-family:'Roboto Mono',monospace; font-size:9.5px; letter-spacing:.1em; color:var(--kg) !important; }
 .kx .gw-h{ height:6px; background:rgba(255,255,255,.06); border-radius:4px; overflow:hidden; display:flex; } .kx .gw-h.l{ justify-content:flex-end; }
@@ -1043,6 +1044,39 @@ i.mf.gw-f{ width:40px; height:40px; border-color:var(--kg, #d4b15e); }
 .kx .gw-dot.a{ background:#5b86c9; } .kx .gw-dot.b{ background:var(--kg); }
 [data-testid="stMarkdownContainer"] .kx .gw-nums{ font-size:12px; text-align:right; } .kx .gw-nums em{ font-style:normal; font-weight:700; }
 .kx .gw-nums em.a{ color:#8fb0e6; } .kx .gw-nums em.b{ color:var(--kg); }
+/* Home: link through to Matchup; one-line risk note with the long version in a tooltip */
+[data-testid="stMarkdownContainer"] a.to-matchup{ display:inline-block; margin-top:10px; font-size:13px; font-weight:600;
+  color:var(--kg, #d4b15e) !important; text-decoration:none; }
+[data-testid="stMarkdownContainer"] a.to-matchup:hover{ text-decoration:underline; }
+.risk-line{ margin-top:4px; font-size:12px; color:var(--muted); }
+[data-testid="stMarkdownContainer"] .risk-tip{ color:var(--muted) !important; cursor:help; border-bottom:1px dotted var(--dim); }
+.risk-tip b{ color:var(--kg, #d4b15e); font-weight:600; }
+/* pre-season pages once the draft is done */
+.ls-note{ background:rgba(212,177,94,.08); border:1px solid rgba(212,177,94,.3); border-radius:10px; padding:9px 12px;
+  font-size:13px; line-height:1.5; margin:0 0 12px; color:#e8e2d0; }
+.ls-note b{ color:var(--kg, #d4b15e); }
+/* your rooting card (Home) */
+.kx.rc{ background:var(--kink); border:1px solid var(--kl); border-radius:12px; padding:12px 14px; margin:14px 0 4px; }
+.kx .rc-h{ display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+[data-testid="stMarkdownContainer"] .kx .rc-h span{ font-size:10.5px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--kg) !important; }
+.kx .rc-h b{ font-family:'Anton',sans-serif; font-weight:400; font-size:28px; line-height:1; color:var(--kg); }
+.kx .rc-h em{ font-style:normal; font-size:12px; color:var(--muted); }
+.kx .rc-row{ display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:8px; }
+.kx .rc-c{ display:flex; align-items:center; gap:10px; background:rgba(255,255,255,.03); border:1px solid var(--kl); border-radius:10px; padding:8px 10px; min-width:0; }
+.kx .rc-c > div{ min-width:0; } .kx .rc-c b{ display:block; font-family:'Oswald',sans-serif; font-weight:600; font-size:15px; }
+.kx .rc-c b i{ font-style:normal; color:var(--kg); }
+[data-testid="stMarkdownContainer"] .kx .rc-c span{ display:block; font-size:11px; color:var(--muted) !important; }
+.kx .rc-c em{ font-style:normal; font-size:11px; font-weight:700; } .kx .rc-c em.up{ color:var(--teal, #7fd8b4); } .kx .rc-c em.dn{ color:#ff8fa3; }
+/* week in review (Home) */
+.kx.wr{ grid-template-columns:repeat(var(--wr-cols,4),1fr); border-radius:12px; border-top:1px solid var(--kl); overflow:hidden; }
+.kx.wr b{ font-size:22px; }
+.kx.wr-bench{ margin-top:12px; background:var(--kink); border:1px solid var(--kl); border-radius:12px; padding:12px 14px; }
+.kx .wr-b{ display:grid; grid-template-columns:34px 80px 1fr 52px; gap:10px; align-items:center; padding:5px 0; }
+.kx .wr-b b{ font-family:'Oswald',sans-serif; font-weight:600; font-size:14px; }
+.kx .wr-bar{ height:7px; background:rgba(255,255,255,.06); border-radius:4px; overflow:hidden; }
+.kx .wr-bar i{ display:block; height:100%; background:linear-gradient(90deg,var(--kr2),var(--kg)); }
+.kx .wr-b em{ font-style:normal; font-family:'Anton',sans-serif; font-size:17px; text-align:right; color:var(--ink); }
+@media (max-width:760px){ .kx.wr{ grid-template-columns:repeat(2,1fr); } .kx .rc-row{ grid-template-columns:repeat(2,minmax(0,1fr)); } .kx .wr-b{ grid-template-columns:30px 70px 1fr 46px; } }
 /* ---- 3D motion ---- */
 /* 1. fight-night entrance (app._intro adds .in once per page load) */
 .kx.gw.in .gw-s.l, .kx.xb.in .xb-s.me{ animation:kx-inL .9s cubic-bezier(.2,.9,.2,1) both; }
