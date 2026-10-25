@@ -684,6 +684,23 @@ span.mechip{ cursor:pointer; user-select:none; }
   font-weight:700; flex:0 0 auto; }
 .av.sm{ width:24px; height:24px; border-radius:50%; font-size:10px; }
 .av.dim{ background:#d8d8de; }
+/* manager photos: natural-colour circles (initials until a photo exists);
+   the matchup covers use the gold/royal duotones instead (.xb-mg) */
+i.mf.mf{ width:34px; height:34px; border-radius:50%; overflow:hidden; flex:none; display:inline-flex; align-items:center;
+  justify-content:center; background:var(--panel2); border:2px solid var(--kr, #1f4e9c); font-style:normal; opacity:1;
+  font-family:var(--font-display); font-weight:700; font-size:12px; color:var(--muted); line-height:1; }
+i.mf.mf img{ width:100%; height:100%; object-fit:cover; display:block; }
+i.mf.chip{ width:24px; height:24px; border:none; font-size:9px; color:#111; background:#fff; }
+i.mf.mm-mf{ width:52px; height:52px; }
+i.mf.lead{ border-color:var(--kg, #d4b15e); box-shadow:0 0 0 2px rgba(212,177,94,.28); }
+i.mf.last{ border-color:rgba(255,143,163,.55); }
+.kx .mm.me .mm-s.a i.mf{ border-color:var(--kg, #d4b15e); }
+td.two .tw{ display:flex; align-items:center; gap:10px; min-width:0; } td.two .tw > div{ min-width:0; }
+.kx .sr-t{ display:flex; align-items:center; gap:10px; } .kx .sr-t > div{ min-width:0; }
+.kx .sr-t i.mf{ width:38px; height:38px; } .kx .sr.me .sr-t i.mf{ border-color:var(--kg, #d4b15e); }
+.kx .sr-tag{ display:inline-block; vertical-align:2px; margin-left:8px; font-family:Inter,sans-serif; font-style:normal; font-size:9px;
+  font-weight:700; letter-spacing:.12em; text-transform:uppercase; padding:2px 7px; border-radius:999px; background:var(--kg, #d4b15e); color:#14110a; }
+.kx .sr-tag.meal{ background:rgba(255,143,163,.14); color:#ff8fa3; box-shadow:inset 0 0 0 1px rgba(255,143,163,.4); }
 .eyebrow{ font-size:10px; font-weight:600; letter-spacing:1.6px; text-transform:uppercase;
   color:var(--muted); margin:0 0 8px; }
 .eyebrow.pad{ margin:16px 0 8px; }
@@ -921,6 +938,16 @@ table.dt td.risk{ width:1%; white-space:nowrap; text-align:right; padding-left:4
 .kx .xb-ph{ height:190px; width:auto; max-width:none; aspect-ratio:350 / 254; object-fit:cover !important; object-position:center bottom !important;
   filter:grayscale(1) contrast(1.2); margin-bottom:-24px; flex:none; }
 .kx .xb-s.me .xb-ph{ mix-blend-mode:multiply; }
+/* manager duotones on the cover: already tinted, so no grey/multiply; fade into the band */
+.kx .xb-ph.xb-mg{ aspect-ratio:1 / 1; object-position:center top !important; filter:none; margin-bottom:-14px;
+  -webkit-mask-image:linear-gradient(to top,transparent 0,#000 30%); mask-image:linear-gradient(to top,transparent 0,#000 30%); }
+.kx .xb-s.me .xb-ph.xb-mg{ mix-blend-mode:normal; }
+.kx .xb-s.op .xb-ph.xb-mg{ opacity:.85; }
+@media (max-width:760px){
+  /* the photo sits under the score on a phone: dim it and fade its inner edge */
+  .kx .xb-s.me .xb-ph.xb-mg{ opacity:.5; -webkit-mask-image:linear-gradient(to right,#000 35%,transparent 92%); mask-image:linear-gradient(to right,#000 35%,transparent 92%); }
+  .kx .xb-s.op .xb-ph.xb-mg{ opacity:.5; -webkit-mask-image:linear-gradient(to left,#000 35%,transparent 92%); mask-image:linear-gradient(to left,#000 35%,transparent 92%); }
+}
 .kx .xb-s.op .xb-ph{ opacity:.6; -webkit-mask-image:radial-gradient(ellipse 56% 92% at 50% 100%,#000 62%,transparent 100%);
   mask-image:radial-gradient(ellipse 56% 92% at 50% 100%,#000 62%,transparent 100%); }
 .kx .xb-t{ min-width:0; } .kx .xb-t b{ white-space:nowrap; } .kx .xb-t i{ display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }

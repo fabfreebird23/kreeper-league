@@ -1092,8 +1092,8 @@ def _two_cell(owner: str, win: bool = False) -> str:
     """Two-line table cell: team name on top, the human under it. Used
     everywhere on Home so a row identifies a team the way people actually
     talk about it, without losing who's behind it."""
-    return (f'<td class="two{" w" if win else ""}"><b>{_team_of(owner)}</b>'
-            f'<span>{config.manager_name(owner)}</span></td>')
+    return (f'<td class="two{" w" if win else ""}"><div class="tw">{_mgr_face(owner)}<div><b>{_team_of(owner)}</b>'
+            f'<span>{config.manager_name(owner)}</span></div></div></td>')
 
 
 @st.cache_data(ttl=900, show_spinner=False)
@@ -1206,6 +1206,24 @@ def _initials(owner: str) -> str:
     if not parts:
         return "?"
     return (parts[0][0] + (parts[-1][0] if len(parts) > 1 else parts[0][1:2])).upper()
+
+
+@st.cache_data(show_spinner=False)
+def _mgr_photo(owner, tone: str = "") -> str | None:
+    """A manager's photo as a data URI (assets/managers/<sleeper id>.jpg):
+    natural colour for the circles, _g (gold duotone, you) and _r (royal
+    duotone, them) for the matchup covers. None when there's no photo."""
+    import base64
+    from pathlib import Path
+    f = Path(__file__).parent / "assets" / "managers" / f"{owner}{'_' + tone if tone else ''}.jpg"
+    return "data:image/jpeg;base64," + base64.b64encode(f.read_bytes()).decode() if f.exists() else None
+
+
+def _mgr_face(owner, cls: str = "") -> str:
+    """The manager's circle: their photo, or their initials until one exists."""
+    src = _mgr_photo(str(owner)) if owner else None
+    inner = f'<img src="{src}" alt="">' if src else _initials(owner) if owner else "?"
+    return f'<i class="mf{" " + cls if cls else ""}{"" if src else " ini"}">{inner}</i>'
 
 
 @st.cache_data(ttl=86400, show_spinner=False)
@@ -1377,14 +1395,17 @@ def _hero_html(a: str, b: str, *, pill: str, big_a: float, big_b: float, kicker:
     gold cover number in the middle, then four tiles."""
     tiles = "".join(f'<div><span>{k}</span><b class="{c}">{v}</b><i>{s_}</i></div>' for k, v, s_, c in cells)
     ra, rb = _rec_of(a), _rec_of(b)
+    ga, gb = _mgr_photo(str(a), "g"), _mgr_photo(str(b), "r")
+    ph_a = f'<img class="xb-ph xb-mg" src="{ga}" alt="">' if ga else _ph_img(photo_a, "xb-ph")
+    ph_b = f'<img class="xb-ph xb-mg" src="{gb}" alt="">' if gb else _ph_img(photo_b, "xb-ph")
     lab = f"{kicker} · {pill}".replace("&middot;", "·").upper()
     return (
-        f'<div class="kx xb"><div class="xb-s me">{_ph_img(photo_a, "xb-ph")}<div class="xb-t">'
+        f'<div class="kx xb"><div class="xb-s me">{ph_a}<div class="xb-t">'
         f'<span>{_team_of(a)}{" &middot; " + ra if ra else ""}</span><b>{big_a:.1f}</b><i>{sub_a}</i></div></div>'
         f'<div class="xb-m"><span class="xb-k">{lab}</span><b>{wp * 100:.0f}<sup>%</sup></b><em>win probability</em>'
         f'<div class="xb-bar"><i style="width:{wp * 100:.0f}%"></i></div></div>'
         f'<div class="xb-s op"><div class="xb-t"><span>{_team_of(b)}{" &middot; " + rb if rb else ""}</span>'
-        f'<b>{big_b:.1f}</b><i>{sub_b}</i></div>{_ph_img(photo_b, "xb-ph")}</div></div>'
+        f'<b>{big_b:.1f}</b><i>{sub_b}</i></div>{ph_b}</div></div>'
         f'<div class="kx xb-tiles">{tiles}</div>')
 
 
@@ -1669,7 +1690,8 @@ def render_live() -> None:
 
             def half(side, o, cls):
                 r = _rec_of(side["owner"])
-                img = _ph_img(_top_pid(ctx, side), "mm-f")
+                img = (_mgr_face(side["owner"], "mm-mf") if _mgr_photo(str(side["owner"]))
+                       else _ph_img(_top_pid(ctx, side), "mm-f"))
                 txt = (f'<div><span>{_team_of(side["owner"])}{" &middot; " + r if r else ""}</span>'
                        f'<b>{o["points"]:.1f}</b><i>proj {o["final"]:.0f} &middot; {o["left"]} to play</i></div>')
                 return f'<div class="mm-s {cls}">' + (img + txt if cls == "a" else txt + img) + '</div>'
@@ -3880,10 +3902,13 @@ def render_standings() -> None:
             body.append(f'<div class="sr-cut"><span>PLAYOFF LINE &middot; TOP {PLAYOFF_TEAMS} MAKE THE BRACKET</span></div>')
         w = 18 + 82 * (r["points_for"] - lo) / span
         stk = r["streak"] or ""
+        tag = ('<em class="sr-tag">leader</em>' if r["rank"] == 1 and played else
+               '<em class="sr-tag meal">buys the draft meal</em>' if r["rank"] == len(table) and played else "")
         body.append(
             f'<div class="sr{" me" if r["owner"] == me else ""}"><span class="sr-n">{r["rank"]}</span>'
-            f'<div class="sr-t"><b>{config.manager_name(r["owner"])}</b>'
-            f'<span>{rec} &middot; {r["points_for"]:.0f} for &middot; {r["points_against"]:.0f} against</span></div>'
+            f'<div class="sr-t">{_mgr_face(r["owner"], "lead" if r["rank"] == 1 else "last" if r["rank"] == len(table) else "")}'
+            f'<div><b>{config.manager_name(r["owner"])}{tag}</b>'
+            f'<span>{rec} &middot; {r["points_for"]:.0f} for &middot; {r["points_against"]:.0f} against</span></div></div>'
             f'<div class="sr-b"><i style="width:{w:.0f}%"></i><em>{r["points_for"]:.0f}</em></div>'
             f'<span class="sr-k {"w" if stk.startswith("W") else ""}">{stk or "&mdash;"}</span></div>')
     st.markdown('<div class="kx">' + "".join(body) + "</div>", unsafe_allow_html=True)
@@ -4181,7 +4206,7 @@ def _masthead_right(current: str) -> str:
         total = season.regular_season_weeks()
         line = f'Week {wk} of {total}' if wk else "Kickoff"
         me = _me()
-        chip = (f'<span class="mechip" role="button" data-toggle="bb-pop-me"><span class="av sm">{_initials(me)}</span>'
+        chip = (f'<span class="mechip" role="button" data-toggle="bb-pop-me">{_mgr_face(me, "chip")}'
                 f'{_team_of(me)} <i>&#9662;</i></span>' if me else
                 '<span class="mechip" role="button" data-toggle="bb-pop-me">Pick your team <i>&#9662;</i></span>')
         return f'<div class="mh-right"><div class="mh-meta">{SEASON} &middot; {line}</div>{chip}</div>'
