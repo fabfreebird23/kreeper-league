@@ -1066,8 +1066,13 @@ i.mf.gw-f{ width:40px; height:40px; border-color:var(--kg, #d4b15e); }
 @media (max-width:760px){
   .kx.gw{ grid-template-columns:1fr 1fr; min-height:0; }
   .kx .gw-m{ grid-column:1 / -1; grid-row:2; padding:10px 0 14px; } .kx .gw-m b{ font-size:56px; }
-  .kx .gw-s{ min-height:140px; padding:0 12px; } .kx .gw-ph{ opacity:.5; max-width:80%; }
-  .kx .gw-t b{ font-size:38px; } .kx .gw-t i{ font-size:11px; }
+  /* a phone half is ~170px: stack the face above the text so nothing sits on it */
+  .kx .gw-s, .kx .gw-s.l{ flex-direction:column; justify-content:flex-start; align-items:center; text-align:center; padding:12px 8px 8px; gap:6px; }
+  .kx .gw-s .gw-ph{ position:static; height:92px; width:92px; max-width:none; opacity:1;
+    -webkit-mask-image:linear-gradient(to top,transparent 0,#000 28%); mask-image:linear-gradient(to top,transparent 0,#000 28%); }
+  .kx .gw-s.r{ flex-direction:column-reverse; justify-content:flex-end; }
+  .kx .gw-t b{ font-size:34px; } .kx .gw-t i{ font-size:11px; line-height:1.35; }
+  [data-testid="stMarkdownContainer"] .kx .gw-t span{ font-size:9px; letter-spacing:.1em; white-space:normal; }
   .kx .gw-tp{ grid-template-columns:minmax(0,1fr) 44px 44px minmax(0,1fr); row-gap:6px; } .kx .gw-e{ grid-column:1 / -1; order:5; }
   .kx .gw-n{ white-space:normal; } [data-testid="stMarkdownContainer"] .kx .gw-n span{ display:block; margin:0; }
   .kx .gw-rd{ grid-template-columns:34px 1fr 80px; } .kx .gw-tr{ grid-column:1 / -1; order:5; }
