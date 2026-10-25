@@ -690,7 +690,7 @@ i.mf.mf{ width:34px; height:34px; border-radius:50%; overflow:hidden; flex:none;
   justify-content:center; background:var(--panel2); border:2px solid var(--kr, #1f4e9c); font-style:normal; opacity:1;
   font-family:var(--font-display); font-weight:700; font-size:12px; color:var(--muted); line-height:1; }
 i.mf.mf img{ width:100%; height:100%; object-fit:cover; display:block; }
-i.mf.chip{ width:24px; height:24px; border:none; font-size:9px; color:#111; background:#fff; }
+i.mf.mchip{ padding:0;  width:24px; height:24px; border:none; font-size:9px; color:#111; background:#fff; }
 i.mf.mm-mf{ width:52px; height:52px; }
 i.mf.lead{ border-color:var(--kg, #d4b15e); box-shadow:0 0 0 2px rgba(212,177,94,.28); }
 i.mf.last{ border-color:rgba(255,143,163,.55); }

@@ -4212,7 +4212,7 @@ def _masthead_right(current: str) -> str:
         total = season.regular_season_weeks()
         line = f'Week {wk} of {total}' if wk else "Kickoff"
         me = _me()
-        chip = (f'<span class="mechip" role="button" data-toggle="bb-pop-me">{_mgr_face(me, "chip")}'
+        chip = (f'<span class="mechip" role="button" data-toggle="bb-pop-me">{_mgr_face(me, "mchip")}'
                 f'{_team_of(me)} <i>&#9662;</i></span>' if me else
                 '<span class="mechip" role="button" data-toggle="bb-pop-me">Pick your team <i>&#9662;</i></span>')
         return f'<div class="mh-right"><div class="mh-meta">{SEASON} &middot; {line}</div>{chip}</div>'
