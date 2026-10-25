@@ -22,3 +22,6 @@ data/keepers_2026.json
 
 # weekly game state + projections (gameday.py), refetched constantly
 data/cache/
+
+# FantasyCalc next-year values (nextyear.py), refetched every 12h
+data/nextyear_fc_*.json
