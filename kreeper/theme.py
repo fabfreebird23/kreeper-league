@@ -1066,11 +1066,12 @@ i.mf.gw-f{ width:40px; height:40px; border-color:var(--kg, #d4b15e); }
 @media (max-width:760px){
   .kx.gw{ grid-template-columns:1fr 1fr; min-height:0; }
   .kx .gw-m{ grid-column:1 / -1; grid-row:2; padding:10px 0 14px; } .kx .gw-m b{ font-size:56px; }
-  /* a phone half is ~170px: stack the face above the text so nothing sits on it */
-  .kx .gw-s, .kx .gw-s.l{ flex-direction:column; justify-content:flex-start; align-items:center; text-align:center; padding:12px 8px 8px; gap:6px; }
-  .kx .gw-s .gw-ph{ position:static; height:92px; width:92px; max-width:none; opacity:1;
-    -webkit-mask-image:linear-gradient(to top,transparent 0,#000 28%); mask-image:linear-gradient(to top,transparent 0,#000 28%); }
-  .kx .gw-s.r{ flex-direction:column-reverse; justify-content:flex-end; }
+  /* a phone half is ~170px: the old poster look (face from the outer edge),
+     but the face only fills the top of the half and fades out, and the name
+     and odds sit below it, so no text lands on a face */
+  .kx .gw-s{ min-height:196px; align-items:flex-end; padding:0 10px 10px; }
+  .kx .gw-s .gw-ph{ top:0; bottom:auto; height:118px; max-width:none; opacity:.9;
+    -webkit-mask-image:linear-gradient(to top,transparent 0,#000 35%); mask-image:linear-gradient(to top,transparent 0,#000 35%); }
   .kx .gw-t b{ font-size:34px; } .kx .gw-t i{ font-size:11px; line-height:1.35; }
   [data-testid="stMarkdownContainer"] .kx .gw-t span{ font-size:9px; letter-spacing:.1em; white-space:normal; }
   .kx .gw-tp{ grid-template-columns:minmax(0,1fr) 44px 44px minmax(0,1fr); row-gap:6px; } .kx .gw-e{ grid-column:1 / -1; order:5; }
