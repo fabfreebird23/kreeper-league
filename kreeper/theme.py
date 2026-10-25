@@ -957,7 +957,7 @@ table.dt td.risk{ width:1%; white-space:nowrap; text-align:right; padding-left:4
 @media (max-width:760px){
   /* the halves touch on a phone: VS moves onto their seam, photos dim under the score */
   .kx.xb{ position:relative; }
-  .kx .xb-vs{ position:absolute; left:50%; top:59px; transform:translate(-50%,-50%) skewX(-8deg); z-index:3; font-size:15px; margin:0; }
+  .kx .xb-vs{ position:absolute; left:50%; top:59px; translate:-50% -50%; transform:skewX(-8deg); z-index:3; font-size:15px; margin:0; }
   .kx .xb-s .xb-ph.xb-mg{ max-width:78%; opacity:.55; }
   .kx .xb-s.op .xb-ph.xb-mg{ opacity:.5; }
   .kx .xb-s.me.fight{ padding-right:24px; } .kx .xb-s.op.fight{ padding-left:24px; }  /* room for VS */
@@ -1043,6 +1043,76 @@ i.mf.gw-f{ width:40px; height:40px; border-color:var(--kg, #d4b15e); }
 .kx .gw-dot.a{ background:#5b86c9; } .kx .gw-dot.b{ background:var(--kg); }
 [data-testid="stMarkdownContainer"] .kx .gw-nums{ font-size:12px; text-align:right; } .kx .gw-nums em{ font-style:normal; font-weight:700; }
 .kx .gw-nums em.a{ color:#8fb0e6; } .kx .gw-nums em.b{ color:var(--kg); }
+/* ---- 3D motion ---- */
+/* 1. fight-night entrance (app._intro adds .in once per page load) */
+.kx.gw.in .gw-s.l, .kx.xb.in .xb-s.me{ animation:kx-inL .9s cubic-bezier(.2,.9,.2,1) both; }
+.kx.gw.in .gw-s.r, .kx.xb.in .xb-s.op{ animation:kx-inR .9s cubic-bezier(.2,.9,.2,1) both; }
+[data-testid="stMarkdownContainer"] .kx.gw.in .gw-vs, [data-testid="stMarkdownContainer"] .kx.xb.in .xb-vs{ animation:kx-vs 1s .5s cubic-bezier(.3,1.6,.4,1) backwards; }  /* backwards: hand the badge back to its own transform (centred on a phone) */
+.kx.gw.in .gw-m b, .kx.gw.in .gw-m em, .kx.xb.in .xb-m b, .kx.xb.in .xb-m em{ animation:kx-up .6s .9s ease-out both; }
+.kx.gw.in, .kx.xb.in{ animation:kx-shake .35s 1s ease-out; }
+@keyframes kx-inL{ from{ transform:perspective(900px) translateX(-55%) translateZ(-260px) rotateY(32deg); opacity:0; } to{ transform:none; opacity:1; } }
+@keyframes kx-inR{ from{ transform:perspective(900px) translateX(55%) translateZ(-260px) rotateY(-32deg); opacity:0; } to{ transform:none; opacity:1; } }
+@keyframes kx-vs{ 0%{ transform:perspective(400px) scale(3) rotateY(540deg) skewX(-8deg); opacity:0; } 70%{ opacity:1; }
+  100%{ transform:perspective(400px) scale(1) rotateY(0) skewX(-8deg); } }
+@keyframes kx-up{ from{ transform:translateY(14px); opacity:0; } to{ transform:none; opacity:1; } }
+@keyframes kx-shake{ 0%,100%{ translate:0; } 25%{ translate:-5px 0; } 50%{ translate:4px 0; } 75%{ translate:-2px 0; } }
+/* 2. tilt + shine (pointer handler in app._MOTION_JS sets the transform and --sx) */
+.kx.gw, .kx.xb{ position:relative; transition:transform .15s ease-out; }
+.kx.gw::after, .kx.xb::after{ content:""; position:absolute; inset:0; z-index:4; pointer-events:none; mix-blend-mode:screen;
+  background:linear-gradient(105deg,transparent 35%,rgba(255,236,180,.2) 48%,transparent 60%); background-size:250% 100%;
+  background-position:var(--sx,130%) 0; transition:background-position .15s ease-out; }
+/* 3. split-flap scores on Live (app._flap); spans need the container prefix to beat .mm-s span */
+[data-testid="stMarkdownContainer"] .kx .fl{ display:inline-flex !important; gap:.05em; vertical-align:top; font-size:inherit !important; letter-spacing:0 !important;
+  color:inherit !important; text-transform:none !important; overflow:visible !important; }
+[data-testid="stMarkdownContainer"] .kx .fl span{ display:block !important; font-size:inherit !important; letter-spacing:0 !important; color:inherit !important;
+  text-transform:none !important; white-space:nowrap; }
+[data-testid="stMarkdownContainer"] .kx .fl span.fd{ position:relative; display:inline-block !important; width:.6em; height:1.08em; line-height:1.08em; text-align:center;
+  overflow:visible !important; perspective:3em; }
+[data-testid="stMarkdownContainer"] .kx .fl span.fd.pt{ width:.26em; }
+.kx .fd.s{ background:#1a1a1f linear-gradient(transparent calc(50% - .5px),#000 calc(50% - .5px),#000 calc(50% + .5px),transparent calc(50% + .5px)); border-radius:.08em; }
+.kx .fd.pt.s{ background:none; }
+[data-testid="stMarkdownContainer"] .kx .fd > span{ position:absolute !important; left:0; right:0; height:50%; overflow:hidden !important; background:#1a1a1f; }
+[data-testid="stMarkdownContainer"] .kx .fd > span > span{ position:absolute; left:0; right:0; height:1.08em; }
+[data-testid="stMarkdownContainer"] .kx .fd .t, [data-testid="stMarkdownContainer"] .kx .fd .ft{ top:0; border-radius:.08em .08em 0 0; } [data-testid="stMarkdownContainer"] .kx .fd .t > span, [data-testid="stMarkdownContainer"] .kx .fd .ft > span{ top:0; }
+[data-testid="stMarkdownContainer"] .kx .fd .b, [data-testid="stMarkdownContainer"] .kx .fd .fb{ bottom:0; border-radius:0 0 .08em .08em; } [data-testid="stMarkdownContainer"] .kx .fd .b > span, [data-testid="stMarkdownContainer"] .kx .fd .fb > span{ bottom:0; }
+[data-testid="stMarkdownContainer"] .kx .fd .t{ border-bottom:1px solid #000; }
+[data-testid="stMarkdownContainer"] .kx .fd .ft{ z-index:2; transform-origin:bottom; backface-visibility:hidden; animation:kx-ft .3s ease-in forwards; }
+[data-testid="stMarkdownContainer"] .kx .fd .fb{ z-index:2; transform-origin:top; transform:rotateX(90deg); animation:kx-fb .3s .3s ease-out forwards; }
+@keyframes kx-ft{ to{ transform:rotateX(-90deg); } } @keyframes kx-fb{ to{ transform:rotateX(0); } }
+.kx .mm.me .fd.s, [data-testid="stMarkdownContainer"] .kx .mm.me .fd > span{ background-color:#183f80; }
+.kx .fl-d{ display:inline-block; vertical-align:top; margin-left:6px; font-family:Inter,sans-serif; font-style:normal; font-size:12px; font-weight:700;
+  color:var(--teal, #7fd8b4); animation:kx-gain 2.4s ease-out both; }
+@keyframes kx-gain{ 0%{ opacity:0; transform:translateY(6px); } 15%,70%{ opacity:1; transform:none; } 100%{ opacity:0; } }
+/* 4. manager cards: hover tilts, tap flips (app._MOTION_JS) */
+.kx.mcards{ display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:16px; }
+.kx .mcard{ perspective:900px; height:290px; cursor:pointer; outline:none; }
+.kx .mcard:focus-visible .mc-f, .kx .mcard:focus-visible .mc-b{ box-shadow:0 0 0 2px var(--kg); }
+.kx .mc-in{ position:relative; width:100%; height:100%; transform-style:preserve-3d; transition:transform .75s cubic-bezier(.3,1.3,.4,1); }
+.kx .mcard.on .mc-in{ transform:rotateY(180deg); }
+@media (hover:hover){ .kx .mcard:hover:not(.on) .mc-in{ transform:rotateY(-12deg) rotateX(6deg); } }
+.kx .mc-f, .kx .mc-b{ position:absolute; inset:0; border-radius:14px; overflow:hidden; backface-visibility:hidden; -webkit-backface-visibility:hidden;
+  border:1px solid rgba(212,177,94,.45); background:var(--kink); }
+.kx .mcard.me .mc-f, .kx .mcard.me .mc-b{ border-color:var(--kg); box-shadow:0 0 0 1px var(--kg); }
+.kx .mc-f img{ display:block; width:100%; height:72%; object-fit:cover !important; }
+.kx .mc-ini{ display:flex; align-items:center; justify-content:center; height:72%; font-family:'Oswald',sans-serif; font-style:normal; font-weight:700;
+  font-size:56px; color:rgba(255,255,255,.75); background:linear-gradient(160deg,#1f4e9c,#0c1a33); }
+.kx .mc-rk{ position:absolute; top:8px; left:8px; font-family:'Oswald',sans-serif; font-style:normal; font-weight:700; font-size:13px;
+  color:#14110a; background:var(--kg); padding:2px 8px; border-radius:6px; }
+.kx .mc-ft{ padding:10px 12px; border-top:3px solid var(--kg); }
+.kx .mc-ft b{ display:block; font-family:'Oswald',sans-serif; font-weight:600; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.kx .mc-ft small{ font-size:11px; color:var(--muted); }
+.kx .mc-b{ transform:rotateY(180deg); padding:14px; display:flex; flex-direction:column; gap:7px; background:linear-gradient(160deg,#1f4e9c,#0b1630); }
+.kx .mc-h{ font-family:'Oswald',sans-serif; font-weight:600; font-size:17px; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.kx .mc-row{ display:flex; justify-content:space-between; align-items:baseline; gap:8px; border-bottom:1px solid rgba(255,255,255,.12); padding-bottom:5px; }
+.kx .mc-row small{ font-size:12px; color:#dfe6f5; } .kx .mc-row b{ font-family:'Anton',sans-serif; font-weight:400; font-size:16px; color:var(--kg); text-align:right; }
+.kx .mc-note{ margin-top:auto; font-size:11px; color:#cfe0ff; }
+@media (max-width:760px){ .kx.mcards{ grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; } .kx .mcard{ height:250px; }
+  .kx .mc-row b{ font-size:14px; } .kx .mc-row small{ font-size:11px; } }
+@media (prefers-reduced-motion: reduce){
+  .kx.gw.in *, .kx.xb.in *, .kx.gw.in, .kx.xb.in, .kx .fd .ft, .kx .fd .fb, .kx .fl-d{ animation:none !important; }
+  [data-testid="stMarkdownContainer"] .kx .fd .ft{ display:none !important; } [data-testid="stMarkdownContainer"] .kx .fd .fb{ transform:none !important; }
+  .kx .mc-in{ transition:none; }
+}
 /* Around the League as a stakes ladder */
 .kx.gw-ladder{ display:flex; flex-direction:column; gap:8px; }
 .kx .gw-lr{ display:grid; grid-template-columns:minmax(0,1fr) 220px minmax(0,1fr) 150px; gap:14px; align-items:center;

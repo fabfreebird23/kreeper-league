@@ -1406,7 +1406,7 @@ def _hero_html(a: str, b: str, *, pill: str, big_a: float, big_b: float, kicker:
     lab = f"{kicker} · {pill}".replace("&middot;", "·").upper()
     vs = '<span class="xb-vs">VS</span>' if ga and gb else ""
     return (
-        f'<div class="kx xb"><div class="xb-s me{" fight" if ga else ""}">{ph_a}<div class="xb-t">'
+        f'<div class="kx xb{_intro("xb") if ga and gb else ""}"><div class="xb-s me{" fight" if ga else ""}">{ph_a}<div class="xb-t">'
         f'<span>{_team_of(a)}{" &middot; " + ra if ra else ""}</span><b>{big_a:.1f}</b><i>{sub_a}</i></div></div>'
         f'<div class="xb-m">{vs}<span class="xb-k">{lab}</span><b>{wp * 100:.0f}<sup>%</sup></b><em>win probability</em>'
         f'<div class="xb-bar"><i style="width:{wp * 100:.0f}%"></i></div></div>'
@@ -1667,6 +1667,35 @@ def get_h2h(a: str, b: str, week: int) -> dict:
         return {"a": 0, "b": 0, "games": []}
 
 
+def _intro(key: str) -> str:
+    """" in" the first time `key` renders this session, so an entrance plays
+    once per page load (every nav link is a full load) and not again on a
+    rerun or Live's 30-second refresh."""
+    seen = st.session_state.setdefault("_intros", set())
+    if key in seen:
+        return ""
+    seen.add(key)
+    return " in"
+
+
+def _flap(new: float, old) -> str:
+    """A score as split-flap digits: the ones that changed since `old` (the
+    last value this session showed) flip over like a stadium board."""
+    ns = f"{new:.1f}"
+    os_ = f"{old:.1f}" if isinstance(old, (int, float)) else ns
+    os_ = os_.rjust(len(ns))[-len(ns):]
+    out = []
+    for c, o in zip(ns, os_):
+        cls = "fd pt" if c == "." else "fd"
+        if c == o:
+            out.append(f'<span class="{cls} s">{c}</span>')
+        else:
+            o = o.strip() or "&nbsp;"
+            out.append(f'<span class="{cls}"><span class="h t"><span>{c}</span></span><span class="h b"><span>{o}</span></span>'
+                       f'<span class="ft"><span>{o}</span></span><span class="fb"><span>{c}</span></span></span>')
+    return '<span class="fl">' + "".join(out) + '</span>'
+
+
 def _first(owner) -> str:
     return (config.manager_name(owner).split() or ["?"])[0]
 
@@ -1697,7 +1726,7 @@ def _gotw_cover(ctx: dict, g: dict, games: list, me, cur: int) -> str:
     mid = (f'<div class="gw-m"><span class="gw-k">Game of the Week &middot; week {cur}</span>'
            f'<span class="gw-vs">VS</span><b>{g["stakes"]}</b>'
            f'<em>points of playoff odds on the line</em><span class="gw-sub">{sub}</span></div>')
-    cover = f'<div class="kx gw">{side(a, "l")}{mid}{side(b, "r")}</div>'
+    cover = f'<div class="kx gw{_intro("gw%d" % cur)}">{side(a, "l")}{mid}{side(b, "r")}</div>'
 
     # tiles: all-time, the score, the ripple, your rooting interest
     h = get_h2h(a, b, cur)
@@ -1966,8 +1995,14 @@ def render_live() -> None:
                 r = _rec_of(side["owner"])
                 img = (_mgr_face(side["owner"], "mm-mf") if _mgr_photo(str(side["owner"]))
                        else _ph_img(_top_pid(ctx, side), "mm-f"))
+                last = st.session_state.setdefault("_flaps", {})
+                old = last.get((cur, side["owner"]))
+                last[(cur, side["owner"])] = o["points"]
+                gain = (f'<em class="fl-d">+{o["points"] - old:.1f}</em>'
+                        if isinstance(old, (int, float)) and o["points"] - old >= 0.05 else "")
                 txt = (f'<div><span>{_team_of(side["owner"])}{" &middot; " + r if r else ""}</span>'
-                       f'<b>{o["points"]:.1f}</b><i>proj {o["final"]:.0f} &middot; {o["left"]} to play</i></div>')
+                       f'<b class="flb">{_flap(o["points"], old)}{gain}</b>'
+                       f'<i>proj {o["final"]:.0f} &middot; {o["left"]} to play</i></div>')
                 return f'<div class="mm-s {cls}">' + (img + txt if cls == "a" else txt + img) + '</div>'
             cards.append(
                 f'<div class="mm{" me" if mine else ""}">{half(sa, a, "a")}'
@@ -2502,6 +2537,48 @@ def _glance_box(tiles: list) -> None:
         f'<div class="liquid-stats">{stats}</div></div></div>',
         unsafe_allow_html=True,
     )
+
+
+def render_managers() -> None:
+    """The league as trading cards: photo and this season's record on the
+    front; tap (or hover-tilt, then tap) to flip to the record book on the back."""
+    st.markdown(theme.section_head('The <span class="g">Managers</span>', "tap a card to flip it", page=True),
+                unsafe_allow_html=True)
+    table = get_standings()
+    try:
+        _seasons, agg = build_record_book()
+    except Exception:  # noqa: BLE001
+        agg = {}
+    cur = season.current_week()
+    odds = (get_stakes(cur).get("base") or {}) if cur else {}
+    by_pf = {r["owner"]: i + 1 for i, r in enumerate(sorted(table, key=lambda r: -r["points_for"]))}
+    me = _me()
+    cards = []
+    for r in table:
+        o = r["owner"]
+        a = agg.get(o) or {}
+        ph = _mgr_photo(str(o))
+        front_img = f'<img src="{ph}" alt="">' if ph else f'<em class="mc-ini">{_initials(o)}</em>'
+        w_all, l_all = a.get("w", 0) + r["wins"], a.get("l", 0) + r["losses"]
+        titles, runner = a.get("titles", 0), a.get("runner", 0)
+        rows = [("This season", f'{r["wins"]}&ndash;{r["losses"]}'),
+                ("Points for", f'{r["points_for"]:,.0f} &middot; #{by_pf.get(o, "-")}'),
+                ("All-time", f'{w_all}&ndash;{l_all}'),
+                ("Titles", f'{titles}' + (f' &middot; {runner}&times; runner-up' if runner else "")),
+                ("Playoff odds", f'{odds[o]}%' if o in odds else "&mdash;")]
+        seasons_in = a.get("seasons", 0) + 1
+        note = (f"{titles}-time champion" if titles else
+                f"{seasons_in} season{'s' if seasons_in != 1 else ''} in the league")
+        cards.append(
+            f'<div class="mcard{" me" if o == me else ""}" tabindex="0" role="button" aria-label="Flip {_team_of(o)}">'
+            f'<div class="mc-in"><div class="mc-f"><em class="mc-rk">#{r["rank"]}</em>{front_img}'
+            f'<div class="mc-ft"><b>{_team_of(o)}</b><small>{config.manager_name(o)} &middot; {r["wins"]}&ndash;{r["losses"]}</small></div></div>'
+            f'<div class="mc-b"><b class="mc-h">{_team_of(o)}</b>'
+            + "".join(f'<div class="mc-row"><small>{k}</small><b>{v}</b></div>' for k, v in rows)
+            + f'<small class="mc-note">{note}</small></div></div></div>')
+    st.markdown('<div class="kx mcards">' + "".join(cards) + "</div>", unsafe_allow_html=True)
+    st.caption("All-time = every regular season on Sleeper, this one included. "
+               "Playoff odds = this week's playoff sim, before this week's games.")
 
 
 def render_record_book() -> None:
@@ -4540,8 +4617,8 @@ INSEASON_GROUPS = [("week", "This Week"), ("trades", "Trades"), ("league", "Leag
 INSEASON_LEAVES = {
     "week": [("live", "Live"), ("matchup", "Matchup"), ("keepers", f"{SEASON + 1} Keepers")],
     "trades": [("recent", "Trades"), ("analyzer", "Trade Analyzer")],
-    "league": [("standings", "Standings"), ("playoffs", "Playoffs"), ("faab", "FAAB Pot"),
-               ("lottery", "Draft-Order Lottery"),
+    "league": [("standings", "Standings"), ("managers", "Managers"), ("playoffs", "Playoffs"),
+               ("faab", "FAAB Pot"), ("lottery", "Draft-Order Lottery"),
                ("rules", "Rules & Votes")],
     "history": [("record", "Record Book")],
 }
@@ -4604,6 +4681,7 @@ elif page == "inseason":
      ("trades", "recent"): lambda: _stack(render_recent_trades, render_trade_targets),
      ("trades", "analyzer"): render_trade_analyzer,
      ("league", "standings"): lambda: _stack(render_standings, render_power, render_odds),
+     ("league", "managers"): render_managers,
      ("league", "playoffs"): render_playoffs,
      ("league", "faab"): render_faab,
      ("league", "lottery"): render_lottery,
@@ -4690,6 +4768,42 @@ _NAV_HANDLER_JS = r"""
 """
 
 
+_MOTION_JS = r"""
+(function(){
+  if (document.__kreeperMotion) return;
+  document.__kreeperMotion = true;
+  var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  // tilt + shine: the matchup and Game of the Week covers lean toward the
+  // pointer (or a dragging finger) and a gold glint follows it across
+  var cur = null;
+  function reset(el){ if (!el) return; el.style.transform = ''; el.style.setProperty('--sx', '130%'); }
+  if (!still) {
+    document.addEventListener('pointermove', function(e){
+      var el = e.target.closest && e.target.closest('.kx.gw, .kx.xb');
+      if (el !== cur) { reset(cur); cur = el; }
+      if (!el) return;
+      var r = el.getBoundingClientRect();
+      var x = (e.clientX - r.left) / r.width - 0.5, y = (e.clientY - r.top) / r.height - 0.5;
+      el.style.transform = 'perspective(1100px) rotateY(' + (x * 8).toFixed(2) + 'deg) rotateX(' + (-y * 6).toFixed(2) + 'deg)';
+      el.style.setProperty('--sx', (110 - (x + 0.5) * 90).toFixed(1) + '%');
+    }, {passive: true});
+    ['pointerleave', 'pointerup', 'pointercancel'].forEach(function(t){
+      document.addEventListener(t, function(e){ if (t !== 'pointerleave' || !e.relatedTarget) { reset(cur); cur = null; } }, true);
+    });
+  }
+  // manager cards flip on tap / Enter / Space
+  document.addEventListener('click', function(e){
+    var c = e.target.closest && e.target.closest('.mcard');
+    if (c) c.classList.toggle('on');
+  });
+  document.addEventListener('keydown', function(e){
+    var c = e.target.closest && e.target.closest('.mcard');
+    if (c && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); c.classList.toggle('on'); }
+  });
+})();
+"""
+
+
 def render_bottom_bar() -> None:
     """Fixed floating pill bar — the site's only nav. Home is a plain link;
     Pre-Season / In-Season pop a sheet above the bar so you can jump
@@ -4750,6 +4864,7 @@ def render_bottom_bar() -> None:
         f"root.innerHTML = {json.dumps(bar_html)};"
         "doc.body.appendChild(root);"
         f"P.eval({json.dumps(_NAV_HANDLER_JS)});"
+        f"P.eval({json.dumps(_MOTION_JS)});"
         "})();</script>",
         height=0,
     )
