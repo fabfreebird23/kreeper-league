@@ -57,7 +57,7 @@ _fresh_kreeper()
 
 from kreeper import (config, nextyear, draftboard, engine, faab, gameday, history, lottery, phase,
                      playoffs, playoffs_view,
-                     season, sleeper, storage, theme)
+                     season, sleeper, stakes, storage, theme)
 from kreeper.adp import consensus as adp_consensus
 from kreeper.names import normalize_name
 
@@ -1580,23 +1580,290 @@ def _render_home_my_week(me: str, cur: int) -> None:
 
 
 def _render_around_league(cur: int, me=None) -> None:
+    """Every game this week, biggest stakes first: live score, a meter for how
+    much it moves the league's playoff odds, and who `me` should root for."""
     ctx = get_week_ctx(cur)
     pairs = _pairs(ctx, me)
     if not pairs:
         return
     done = gameday.week_complete(ctx["games"])
+    games = get_stakes(cur).get("games") or []
+    by_pair = {frozenset((x["a"], x["b"])): x for x in games}
+    top = max((x["stakes"] for x in games), default=0) or 1
+    gotw = frozenset((games[0]["a"], games[0]["b"])) if games and games[0]["stakes"] else None
+    roots = stakes.rooting(games, me)
     st.markdown(theme.section_head('Around the <span class="g">League</span>',
-                                   f"week {cur} &middot; {'final' if done else f'all {len(pairs)} games'}"),
+                                   f"week {cur} &middot; {'final' if done else 'biggest stakes first'}"),
                 unsafe_allow_html=True)
+    pairs = sorted(pairs, key=lambda p: -(by_pair.get(frozenset((p[0]["owner"], p[1]["owner"]))) or {}).get("stakes", 0))
     rows = []
     for sa, sb in pairs:
         a, b = _outlook(ctx, sa), _outlook(ctx, sb)
         to_play = a["left"] + b["left"]
-        rows.append(f'<tr>{_two_cell(sa["owner"], a["final"] > b["final"])}'
-                    f'{_two_cell(sb["owner"], b["final"] > a["final"])}'
-                    f'<td class="num">{a["points"]:.1f} &ndash; {b["points"]:.1f}</td>'
-                    f'<td class="num mut">{f"{to_play} to play" if to_play else "final"}</td></tr>')
-    st.markdown('<table class="dt">' + "".join(rows) + "</table>", unsafe_allow_html=True)
+        key = frozenset((sa["owner"], sb["owner"]))
+        gm = by_pair.get(key)
+        hot = key == gotw
+
+        def team(o, right=False, won=False):
+            txt = (f'<div><b{" class=w" if won else ""}>{_team_of(o)}</b>'
+                   f'<span>{_first(o)}{" &middot; " + _rec_of(o) if _rec_of(o) else ""}</span></div>')
+            return f'<div class="gw-lt{" r" if right else ""}">' + (txt + _mgr_face(o) if right else _mgr_face(o) + txt) + '</div>'
+        if gm:
+            meter = (f'<div class="gw-meter"><i style="width:{100 * gm["stakes"] / top:.0f}%"></i></div>'
+                     f'<span>{gm["stakes"]} pts of playoff odds at stake</span>'
+                     + ('<em class="gw-tag">Game of the Week</em>' if hot else ""))
+        else:
+            meter = ""
+        r = roots.get((gm["a"], gm["b"])) if gm else "none"
+        if me in (sa["owner"], sb["owner"]) and gm:
+            root = f'<span class="gw-root you">your game &middot; &plusmn;{abs(gm["if_a"].get(me, 0) - gm["if_b"].get(me, 0))}</span>'
+        elif r and r != "none" and r[1] >= 1:
+            root = f'<span class="gw-root">root for <b>{_first(r[0])}</b> +{r[1]}</span>'
+        elif r and r != "none":
+            root = '<span class="gw-root">doesn&rsquo;t move you</span>'
+        else:
+            root = ""
+        rows.append(
+            f'<div class="gw-lr{" hot" if hot else ""}">{team(sa["owner"], won=a["final"] > b["final"])}'
+            f'<div class="gw-mid"><div class="gw-sc"><b>{a["points"]:.1f}</b><i>&ndash;</i><b>{b["points"]:.1f}</b></div>'
+            f'<span class="gw-tp2">{f"{to_play} to play" if to_play else "final"}</span>{meter}</div>'
+            f'{team(sb["owner"], right=True, won=b["final"] > a["final"])}{root}</div>')
+    st.markdown('<div class="kx gw-ladder">' + "".join(rows) + "</div>", unsafe_allow_html=True)
+    if me and games:
+        st.caption("Root for = which result helps your own playoff odds, and by how much "
+                   "(the playoff sim run both ways).")
+
+
+# ---------------------------------------------------------------- Game of the Week
+# Every game this week, scored by how much it moves the league's playoff odds
+# (kreeper/stakes.py). The biggest is the Game of the Week: a cover on Home and
+# Live, the tale of the tape, and who it moves; every Around the League row
+# gets a stakes meter and a rooting tip for whoever's looking.
+
+_NFL_CITY = {
+    "ARI": "Arizona", "ATL": "Atlanta", "BAL": "Baltimore", "BUF": "Buffalo", "CAR": "Carolina",
+    "CHI": "Chicago", "CIN": "Cincinnati", "CLE": "Cleveland", "DAL": "Dallas", "DEN": "Denver",
+    "DET": "Detroit", "GB": "Green Bay", "HOU": "Houston", "IND": "Indianapolis", "JAX": "Jacksonville",
+    "KC": "Kansas City", "LAC": "the Chargers", "LAR": "the Rams", "LV": "Las Vegas", "MIA": "Miami",
+    "MIN": "Minnesota", "NE": "New England", "NO": "New Orleans", "NYG": "the Giants", "NYJ": "the Jets",
+    "PHI": "Philadelphia", "PIT": "Pittsburgh", "SEA": "Seattle", "SF": "San Francisco",
+    "TB": "Tampa Bay", "TEN": "Tennessee", "WAS": "Washington",
+}
+
+
+@st.cache_data(ttl=3600, show_spinner="Simulating the rest of the season…")
+def get_stakes(week: int) -> dict:
+    try:
+        return stakes.week_stakes(LEAGUE["sleeper_league_id"], SEASON, week, n_sims=12000)
+    except Exception:  # noqa: BLE001
+        return {"games": []}
+
+
+@st.cache_data(ttl=6 * 3600, show_spinner=False)
+def get_h2h(a: str, b: str, week: int) -> dict:
+    try:
+        return stakes.h2h(LEAGUE["sleeper_league_id"], a, b, SEASON, week)
+    except Exception:  # noqa: BLE001
+        return {"a": 0, "b": 0, "games": []}
+
+
+def _first(owner) -> str:
+    return (config.manager_name(owner).split() or ["?"])[0]
+
+
+def _gotw(cur: int):
+    """(game, all games) for this week, or (None, []) when there's nothing to rank."""
+    games = get_stakes(cur).get("games") or []
+    return (games[0], games) if games and games[0]["stakes"] > 0 else (None, games)
+
+
+def _gotw_cover(ctx: dict, g: dict, games: list, me, cur: int) -> str:
+    a, b = g["a"], g["b"]
+    sa, sb = ctx["sides"].get(a), ctx["sides"].get(b)
+    oa, ob = (_outlook(ctx, sa), _outlook(ctx, sb)) if sa and sb else (None, None)
+    started = _week_started(ctx)
+
+    def side(o, cls):
+        ph = _mgr_photo(str(o), "g")
+        img = f'<img class="gw-ph" src="{ph}" alt="">' if ph else ""
+        win, lose = (g["if_a"], g["if_b"]) if o == a else (g["if_b"], g["if_a"])
+        rec = _rec_of(o)
+        txt = (f'<div class="gw-t"><span>{_team_of(o)}{" &middot; " + rec if rec else ""}</span><b>{_first(o)}</b>'
+               f'<i>playoff odds <em class="up">{win.get(o, 0)}%</em> win &middot; '
+               f'<em class="dn">{lose.get(o, 0)}%</em> lose</i></div>')
+        return f'<div class="gw-s {cls}">' + (img + txt if cls == "l" else txt + img) + '</div>'
+    nxt = games[1]["stakes"] if len(games) > 1 else 0
+    sub = (f"the most of any game this week &middot; next biggest {nxt}" if nxt else "the week's only game")
+    mid = (f'<div class="gw-m"><span class="gw-k">Game of the Week &middot; week {cur}</span>'
+           f'<span class="gw-vs">VS</span><b>{g["stakes"]}</b>'
+           f'<em>points of playoff odds on the line</em><span class="gw-sub">{sub}</span></div>')
+    cover = f'<div class="kx gw">{side(a, "l")}{mid}{side(b, "r")}</div>'
+
+    # tiles: all-time, the score, the ripple, your rooting interest
+    h = get_h2h(a, b, cur)
+    if h["games"]:
+        lead = a if h["a"] > h["b"] else b if h["b"] > h["a"] else None
+        big = (f'{_first(lead)} {max(h["a"], h["b"])}&ndash;{min(h["a"], h["b"])}' if lead
+               else f'Tied {h["a"]}&ndash;{h["b"]}')
+        yr, wk, pa, pb = h["games"][0]
+        t1 = ("All-time", big, f'last met {yr} wk {wk}: {_first(a if pa >= pb else b)} '
+                              f'{max(pa, pb):.1f}&ndash;{min(pa, pb):.1f}', "")
+    else:
+        t1 = ("All-time", "First meeting", "no regular-season games on record", "")
+    if oa:
+        wp = _wp(oa, ob)
+        fav, p = (a, wp) if wp >= 0.5 else (b, 1 - wp)
+        if started:
+            t2 = ("Live", f'{oa["points"]:.1f}&ndash;{ob["points"]:.1f}',
+                  f'{_first(fav)} {p * 100:.0f}% to win &middot; {oa["left"] + ob["left"]} still to play', "")
+        else:
+            t2 = ("Projected", f'{oa["final"]:.0f}&ndash;{ob["final"]:.0f}',
+                  f'{_first(fav)} by {abs(oa["final"] - ob["final"]):.0f} &middot; {p * 100:.0f}% to win', "")
+    else:
+        t2 = ("Projected", "&mdash;", "", "")
+    others = [o for o in g["if_a"] if o not in (a, b)]
+    rip = max(others, key=lambda o: abs(g["if_a"][o] - g["if_b"][o]), default=None)
+    if rip and abs(g["if_a"][rip] - g["if_b"][rip]) >= 1:
+        hi_with = a if g["if_a"][rip] > g["if_b"][rip] else b
+        lo_v, hi_v = sorted((g["if_a"][rip], g["if_b"][rip]))
+        t3 = ("The ripple", f'{_first(rip)} +{hi_v - lo_v}',
+              f'a {_first(hi_with)} win lifts {_first(rip)} {lo_v}% &rarr; {hi_v}%', "")
+    else:
+        t3 = ("The ripple", "None", "nobody else's odds move", "")
+    if me in (a, b):
+        t4 = ("Your game", f'&plusmn;{abs(g["if_a"][me] - g["if_b"][me])}',
+              f'{max(g["if_a"][me], g["if_b"][me])}% with a win, {min(g["if_a"][me], g["if_b"][me])}% with a loss', "amber")
+    elif me and me in g["if_a"]:
+        root = stakes.rooting([g], me).get((a, b))
+        if root and root[1] >= 1:
+            t4 = ("Your rooting", f'{_first(root[0])} +{root[1]}',
+                  f"you're {max(g['if_a'][me], g['if_b'][me])}% if {_first(root[0])} wins, "
+                  f"{min(g['if_a'][me], g['if_b'][me])}% if not", "amber")
+        else:
+            t4 = ("Your rooting", "Either way", "this one doesn't move your odds", "")
+    else:
+        t4 = ("Your rooting", "&mdash;", "pick your team to see who to root for", "")
+    tiles = "".join(f'<div><span>{k}</span><b class="{c}">{v}</b><i>{s_}</i></div>' for k, v, s_, c in (t1, t2, t3, t4))
+    return cover + f'<div class="kx xb-tiles gw-tiles">{tiles}</div>'
+
+
+def _tape_html(ctx: dict, g: dict) -> str:
+    """The marquee position battles: each side's best QB, RB, and top two WRs
+    by projection (TE when a side has fewer than two WRs). Live points once a
+    player's game is on, like the slot-by-slot rows."""
+    a, b = g["a"], g["b"]
+    sa, sb = ctx["sides"].get(a), ctx["sides"].get(b)
+    if not sa or not sb:
+        return ""
+    pos_of, team_of = _pos_team_maps()
+    proj = ctx["proj"]
+
+    def by_pos(side):
+        out = {}
+        for p in side["starters"] or []:
+            if p and p != "0":
+                out.setdefault(pos_of.get(p, ""), []).append(p)
+        return {k: sorted(v, key=lambda x: -proj.get(x, 0.0)) for k, v in out.items()}
+
+    def val(side, pid):
+        if gameday.status(ctx["games"], team_of.get(pid, "")) in ("in", "post"):
+            return side["actual"].get(pid, 0.0), True
+        return proj.get(pid, 0.0), False
+    pa, pb = by_pos(sa), by_pos(sb)
+    want = [("QB", 0, "QB"), ("RB", 0, "RB1"), ("WR", 0, "WR1"), ("WR", 1, "WR2"), ("TE", 0, "TE")]
+    rows = []
+    for pos, i, lab in want:
+        if len(rows) == 4:
+            break
+        if len(pa.get(pos, [])) > i and len(pb.get(pos, [])) > i:
+            x, y = pa[pos][i], pb[pos][i]
+            vx, lx = val(sa, x)
+            vy, ly = val(sb, y)
+            d = vx - vy
+            w = min(100.0, abs(d) / 12 * 100)
+            fill = f'<i style="width:{w:.0f}%"></i>'
+            rows.append(
+                f'<div class="gw-tp"><b class="gw-n">{_pname(x)}<span>{team_of.get(x, "")}</span></b>'
+                f'<b class="gw-p{" w" if d > 0 else ""}{"" if lx else " pj"}">{vx:.1f}</b>'
+                f'<div class="gw-e"><div class="gw-h l">{fill if d > 0 else ""}</div><span>{lab}</span>'
+                f'<div class="gw-h r">{fill if d < 0 else ""}</div></div>'
+                f'<b class="gw-p{" w" if d < 0 else ""}{"" if ly else " pj"}">{vy:.1f}</b>'
+                f'<b class="gw-n r">{_pname(y)}<span>{team_of.get(y, "")}</span></b></div>')
+    # the notes: a manager facing a player who shares his name, and NFL teams
+    # both sides are leaning on
+    notes = []
+    for mgr, opp in ((a, sb), (b, sa)):
+        mine = {w.lower(): w for w in config.manager_name(mgr).split() if len(w) > 2}
+        for p in opp["starters"] or []:
+            nm = _pname(p) if p and p != "0" else ""
+            hit = next((mine[w.lower()] for w in nm.replace("'", " ").split() if w.lower() in mine), None)
+            if hit:
+                notes.append(f'<b>{hit} vs {hit}.</b> {config.manager_name(mgr)} is facing {nm}.')
+                break
+
+    def last(pid):
+        parts = [w for w in _pname(pid).split() if w not in ("Jr.", "Sr.", "II", "III", "IV")]
+        return parts[-1] if parts else _pname(pid)
+    ta = {}
+    for o, side in ((a, sa), (b, sb)):
+        for p in side["starters"] or []:
+            if p and p != "0" and team_of.get(p):
+                ta.setdefault(team_of[p], {}).setdefault(o, []).append(last(p))
+    shared = [t for t, m in ta.items() if len(m) == 2]
+    if shared:
+        t = shared[0]
+
+        def names(xs):
+            return " and ".join(xs) if len(xs) <= 2 else ", ".join(xs[:-1]) + " and " + xs[-1]
+        notes.append(f'Both sides lean on {_NFL_CITY.get(t, t)}: {_first(a)} starts {names(ta[t][a])}, '
+                     f'{_first(b)} starts {names(ta[t][b])}.')
+    note = f'<div class="gw-note">{" ".join(notes)}</div>' if notes else ""
+    head = (f'<div class="gw-th">{_mgr_face(a, "gw-f")}<div><b>{_team_of(a)}</b><span>{_first(a)} &middot; {_rec_of(a)}</span></div>'
+            f'<div class="r"><b>{_team_of(b)}</b><span>{_first(b)} &middot; {_rec_of(b)}</span></div>{_mgr_face(b, "gw-f")}</div>')
+    return f'<div class="kx gw-tape">{head}{"".join(rows)}{note}</div>' if rows else ""
+
+
+def _riding_html(g: dict) -> str:
+    """Everyone this one game moves: where their playoff odds land under each result."""
+    a, b = g["a"], g["b"]
+    moved = sorted((o for o in g["if_a"] if abs(g["if_a"][o] - g["if_b"].get(o, 0)) >= 2),
+                   key=lambda o: -abs(g["if_a"][o] - g["if_b"].get(o, 0)))
+    if not moved:
+        return ""
+    rows = []
+    for o in moved:
+        x, y = g["if_a"][o], g["if_b"].get(o, 0)
+        lo, hi = min(x, y), max(x, y)
+        rows.append(f'<div class="gw-rd">{_mgr_face(o)}<b>{_first(o)}</b><div class="gw-tr">'
+                    f'<i class="gw-band" style="left:{lo}%;width:{hi - lo}%"></i>'
+                    f'<i class="gw-dot a" style="left:{x}%"></i><i class="gw-dot b" style="left:{y}%"></i></div>'
+                    f'<span class="gw-nums"><em class="a">{x}%</em> / <em class="b">{y}%</em></span></div>')
+    big = moved[0]
+    lose = min(g["if_a"][big], g["if_b"][big])
+    win = max(g["if_a"][big], g["if_b"][big])
+    return (f'<div class="kx gw-ride"><div class="gw-leg"><span><i class="gw-dot a"></i>if {_first(a)} wins</span>'
+            f'<span><i class="gw-dot b"></i>if {_first(b)} wins</span><span class="dim">playoff odds</span></div>'
+            + "".join(rows) +
+            f'<div class="gw-note">{_first(big)} has the most riding on it: {win}% with a win, {lose}% with a loss.</div></div>')
+
+
+def _render_gotw(cur: int, me=None, full: bool = True) -> None:
+    g, games = _gotw(cur)
+    if not g:
+        return
+    ctx = get_week_ctx(cur)
+    st.markdown(theme.section_head('Game of the <span class="g">Week</span>',
+                                   "picked by what's at stake &middot; the playoff sim, run both ways"),
+                unsafe_allow_html=True)
+    st.markdown(_gotw_cover(ctx, g, games, me, cur), unsafe_allow_html=True)
+    tape = _tape_html(ctx, g)
+    ride = _riding_html(g) if full else ""
+    if tape and ride:
+        st.markdown(f'<div class="wk-cols gw-cols"><div><div class="eyebrow">Tale of the tape</div>{tape}</div>'
+                    f'<div><div class="eyebrow">What&rsquo;s riding on it</div>{ride}</div></div>', unsafe_allow_html=True)
+    elif tape or ride:
+        st.markdown(f'<div class="gw-cols"><div class="eyebrow">{"Tale of the tape" if tape else "What&rsquo;s riding on it"}</div>'
+                    f'{tape or ride}</div>', unsafe_allow_html=True)
 
 
 def _faceoff_html(ctx: dict, sa: dict, sb: dict) -> str:
@@ -1685,6 +1952,7 @@ def render_live() -> None:
         if tiles:
             st.markdown(f'<div class="eyebrow">The slate &middot; week {cur}</div><div class="strip">{tiles}</div>',
                         unsafe_allow_html=True)
+        _render_gotw(cur, me, full=False)
         pairs = _pairs(ctx, me)
         st.markdown(theme.section_head("Every <span class=\"g\">Matchup</span>",
                                        "yours first" if me else ""), unsafe_allow_html=True)
@@ -2051,7 +2319,8 @@ def _render_home_in_season() -> None:
     else:
         st.markdown(_picker_html(compact=True), unsafe_allow_html=True)
 
-    # ---- every matchup this week ----
+    # ---- the week's biggest game, then every matchup by what's at stake ----
+    _render_gotw(cur, me)
     _render_around_league(cur, me)
 
     # ---- the money ----
