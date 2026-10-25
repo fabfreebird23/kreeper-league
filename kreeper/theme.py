@@ -938,11 +938,12 @@ table.dt td.risk{ width:1%; white-space:nowrap; text-align:right; padding-left:4
 .kx .xb-ph{ height:190px; width:auto; max-width:none; aspect-ratio:350 / 254; object-fit:cover !important; object-position:center bottom !important;
   filter:grayscale(1) contrast(1.2); margin-bottom:-24px; flex:none; }
 .kx .xb-s.me .xb-ph{ mix-blend-mode:multiply; }
-/* manager duotones on the cover, fight-poster style: each photo runs the full
-   height of its band from the outer edge, the two face each other (theirs is
+/* manager duotones on the cover, fight-poster style: each photo is a square
+   the full height of its band at the outer edge (sized by height, so a wide
+   screen never zooms into a slice of the face), the two face each other (theirs is
    mirrored) and fade out before the score; VS sits on the seam */
 .kx .xb-s.fight{ position:relative; }
-.kx .xb-s .xb-ph.xb-mg{ position:absolute; top:0; bottom:0; height:100%; width:62%; max-width:none; aspect-ratio:auto; margin:0;
+.kx .xb-s .xb-ph.xb-mg{ position:absolute; top:0; bottom:0; height:100%; width:auto; max-width:62%; aspect-ratio:1 / 1; margin:0;
   object-fit:cover !important; object-position:center 20% !important; filter:none; mix-blend-mode:normal; opacity:1; z-index:0;
   -webkit-mask-image:linear-gradient(to right,#000 45%,transparent 95%); mask-image:linear-gradient(to right,#000 45%,transparent 95%); }
 .kx .xb-s.me .xb-ph.xb-mg{ left:0; }
@@ -955,7 +956,7 @@ table.dt td.risk{ width:1%; white-space:nowrap; text-align:right; padding-left:4
   /* the halves touch on a phone: VS moves onto their seam, photos dim under the score */
   .kx.xb{ position:relative; }
   .kx .xb-vs{ position:absolute; left:50%; top:59px; transform:translate(-50%,-50%) skewX(-8deg); z-index:3; font-size:15px; margin:0; }
-  .kx .xb-s .xb-ph.xb-mg{ width:78%; opacity:.55; }
+  .kx .xb-s .xb-ph.xb-mg{ max-width:78%; opacity:.55; }
   .kx .xb-s.op .xb-ph.xb-mg{ opacity:.5; }
   .kx .xb-s.me.fight{ padding-right:24px; } .kx .xb-s.op.fight{ padding-left:24px; }  /* room for VS */
 }
