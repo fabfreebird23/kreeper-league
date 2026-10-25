@@ -945,9 +945,11 @@ table.dt td.risk{ width:1%; white-space:nowrap; text-align:right; padding-left:4
 .kx .xb-s.fight{ position:relative; }
 .kx .xb-s .xb-ph.xb-mg{ position:absolute; top:0; bottom:0; height:100%; width:auto; max-width:62%; aspect-ratio:1 / 1; margin:0;
   object-fit:cover !important; object-position:center 20% !important; filter:none; mix-blend-mode:normal; opacity:1; z-index:0;
-  -webkit-mask-image:linear-gradient(to right,#000 45%,transparent 95%); mask-image:linear-gradient(to right,#000 45%,transparent 95%); }
+  -webkit-mask-image:linear-gradient(to right,#000 72%,transparent 100%); mask-image:linear-gradient(to right,#000 72%,transparent 100%); }
 .kx .xb-s.me .xb-ph.xb-mg{ left:0; }
-.kx .xb-s.op .xb-ph.xb-mg{ right:0; left:auto; transform:scaleX(-1); opacity:.92; }
+/* .op.xb-mg beats the player photo's radial vignette (.kx .xb-s.op .xb-ph, same weight, later) */
+.kx .xb-s.op .xb-ph.xb-mg{ right:0; left:auto; transform:scaleX(-1); opacity:.92;
+  -webkit-mask-image:linear-gradient(to right,#000 72%,transparent 100%); mask-image:linear-gradient(to right,#000 72%,transparent 100%); }
 .kx .xb-s.fight .xb-t{ position:relative; z-index:1; }
 .kx .xb-vs{ display:inline-block; font-family:'Oswald',sans-serif; font-weight:700; font-style:italic; font-size:20px; line-height:1;
   color:#14110a; background:var(--kg); padding:4px 10px; border-radius:4px; transform:skewX(-8deg); margin-bottom:8px;

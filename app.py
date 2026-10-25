@@ -1212,11 +1212,14 @@ def _initials(owner: str) -> str:
 def _mgr_photo(owner, tone: str = "") -> str | None:
     """A manager's photo as a data URI (assets/managers/<sleeper id>.jpg):
     natural colour for the circles, _g (gold duotone, you) and _r (royal
-    duotone, them) for the matchup covers. None when there's no photo."""
+    duotone, them) cutouts for the matchup covers. None when there's no photo."""
     import base64
     from pathlib import Path
-    f = Path(__file__).parent / "assets" / "managers" / f"{owner}{'_' + tone if tone else ''}.jpg"
-    return "data:image/jpeg;base64," + base64.b64encode(f.read_bytes()).decode() if f.exists() else None
+    # duotones are background-free cutouts (transparent WebP) so they sit
+    # straight on the band; the natural-colour circles keep their backgrounds
+    ext, mime = ("webp", "image/webp") if tone else ("jpg", "image/jpeg")
+    f = Path(__file__).parent / "assets" / "managers" / f"{owner}{'_' + tone if tone else ''}.{ext}"
+    return f"data:{mime};base64," + base64.b64encode(f.read_bytes()).decode() if f.exists() else None
 
 
 def _mgr_face(owner, cls: str = "") -> str:
