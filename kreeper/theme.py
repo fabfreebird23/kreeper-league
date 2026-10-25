@@ -1079,7 +1079,8 @@ i.mf.gw-f{ width:40px; height:40px; border-color:var(--kg, #d4b15e); }
 [data-testid="stMarkdownContainer"] .kx .fd .ft{ z-index:2; transform-origin:bottom; backface-visibility:hidden; animation:kx-ft .3s ease-in forwards; }
 [data-testid="stMarkdownContainer"] .kx .fd .fb{ z-index:2; transform-origin:top; transform:rotateX(90deg); animation:kx-fb .3s .3s ease-out forwards; }
 @keyframes kx-ft{ to{ transform:rotateX(-90deg); } } @keyframes kx-fb{ to{ transform:rotateX(0); } }
-.kx .mm.me .fd.s, [data-testid="stMarkdownContainer"] .kx .mm.me .fd > span{ background-color:#183f80; }
+/* royal tiles only on YOUR half (.a) of your card; the opponent's half is black */
+.kx .mm.me .mm-s.a .fd.s, [data-testid="stMarkdownContainer"] .kx .mm.me .mm-s.a .fd > span{ background-color:#183f80; }
 .kx .fl-d{ display:inline-block; vertical-align:top; margin-left:6px; font-family:Inter,sans-serif; font-style:normal; font-size:12px; font-weight:700;
   color:var(--teal, #7fd8b4); animation:kx-gain 2.4s ease-out both; }
 @keyframes kx-gain{ 0%{ opacity:0; transform:translateY(6px); } 15%,70%{ opacity:1; transform:none; } 100%{ opacity:0; } }
