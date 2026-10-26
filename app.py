@@ -2405,6 +2405,53 @@ def render_keeper_outlook() -> None:
                f"Set My Keepers does the exact allocation before the draft.")
 
 
+# ---------------------------------------------------------------- the Grid (Home hero)
+# A Tron-style 3D scene in a component iframe (kreeper/static/grid_hero.html):
+# this year's teams as neon towers, standings order, as tall as their playoff
+# odds from the sim; your tower gold; last season's champion projected behind
+# them as a cyan hologram (assets/champions/<owner id>.webp, a full-body
+# cutout; no cutout = no hologram). Three.js + bloom from public CDNs.
+
+@st.cache_data(ttl=900, show_spinner=False)
+def _grid_hero_html(me, tpl_stamp: float = 0.0) -> str:
+    """`tpl_stamp` (the template's mtime) is only a cache key, so a deploy that
+    changes the template never serves the old page from cache."""
+    import base64
+    from pathlib import Path
+    sim = (get_playoff_outlook(None).get("sim") or {}).get("teams") or {}
+    teams = [{"first": _first(r["owner"]), "po": int(sim.get(r["owner"], {}).get("playoff_pct", 0)),
+              "me": r["owner"] == me, "img": _mgr_photo(str(r["owner"])) or ""}
+             for r in get_standings()]
+    champ = None
+    try:
+        seasons, _agg = build_record_book()
+        last = seasons[0] if seasons else None
+        oid = NAME_TO_ID.get(last["champ"] or "") if last else None
+        f = Path(__file__).parent / "assets" / "champions" / f"{oid}.webp"
+        if oid and f.exists():
+            from PIL import Image
+            w, h = Image.open(f).size
+            champ = {"w": w, "h": h, "title": f'{last["season"]} CHAMPION',
+                     "sub": f'{_first(oid)} · {_team_of(oid)}'.upper(),
+                     "img": "data:image/webp;base64," + base64.b64encode(f.read_bytes()).decode()}
+    except Exception:  # noqa: BLE001 — no champion is fine, the towers still render
+        champ = None
+    tpl = (Path(__file__).parent / "kreeper" / "static" / "grid_hero.html").read_text()
+    return (tpl.replace("__DATA__", json.dumps(teams)).replace("__CHAMP__", json.dumps(champ))
+            .replace("__PO__", str(PLAYOFF_TEAMS))
+            .replace("__TAG__", "Playoff odds &middot; drag to look around &middot; double-tap to replay"))
+
+
+def _render_grid_hero() -> None:
+    try:
+        from pathlib import Path
+        tpl = Path(__file__).parent / "kreeper" / "static" / "grid_hero.html"
+        html = _grid_hero_html(_me(), tpl.stat().st_mtime)
+    except Exception:  # noqa: BLE001 — the hero is decoration; never take Home down
+        return
+    components.html(html, height=400)
+
+
 def _render_home_in_season() -> None:
     """Live season, as a Command Center: your matchup, what to do and your
     lineup first (for whichever team this device picked — see _me), then the
@@ -2418,6 +2465,9 @@ def _render_home_in_season() -> None:
         _home_quick_glance()
         render_odds()
         return
+
+    # ---- the Grid: playoff odds as towers, last year's champ over them ----
+    _render_grid_hero()
 
     # ---- your week (the Command Center) ----
     me = _me()

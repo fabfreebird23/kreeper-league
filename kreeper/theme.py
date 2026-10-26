@@ -1076,6 +1076,10 @@ i.mf.gw-f{ width:40px; height:40px; border-color:var(--kg, #d4b15e); }
 .kx .wr-bar{ height:7px; background:rgba(255,255,255,.06); border-radius:4px; overflow:hidden; }
 .kx .wr-bar i{ display:block; height:100%; background:linear-gradient(90deg,var(--kr2),var(--kg)); }
 .kx .wr-b em{ font-style:normal; font-family:'Anton',sans-serif; font-size:17px; text-align:right; color:var(--ink); }
+/* the Grid hero (app._render_grid_hero), found by the marker in its srcdoc: shorter on a phone */
+@media (max-width:760px){ iframe[srcdoc*="kreeper-grid-hero"]{ height:300px !important; }
+  /* Streamlit sizes the container itself (no stylesheet rule to beat), so cap it */
+  [data-testid="stElementContainer"]:has(> iframe[srcdoc*="kreeper-grid-hero"]){ max-height:300px; overflow:hidden; } }
 @media (max-width:760px){ .kx.wr{ grid-template-columns:repeat(2,1fr); } .kx .rc-row{ grid-template-columns:repeat(2,minmax(0,1fr)); } .kx .wr-b{ grid-template-columns:30px 70px 1fr 46px; } }
 /* ---- 3D motion ---- */
 /* 1. fight-night entrance (app._intro adds .in once per page load) */
