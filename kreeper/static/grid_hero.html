@@ -281,7 +281,9 @@ const TAKES = {
 
 /* ---------- one renderer per take, bloom when the post-processing scripts loaded ---------- */
 function build(el, key){
-  const r = new THREE.WebGLRenderer({antialias:true}); r.setPixelRatio(Math.min(innerWidth < 700 ? 1 : 1.5, devicePixelRatio || 1));
+  const r = new THREE.WebGLRenderer({antialias:true});
+  // full screen resolution (up to 2x): a lower cap made it soft on Retina / phone screens
+  const PR = Math.min(2, devicePixelRatio || 1); r.setPixelRatio(PR);
   r.setSize(el.clientWidth, el.clientHeight); el.appendChild(r.domElement);
   const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(40, el.clientWidth / el.clientHeight, .1, 300);
   const over = new THREE.Scene(); OVER.set(scene, over);
@@ -289,8 +291,17 @@ function build(el, key){
   const tick = TAKES[key](scene);
   let comp = null, bloom = null;
   if (THREE.EffectComposer && THREE.UnrealBloomPass){
-    comp = new THREE.EffectComposer(r); comp.addPass(new THREE.RenderPass(scene, cam));
-    bloom = new THREE.UnrealBloomPass(new THREE.Vector2(el.clientWidth, el.clientHeight), 1.05, .5, .3); comp.addPass(bloom);
+    // the composer renders off-screen, which drops the canvas's antialiasing:
+    // give it a multisampled target (WebGL2) so the neon edges stay crisp
+    const W = el.clientWidth * PR, Hh = el.clientHeight * PR;
+    const rt = (THREE.WebGLMultisampleRenderTarget && r.capabilities.isWebGL2)
+      ? new THREE.WebGLMultisampleRenderTarget(W, Hh, {format:THREE.RGBAFormat}) : undefined;
+    if (rt) rt.samples = 4;
+    comp = new THREE.EffectComposer(r, rt); comp.addPass(new THREE.RenderPass(scene, cam));
+    // a composer given its own target assumes 1x; put it back to screen resolution
+    comp.setPixelRatio(PR); comp.setSize(el.clientWidth, el.clientHeight);
+    // a tighter glow: less haze over the lines
+    bloom = new THREE.UnrealBloomPass(new THREE.Vector2(el.clientWidth, el.clientHeight), .9, .35, .32); comp.addPass(bloom);
   }
   let yaw = 0, drag = null, t0 = performance.now(), raf = 0, on = false;
   el.addEventListener('pointerdown', e => { drag = {x:e.clientX, y:yaw}; el.setPointerCapture(e.pointerId); });
@@ -303,7 +314,7 @@ function build(el, key){
     const a = Math.sin(t * .2) * .45 + yaw;
     // a tall phone frame pulls the camera back so every tower fits; a wide desktop strip brings it in
     const R = 15.5 * Math.min(1.9, Math.max(.7, 1.55 / cam.aspect));
-    cam.position.set(Math.sin(a) * R, 5 + R * .1 + Math.sin(t * .35) * .3, Math.cos(a) * R); cam.lookAt(0, 3.4, -2);
+    cam.position.set(Math.sin(a) * R, 5 + R * .1 + Math.sin(t * .35) * .3, Math.cos(a) * R); cam.lookAt(0, cam.aspect > 2.2 ? 3.9 : 3.4, -2);   // a wide desktop strip tilts up so the champion's head stays in frame
     tick(t);
     r.autoClear = true; comp ? comp.render() : r.render(scene, cam);
     r.autoClear = false; r.clearDepth(); r.render(over, cam); r.autoClear = true;
