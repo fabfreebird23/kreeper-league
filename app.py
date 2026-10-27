@@ -1155,7 +1155,8 @@ def _initials(owner: str) -> str:
 def _mgr_photo(owner, tone: str = "") -> str | None:
     """A manager's photo as a data URI (assets/managers/<sleeper id>.jpg):
     natural colour for the circles, _g (gold duotone, you) and _r (royal
-    duotone, them) cutouts for the matchup covers. None when there's no photo."""
+    duotone, them) cutouts for the matchup covers, _holo (cyan hologram head-and-
+    shoulders cutout) for the Grid's Game of the Week board. None when there's no photo."""
     import base64
     from pathlib import Path
     # duotones are background-free cutouts (transparent WebP) so they sit
@@ -2432,7 +2433,11 @@ def _grid_hero_html(me, tpl_stamp: float = 0.0) -> str:
     order = [r["owner"] for r in table]
     if g and g["a"] in order and g["b"] in order:
         a, b = g["a"], g["b"]
-        gotw = {"variant": "jumbo+ghost", "a": order.index(a), "b": order.index(b), "stakes": g["stakes"],
+        holo_a, holo_b = _mgr_photo(str(a), "holo"), _mgr_photo(str(b), "holo")
+        # hologram cutouts on the board when both exist; otherwise the round photos
+        variant = "jumbo+holo+ghost+c-hide" if holo_a and holo_b else "jumbo+ghost"
+        gotw = {"variant": variant, "a": order.index(a), "b": order.index(b), "stakes": g["stakes"],
+                "a_holo": holo_a or "", "b_holo": holo_b or "",
                 "a_name": _first(a), "b_name": _first(b),
                 "a_win": g["if_a"].get(a, 0), "a_lose": g["if_b"].get(a, 0),
                 "b_win": g["if_b"].get(b, 0), "b_lose": g["if_a"].get(b, 0),
