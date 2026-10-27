@@ -2410,7 +2410,8 @@ def render_keeper_outlook() -> None:
 # this year's teams as neon towers, standings order, as tall as their playoff
 # odds from the sim; your tower gold; last season's champion projected behind
 # them as a cyan hologram (assets/champions/<owner id>.webp, a full-body
-# cutout; no cutout = no hologram). Three.js + bloom from public CDNs.
+# cutout; no cutout = no hologram); the Game of the Week as a jumbotron over
+# its two towers, with each one's odds win or lose. Three.js + bloom from CDNs.
 
 @st.cache_data(ttl=900, show_spinner=False)
 def _grid_hero_html(me, tpl_stamp: float = 0.0) -> str:
@@ -2419,9 +2420,24 @@ def _grid_hero_html(me, tpl_stamp: float = 0.0) -> str:
     import base64
     from pathlib import Path
     sim = (get_playoff_outlook(None).get("sim") or {}).get("teams") or {}
+    table = get_standings()
     teams = [{"first": _first(r["owner"]), "po": int(sim.get(r["owner"], {}).get("playoff_pct", 0)),
               "me": r["owner"] == me, "img": _mgr_photo(str(r["owner"])) or ""}
-             for r in get_standings()]
+             for r in table]
+    # this week's Game of the Week: a jumbotron over the two towers, and each
+    # tower's odds with a win and with a loss
+    gotw = None
+    cur = season.current_week()
+    g, _games = _gotw(cur) if cur else (None, [])
+    order = [r["owner"] for r in table]
+    if g and g["a"] in order and g["b"] in order:
+        a, b = g["a"], g["b"]
+        gotw = {"variant": "jumbo+ghost", "a": order.index(a), "b": order.index(b), "stakes": g["stakes"],
+                "a_name": _first(a), "b_name": _first(b),
+                "a_win": g["if_a"].get(a, 0), "a_lose": g["if_b"].get(a, 0),
+                "b_win": g["if_b"].get(b, 0), "b_lose": g["if_a"].get(b, 0),
+                "a_img": _mgr_photo(str(a)) or "", "b_img": _mgr_photo(str(b)) or "",
+                "title": f"GAME OF THE WEEK · WEEK {cur}"}
     champ = None
     try:
         seasons, _agg = build_record_book()
@@ -2438,6 +2454,7 @@ def _grid_hero_html(me, tpl_stamp: float = 0.0) -> str:
         champ = None
     tpl = (Path(__file__).parent / "kreeper" / "static" / "grid_hero.html").read_text()
     return (tpl.replace("__DATA__", json.dumps(teams)).replace("__CHAMP__", json.dumps(champ))
+            .replace("__GOTW__", json.dumps(gotw))
             .replace("__PO__", str(PLAYOFF_TEAMS))
             .replace("__TAG__", "Playoff odds &middot; drag to look around &middot; double-tap to replay"))
 
