@@ -1082,18 +1082,22 @@ def _render_home_pre_season() -> None:
 
 
 def _team_of(owner: str) -> str:
-    """The manager's team name, falling back to their own name so a row never
-    renders blank for someone who never named a team."""
+    """How a team is labelled everywhere: the manager's real name (the league
+    asked for names over team names). The team name is _team_name, used as the
+    small second line."""
+    return config.manager_name(owner)
+
+
+def _team_name(owner: str) -> str:
+    """The Sleeper team name, or "" for someone who never named a team."""
     m = MANAGERS.get(str(owner)) or {}
-    return m.get("team") or config.manager_name(owner)
+    return m.get("team") or ""
 
 
 def _two_cell(owner: str, win: bool = False) -> str:
-    """Two-line table cell: team name on top, the human under it. Used
-    everywhere on Home so a row identifies a team the way people actually
-    talk about it, without losing who's behind it."""
+    """Two-line table cell: the manager's name on top, their team name under it."""
     return (f'<td class="two{" w" if win else ""}"><div class="tw">{_mgr_face(owner)}<div><b>{_team_of(owner)}</b>'
-            f'<span>{config.manager_name(owner)}</span></div></div></td>')
+            f'<span>{_team_name(owner)}</span></div></div></td>')
 
 
 @st.cache_data(ttl=900, show_spinner=False)
@@ -1313,7 +1317,7 @@ def _slot_chip(pos: str, slot: str = "") -> str:
 
 def _two_div(owner: str, win: bool = False) -> str:
     return (f'<div class="two{" w" if win else ""}"><b>{_team_of(owner)}</b>'
-            f'<span>{config.manager_name(owner)}</span></div>')
+            f'<span>{_team_name(owner)}</span></div>')
 
 
 _THUMB = "https://sleepercdn.com/content/nfl/players/thumb/{}.jpg"
@@ -1457,7 +1461,7 @@ def _picker_html(compact: bool = False) -> str:
     cards = "".join(
         f'<a class="tp{" on" if o == me else ""}" '
         f'href="{_href_with(me=o, p="home" if page == "pick" else None)}" target="_self">'
-        f'<b>{m.get("team") or m["name"]}</b><em>{m["name"]}</em></a>'
+        f'<b>{m["name"]}</b><em>{m.get("team") or ""}</em></a>'
         for o, m in MANAGERS.items())
     blurb = ("It decides whose matchup and lineup lead Home and the This Week pages. "
              "Asked once, remembered on this device; switch any time from the masthead. "
@@ -1552,7 +1556,7 @@ def _render_around_league(cur: int, me=None) -> None:
 
         def team(o, right=False, won=False):
             txt = (f'<div><b{" class=w" if won else ""}>{_team_of(o)}</b>'
-                   f'<span>{_first(o)}{" &middot; " + _rec_of(o) if _rec_of(o) else ""}</span></div>')
+                   f'<span>{_team_name(o)}{" &middot; " + _rec_of(o) if _rec_of(o) else ""}</span></div>')
             return f'<div class="gw-lt{" r" if right else ""}">' + (txt + _mgr_face(o) if right else _mgr_face(o) + txt) + '</div>'
         if gm:
             meter = (f'<div class="gw-meter"><i style="width:{100 * gm["stakes"] / top:.0f}%"></i></div>'
@@ -1663,7 +1667,7 @@ def _gotw_cover(ctx: dict, g: dict, games: list, me, cur: int) -> str:
         img = f'<img class="gw-ph" src="{ph}" alt="">' if ph else ""
         win, lose = (g["if_a"], g["if_b"]) if o == a else (g["if_b"], g["if_a"])
         rec = _rec_of(o)
-        txt = (f'<div class="gw-t"><span>{_team_of(o)}{" &middot; " + rec if rec else ""}</span><b>{_first(o)}</b>'
+        txt = (f'<div class="gw-t"><span>{config.manager_name(o)}{" &middot; " + rec if rec else ""}</span><b>{_first(o)}</b>'
                f'<i>playoff odds <em class="up">{win.get(o, 0)}%</em> win &middot; '
                f'<em class="dn">{lose.get(o, 0)}%</em> lose</i></div>')
         return f'<div class="gw-s {cls}">' + (img + txt if cls == "l" else txt + img) + '</div>'
@@ -1799,8 +1803,8 @@ def _tape_html(ctx: dict, g: dict) -> str:
         notes.append(f'Both sides lean on {_NFL_CITY.get(t, t)}: {_first(a)} starts {names(ta[t][a])}, '
                      f'{_first(b)} starts {names(ta[t][b])}.')
     note = f'<div class="gw-note">{" ".join(notes)}</div>' if notes else ""
-    head = (f'<div class="gw-th">{_mgr_face(a, "gw-f")}<div><b>{_team_of(a)}</b><span>{_first(a)} &middot; {_rec_of(a)}</span></div>'
-            f'<div class="r"><b>{_team_of(b)}</b><span>{_first(b)} &middot; {_rec_of(b)}</span></div>{_mgr_face(b, "gw-f")}</div>')
+    head = (f'<div class="gw-th">{_mgr_face(a, "gw-f")}<div><b>{_team_of(a)}</b><span>{_team_name(a)} &middot; {_rec_of(a)}</span></div>'
+            f'<div class="r"><b>{_team_of(b)}</b><span>{_team_name(b)} &middot; {_rec_of(b)}</span></div>{_mgr_face(b, "gw-f")}</div>')
     key = '<div class="gw-key">projected finals &middot; <i>italic</i> = still playing or yet to play</div>'
     return f'<div class="kx gw-tape">{head}{"".join(rows)}{key}{note}</div>' if rows else ""
 
@@ -1911,7 +1915,7 @@ def _render_week_review(week: int) -> None:
         u = r["upset"]
         tiles.append(("Upset", f'{_first(u["w"])} over {_first(u["l"])}',
                       f'projected {r["upset_gap"]:.1f} worse before kickoff', "amber"))
-    tiles.append(("Top score", f'{_first(r["top"])} {pts[r["top"]]:.1f}', _team_of(r["top"]), "good"))
+    tiles.append(("Top score", f'{_first(r["top"])} {pts[r["top"]]:.1f}', _team_name(r["top"]), "good"))
     if r["star"]:
         pid, o, v = r["star"]
         tiles.append(("Player of the week", _pname(pid), f'{v:.1f} for {_first(o)}', ""))
@@ -2453,7 +2457,7 @@ def _grid_hero_html(me, tpl_stamp: float = 0.0) -> str:
             from PIL import Image
             w, h = Image.open(f).size
             champ = {"w": w, "h": h, "title": f'{last["season"]} CHAMPION',
-                     "sub": f'{_first(oid)} · {_team_of(oid)}'.upper(),
+                     "sub": f'{config.manager_name(oid)} · {_team_name(oid)}'.upper(),
                      "img": "data:image/webp;base64," + base64.b64encode(f.read_bytes()).decode()}
     except Exception:  # noqa: BLE001 — no champion is fine, the towers still render
         champ = None
@@ -2689,7 +2693,7 @@ def render_managers() -> None:
         cards.append(
             f'<div class="mcard{" me" if o == me else ""}" tabindex="0" role="button" aria-label="Flip {_team_of(o)}">'
             f'<div class="mc-in"><div class="mc-f"><em class="mc-rk">#{r["rank"]}</em>{front_img}'
-            f'<div class="mc-ft"><b>{_team_of(o)}</b><small>{config.manager_name(o)} &middot; {r["wins"]}&ndash;{r["losses"]}</small></div></div>'
+            f'<div class="mc-ft"><b>{_team_of(o)}</b><small>{_team_name(o)} &middot; {r["wins"]}&ndash;{r["losses"]}</small></div></div>'
             f'<div class="mc-b"><b class="mc-h">{_team_of(o)}</b>'
             + "".join(f'<div class="mc-row"><small>{k}</small><b>{v}</b></div>' for k, v in rows)
             + f'<small class="mc-note">{note}</small></div></div></div>')
@@ -4960,7 +4964,7 @@ def _me_popover_html() -> str:
     me = _me()
     items = "".join(
         f'<a class="bb-pop-item{" leaf-active" if o == me else ""}" href="{_href_with(me=o)}" target="_self">'
-        f'<span class="lbl">{m.get("team") or m["name"]}</span><span class="sub">{m["name"]}</span></a>'
+        f'<span class="lbl">{m["name"]}</span><span class="sub">{m.get("team") or ""}</span></a>'
         for o, m in MANAGERS.items())
     return ('<div class="bb-pop bb-pop-me" id="bb-pop-me"><div class="bb-pop-head">'
             '<span class="bb-pop-title">Whose phone is this?</span></div>' + items + "</div>")
