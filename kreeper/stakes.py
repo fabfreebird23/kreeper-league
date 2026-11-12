@@ -28,7 +28,7 @@ def week_stakes(league_id: str, season: int, week: int, n_sims: int = 20000) -> 
     s = playoffs._settings(league_id)
     if week > s["last_regular"]:
         return {"week": week, "playoff_teams": s["playoff_teams"], "base": {}, "games": []}
-    teams = playoffs.team_strength(league_id, season, week, s["slots"])
+    teams = playoffs.team_strength(league_id, season, week, s["slots"], last=s["last_regular"])
     fx = playoffs.fixtures(league_id, week, s["last_regular"])
     slate = fx.get(week) or []
     n_po = min(s["playoff_teams"], len(teams))

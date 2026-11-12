@@ -13,10 +13,12 @@ Self-contained on purpose — it only needs this package's `sleeper` and
 `gameday` modules, which every hub (Kreeper, B&B, 7½ Men) has with the same
 API — so the same file drops into each one.
 
-Team strength is the best legal lineup by this week's Sleeper projections,
-blended 60/40 with the team's actual scoring average once two weeks are in
-the books: projections see this week's roster (trades, injuries), the actual
-average sees how the team has really played.
+Team strength is the best legal lineup by Sleeper's projections, blended
+60/40 with the team's actual scoring average once two weeks are in the
+books: projections see the current roster (trades, injuries), the actual
+average sees how the team has really played. Each remaining week is
+projected on its own, so a bye week only costs a team that one week instead
+of being treated as its strength for the rest of the season.
 """
 from __future__ import annotations
 
@@ -76,11 +78,22 @@ def fixtures(league_id: str, first: int, last: int) -> Dict[int, List[Tuple[str,
     return out
 
 
-def team_strength(league_id: str, season: int, week: int, slots: List[str]) -> dict:
-    """{owner: {mean, sd, wins, losses, pf, games}} — see the module note."""
+def team_strength(league_id: str, season: int, week: int, slots: List[str],
+                  last: Optional[int] = None) -> dict:
+    """{owner: {mean, sd, wins, losses, pf, games, weekly}} — see the module
+    note. `weekly` is {week: (mean, sd)} for `week`..`last`; `mean`/`sd` are
+    their average (what the playoff bracket plays on)."""
     players = sleeper.get_players() or {}
     pos_of = {str(k): (v.get("position") or "") for k, v in players.items()}
-    proj = gameday.week_projections(season, week) or {}
+    projs = {}
+    for wk in range(int(week), max(int(week), int(last or week)) + 1):
+        try:
+            pj = gameday.week_projections(season, wk) or {}
+        except Exception:  # noqa: BLE001
+            pj = {}
+        if pj:
+            projs[wk] = pj
+    proj = projs.get(int(week)) or {}
     out = {}
     for r in sleeper.get_rosters(league_id) or []:
         owner = str(r.get("owner_id") or "")
@@ -90,18 +103,30 @@ def team_strength(league_id: str, season: int, week: int, slots: List[str]) -> d
         wins, losses, ties = int(se.get("wins") or 0), int(se.get("losses") or 0), int(se.get("ties") or 0)
         pf = float(se.get("fpts") or 0) + float(se.get("fpts_decimal") or 0) / 100
         games = wins + losses + ties
-        lineup = gameday.optimal_lineup(r.get("players") or [], slots, proj, pos_of) if proj else []
-        pm = sum(float(proj.get(p, 0) or 0) for _s, p in lineup if p)
-        var = sum(gameday.player_sd(pos_of.get(p, ""), float(proj.get(p, 0) or 0)) ** 2
-                  for _s, p in lineup if p)
         actual = pf / games if games else None
-        if pm and actual and games >= 2:
-            mean = 0.6 * pm + 0.4 * actual
-        else:
-            mean = pm or actual or 100.0
-        out[owner] = {"mean": mean, "sd": math.sqrt(var) if var else 22.0, "wins": wins,
+
+        def blend(pj):
+            lineup = gameday.optimal_lineup(r.get("players") or [], slots, pj, pos_of) if pj else []
+            pm = sum(float(pj.get(p, 0) or 0) for _s, p in lineup if p)
+            var = sum(gameday.player_sd(pos_of.get(p, ""), float(pj.get(p, 0) or 0)) ** 2
+                      for _s, p in lineup if p)
+            mean = 0.6 * pm + 0.4 * actual if pm and actual and games >= 2 else pm or actual or 100.0
+            return pm, mean, math.sqrt(var) if var else 22.0
+
+        weekly, pm = {}, 0.0
+        for wk, pj in projs.items():
+            p_wk, m, sd = blend(pj)
+            weekly[wk] = (m, sd)
+            if wk == int(week):
+                pm = p_wk
+        if not weekly:
+            _p, m, sd = blend({})
+            weekly[int(week)] = (m, sd)
+        mean = sum(m for m, _ in weekly.values()) / len(weekly)
+        sd = math.sqrt(sum(s * s for _, s in weekly.values()) / len(weekly))
+        out[owner] = {"mean": mean, "sd": sd, "wins": wins,
                       "losses": losses, "ties": ties, "pf": pf, "games": games,
-                      "proj": pm, "actual": actual}
+                      "proj": pm, "actual": actual, "weekly": weekly}
     return out
 
 
@@ -164,8 +189,9 @@ def simulate(teams: dict, schedule: Dict[int, List[Tuple[str, str]]], playoff_te
             for a, b in schedule[wk]:
                 if a not in teams or b not in teams:
                     continue
-                sa = rng.gauss(teams[a]["mean"], teams[a]["sd"])
-                sb = rng.gauss(teams[b]["mean"], teams[b]["sd"])
+                ma, da = teams[a].get("weekly", {}).get(wk, (teams[a]["mean"], teams[a]["sd"]))
+                mb, db = teams[b].get("weekly", {}).get(wk, (teams[b]["mean"], teams[b]["sd"]))
+                sa, sb = rng.gauss(ma, da), rng.gauss(mb, db)
                 week_pts[a], week_pts[b] = sa, sb
                 pf[a] += sa
                 pf[b] += sb
@@ -196,7 +222,9 @@ def simulate(teams: dict, schedule: Dict[int, List[Tuple[str, str]]], playoff_te
                 else:
                     m[3] += 1
                     m[2] += ok
-    out = {"teams": {o: {"playoff_pct": round(100 * made[o] / n_sims),
+    # playoff_pct is a whole number for display; a team that made it in only a
+    # handful of sims still shows 1%, so 0% means it never happened in 10,000.
+    out = {"teams": {o: {"playoff_pct": max(1, round(100 * made[o] / n_sims)) if made[o] else 0,
                          "avg_seed": round(seed_sum[o] / n_sims, 1),
                          **({"title_pct": round(100 * titles[o] / n_sims, 1)} if round_weeks is not None else {})}
                      for o in owners},
@@ -324,7 +352,7 @@ def outlook(league_id: Optional[str] = None, season: Optional[int] = None,
     season = int(season or (state or {}).get("season") or time.gmtime().tm_year)
     week = int(week or (state or {}).get("week") or 1)
     s = _settings(league_id)
-    teams = team_strength(league_id, season, week, s["slots"])
+    teams = team_strength(league_id, season, week, s["slots"], last=s["last_regular"])
     weeks_left = max(0, s["last_regular"] - week + 1)
     fx = fixtures(league_id, week, s["last_regular"]) if weeks_left else {}
     sim = simulate(teams, fx, min(s["playoff_teams"], len(teams)), me=me, n_sims=n_sims,
