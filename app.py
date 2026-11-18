@@ -2994,19 +2994,11 @@ def _tb_assets(oid: str, rosters: dict) -> dict:
 
 
 def _tb_value_chip(pid: str) -> str:
-    """His keeper value for whoever gets him: the 2027 Keepers number."""
-    row = next((r for r in get_keeper_market() if str(r["_pid"]) == str(pid)), None)
-    if not row or row.get("Value") is None:
-        return ""
-    v = int(row["Value"])
-    return f' <span class="kv{" neg" if v < 0 else ""}" title="{SEASON + 1} keeper value">{v:+d} keeper value</span>'
-
-
-def _tb_keeper_line(pid: str) -> str:
+    """The round he can be kept in next year, for whoever gets him."""
     row = next((r for r in get_keeper_market() if str(r["_pid"]) == str(pid)), None)
     if row and row.get("cost"):
-        return f"Keepable in {SEASON + 1} at R{row['cost']} for whoever gets him"
-    return f"No {SEASON + 1} keeper price · a rental"
+        return f' <span class="kv" title="Keepable in {SEASON + 1} at this round">{SEASON + 1} R{row["cost"]}</span>'
+    return f' <span class="kv neg" title="No {SEASON + 1} keeper price">Rental</span>'
 
 
 def _tb_offer_text(o: dict) -> str:
@@ -3025,7 +3017,7 @@ def _tb_card(x: dict, me, assets) -> str:
     if x["kind"] == "sell":
         pm = H.player_meta(x["player_id"])
         top = (f'<div class="pt">{_ph_img(x["player_id"], "")}<div><b>{pm.name}{_tb_value_chip(x["player_id"])}</b>'
-               f'<small>{pm.position} &middot; {pm.team}</small><em>{_tb_keeper_line(x["player_id"])}</em></div></div>')
+               f'<small>{pm.position} &middot; {pm.team}</small></div></div>')
         checks = tradeblock.check_asks(x, assets) if assets and me != x["owner"] else \
             [{"text": tradeblock.ask_text(a), "ok": False, "have": ""} for a in x["asks"]]
         ws = "".join(f'<span class="w{" ok" if c["ok"] else ""}">{"&#10003; " if c["ok"] else ""}{c["text"]}</span>'
