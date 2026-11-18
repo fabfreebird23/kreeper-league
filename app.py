@@ -2904,6 +2904,29 @@ _TB_CSS = """<style>
 .tbk .ft{font-size:12px;color:var(--dim)}
 .tbt{display:flex;align-items:center;gap:14px;overflow-x:auto;white-space:nowrap;padding:9px 14px;border-radius:10px;
      background:linear-gradient(90deg,var(--royal),#14264a);margin:4px 0 10px;text-decoration:none}
+.tbk .pt b .kv{display:inline-block;vertical-align:middle;margin-left:8px;font:700 12px var(--font-body,Inter);letter-spacing:.02em;
+  text-transform:none;padding:2px 7px;border-radius:999px;background:rgba(127,216,180,.15);color:var(--teal)}
+.tbk .pt b .kv.neg{background:rgba(255,143,163,.15);color:var(--red)}
+.st-key-tbpost [data-testid="stExpander"] details,.st-key-tbpost [data-testid="stExpander"] summary,
+.st-key-tbpost [data-testid="stExpander"] summary:hover{background:var(--panel) !important;color:var(--ink) !important}
+.st-key-tbpost [data-testid="stExpander"] summary *{color:var(--ink) !important}
+[data-testid="stPopover"] button{background:var(--panel2) !important;color:var(--ink) !important;
+  border:1px solid var(--line) !important}
+[data-testid="stPopover"] button p,[data-testid="stPopover"] button span{color:var(--ink) !important}
+[data-testid="stPopover"] button:hover{border-color:var(--gold) !important}
+[data-testid="stPopoverBody"] div{background-color:transparent !important}
+[data-testid="stPopoverBody"] [data-baseweb="select"]>div,[data-testid="stPopoverBody"] [data-baseweb="input"],
+[data-testid="stPopoverBody"] [data-baseweb="base-input"],[data-testid="stPopoverBody"] input,
+[data-testid="stPopoverBody"] [data-testid^="stNumberInputStep"]{background-color:var(--panel2) !important;
+  color:var(--ink) !important;border-color:var(--line) !important}
+[data-testid="stPopoverBody"] [data-baseweb="select"] div,[data-testid="stPopoverBody"] [data-baseweb="select"] svg,
+[data-testid="stPopoverBody"] [data-testid^="stNumberInputStep"] svg{color:var(--ink) !important;fill:currentColor}
+[data-testid="stPopoverBody"] input::placeholder{color:var(--dim) !important}
+[data-testid="stPopoverBody"] [data-baseweb="tag"]{background-color:var(--gold) !important}
+[data-testid="stPopoverBody"] [data-baseweb="tag"] span{color:#14110a !important}
+[data-testid="stPopoverBody"]{background:var(--panel) !important;color:var(--ink) !important;border:1px solid var(--line)}
+[data-testid="stPopoverBody"] p,[data-testid="stPopoverBody"] label,[data-testid="stPopoverBody"] [data-testid="stMarkdownContainer"]{color:var(--ink) !important}
+[data-testid="stPopoverBody"] [data-testid="stCaptionContainer"]{color:var(--muted) !important}
 .tbt .l{font-family:var(--font-display);letter-spacing:.1em;color:var(--gold);font-size:13px}
 .tbt span{font-size:13px;color:#fff} .tbt i{opacity:.65;font-style:normal}
 </style>"""
@@ -2970,6 +2993,15 @@ def _tb_assets(oid: str, rosters: dict) -> dict:
     return {"picks": _tb_my_picks(oid), "spare": spare, "faab": int(left or 0), "slot": False}
 
 
+def _tb_value_chip(pid: str) -> str:
+    """His keeper value for whoever gets him: the 2027 Keepers number."""
+    row = next((r for r in get_keeper_market() if str(r["_pid"]) == str(pid)), None)
+    if not row or row.get("Value") is None:
+        return ""
+    v = int(row["Value"])
+    return f' <span class="kv{" neg" if v < 0 else ""}" title="{SEASON + 1} keeper value">{v:+d} keeper value</span>'
+
+
 def _tb_keeper_line(pid: str) -> str:
     row = next((r for r in get_keeper_market() if str(r["_pid"]) == str(pid)), None)
     if row and row.get("cost"):
@@ -2992,7 +3024,7 @@ def _tb_card(x: dict, me, assets) -> str:
             f'<span>{_rec_of(x["owner"])}</span><em class="kd {kind}">{kl}</em></div>')
     if x["kind"] == "sell":
         pm = H.player_meta(x["player_id"])
-        top = (f'<div class="pt">{_ph_img(x["player_id"], "")}<div><b>{pm.name}</b>'
+        top = (f'<div class="pt">{_ph_img(x["player_id"], "")}<div><b>{pm.name}{_tb_value_chip(x["player_id"])}</b>'
                f'<small>{pm.position} &middot; {pm.team}</small><em>{_tb_keeper_line(x["player_id"])}</em></div></div>')
         checks = tradeblock.check_asks(x, assets) if assets and me != x["owner"] else \
             [{"text": tradeblock.ask_text(a), "ok": False, "have": ""} for a in x["asks"]]
@@ -3190,8 +3222,9 @@ def render_trade_block() -> None:
     if not me:
         st.caption("Pick your team from the masthead to post or make offers.")
         return
-    with st.expander("Put a player on the block", expanded=not live):
-        _tb_post_form(me, rosters, assets)
+    with st.container(key="tbpost"):
+        with st.expander("Put a player on the block", expanded=not live):
+            _tb_post_form(me, rosters, assets)
 
 
 def render_trade_analyzer() -> None:
