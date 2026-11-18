@@ -451,3 +451,79 @@ def add_motion(motion: Dict[str, Any], season: int | None = None) -> None:
     data = load_votes(season)
     data.setdefault("motions", []).append(motion)
     save_votes(data, season)
+
+
+# ---------------------------------------------------------------- trade block
+# One file, not per season: offseason listings (picks, keepers) carry across
+# the rollover. Shape: tradeblock.blank(). Same backends as the votes record.
+_BLOCK_PATH = "data/trade_block.json"
+
+
+def _block_local_path() -> Path:
+    base = Path(os.environ.get("KREEPER_DATA", config.DATA_DIR))
+    base.mkdir(parents=True, exist_ok=True)
+    return base / "trade_block.json"
+
+
+def _gh_get_block() -> Tuple[Dict[str, Any], Optional[str]]:
+    tok, repo, branch = _gh_config()
+    r = requests.get(f"{_API}/repos/{repo}/contents/{_BLOCK_PATH}",
+                     headers=_headers(tok), params={"ref": branch}, timeout=15)
+    if r.status_code == 404:
+        return {}, None
+    r.raise_for_status()
+    j = r.json()
+    content = base64.b64decode(j["content"]).decode()
+    return (json.loads(content) if content.strip() else {}), j["sha"]
+
+
+def load_block() -> Dict[str, Any]:
+    data: Dict[str, Any] = {}
+    if _gh_config() is not None:
+        try:
+            data, _ = _gh_get_block()
+        except Exception:  # noqa: BLE001
+            data = {}
+    if not data:
+        p = _block_local_path()
+        if p.exists():
+            try:
+                with _LOCK:
+                    data = json.loads(p.read_text())
+            except Exception:  # noqa: BLE001
+                data = {}
+    data.setdefault("listings", [])
+    return data
+
+
+def mutate_block(fn) -> Dict[str, Any]:
+    """Apply `fn(blob) -> blob` and save. On GitHub the blob is re-read on
+    every retry, so two managers posting at once both land."""
+    if _gh_config() is not None:
+        tok, repo, branch = _gh_config()
+        _ensure_branch(repo, branch, tok)
+        for _ in range(4):
+            data, sha = _gh_get_block()
+            data.setdefault("listings", [])
+            data = fn(data)
+            body = {"message": "trade block",
+                    "content": base64.b64encode(json.dumps(data, indent=2).encode()).decode(),
+                    "branch": branch}
+            if sha:
+                body["sha"] = sha
+            r = requests.put(f"{_API}/repos/{repo}/contents/{_BLOCK_PATH}",
+                             headers=_headers(tok), json=body, timeout=20)
+            if r.status_code in (200, 201):
+                return data
+            if r.status_code not in (409, 422):
+                r.raise_for_status()
+        raise RuntimeError("GitHub trade-block save failed after retries")
+    p = _block_local_path()
+    with _LOCK:
+        data = json.loads(p.read_text()) if p.exists() else {}
+        data.setdefault("listings", [])
+        data = fn(data)
+        tmp = p.with_suffix(".tmp")
+        tmp.write_text(json.dumps(data, indent=2))
+        tmp.replace(p)
+    return data

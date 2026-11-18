@@ -57,7 +57,7 @@ _fresh_kreeper()
 
 from kreeper import (config, nextyear, draftboard, engine, faab, gameday, history, lottery, phase,
                      playoffs, playoffs_view,
-                     season, sleeper, stakes, storage, theme)
+                     season, sleeper, stakes, storage, theme, tradeblock)
 from kreeper.adp import consensus as adp_consensus
 from kreeper.names import normalize_name
 
@@ -1028,6 +1028,9 @@ def render_home() -> None:
         st.info(f"👁️ Previewing the **{forced.replace('_', ' ')}** phase — "
                 f"remove `?preview_phase=` from the URL to see the real one.")
     ph = _current_phase()
+    _tick = _tb_ticker_html()
+    if _tick:
+        st.markdown(_tick, unsafe_allow_html=True)
 
     if ph == "pre_draft":
         _render_home_pre_draft()
@@ -2877,6 +2880,318 @@ def render_recent_trades() -> None:
             f'<div class="tc-c"><div><span class="tl">{na} gets</span>{chips(aa, t.get("pid_of", {}))}</div>'
             f'<div class="tc-x">&#8644;</div><div><span class="tl">{nb} gets</span>{chips(ab, t.get("pid_of", {}))}</div></div></div>')
     st.markdown('<div class="kx">' + "".join(cards) + '</div>', unsafe_allow_html=True)
+
+
+# ------------------------------------------------------------- trade block
+_TB_CSS = """<style>
+.tbk{display:grid;gap:9px;padding:14px;border-radius:12px;background:var(--panel);border:1px solid rgba(255,255,255,.08);margin-bottom:6px}
+.tbk .sl{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink)}
+.tbk .sl span{color:var(--dim);font-variant-numeric:tabular-nums}
+.tbk .kd{margin-left:auto;font:600 10px var(--font-body,Inter);letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:999px}
+.tbk .kd.sell{background:rgba(212,177,94,.16);color:var(--gold)} .tbk .kd.want{background:rgba(106,166,240,.16);color:#9cc3f5}
+.tbk .kd.agreed{background:rgba(127,216,180,.16);color:var(--teal)}
+.tbk .pt{display:flex;gap:12px;align-items:center;padding:10px;border-radius:10px;background:var(--panel2)}
+.tbk .pt img{width:64px;height:48px;object-fit:cover;object-position:top;border-radius:8px;flex:none}
+.tbk .pt b{display:block;font-family:var(--font-display);font-size:19px;text-transform:uppercase;line-height:1.1;color:var(--ink)}
+.tbk .pt small{display:block;font-size:12px;color:var(--muted)} .tbk .pt em{display:block;font-size:11.5px;color:var(--dim);font-style:normal}
+.tbk .wl{font:600 10px var(--font-body,Inter);letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.tbk .ws{display:flex;flex-wrap:wrap;gap:6px}
+.tbk .w{font-size:12px;font-weight:600;padding:4px 9px;border-radius:6px;background:var(--panel2);color:var(--ink);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.tbk .w.ok{background:rgba(127,216,180,.13);color:var(--teal);box-shadow:inset 0 0 0 1px rgba(127,216,180,.45)}
+.tbk .nt{font-size:13px;font-style:italic;color:var(--muted);margin:0}
+.tbk .ml{font-size:12.5px;padding:7px 10px;border-radius:8px;background:rgba(127,216,180,.09);color:var(--muted)}
+.tbk .ml b{color:var(--teal)} .tbk .ml.me{background:rgba(212,177,94,.1)} .tbk .ml.me b{color:var(--gold)}
+.tbk .ft{font-size:12px;color:var(--dim)}
+.tbt{display:flex;align-items:center;gap:14px;overflow-x:auto;white-space:nowrap;padding:9px 14px;border-radius:10px;
+     background:linear-gradient(90deg,var(--royal),#14264a);margin:4px 0 10px;text-decoration:none}
+.tbt .l{font-family:var(--font-display);letter-spacing:.1em;color:var(--gold);font-size:13px}
+.tbt span{font-size:13px;color:#fff} .tbt i{opacity:.65;font-style:normal}
+</style>"""
+
+
+@st.cache_data(ttl=20, show_spinner=False)
+def get_trade_block() -> dict:
+    return storage.load_block()
+
+
+def _tb_write(fn, ok_msg: str) -> None:
+    try:
+        storage.mutate_block(fn)
+    except Exception as e:  # noqa: BLE001
+        st.error(f"Couldn't save that: {e}")
+        return
+    get_trade_block.clear()
+    st.toast(ok_msg)
+    st.rerun()
+
+
+def _tb_league_state():
+    """(closed, deadline_week): trading is closed between the Sleeper trade
+    deadline and the end of the season. The block reopens in the offseason."""
+    lg = sleeper.get_league(LEAGUE["sleeper_league_id"]) or {}
+    s = lg.get("settings") or {}
+    dl, leg = int(s.get("trade_deadline") or 0), int(s.get("leg") or 0)
+    return (lg.get("status") == "in_season" and dl and leg > dl), dl
+
+
+def _tb_rosters() -> dict:
+    return {str(r.get("owner_id")): [str(p) for p in (r.get("players") or [])]
+            for r in sleeper.get_rosters(LEAGUE["sleeper_league_id"])}
+
+
+def _tb_pick_years() -> list:
+    first = SEASON + 1 if current_draft_done() else SEASON
+    return [first, first + 1, first + 2]
+
+
+def _tb_my_picks(oid: str) -> list:
+    out = []
+    for yr in _tb_pick_years():
+        owned = get_owned_for(yr).get(oid) or {}
+        for rnd in range(1, DRAFT_ROUNDS + 1):
+            for i in range(int(owned.get(rnd, 0) or 0)):
+                out.append({"year": yr, "round": rnd,
+                            "label": f"{yr} R{rnd}" + (f" (#{i + 1})" if owned.get(rnd, 0) > 1 else "")})
+    return out
+
+
+def _tb_assets(oid: str, rosters: dict) -> dict:
+    """What `oid` could hand over right now: picks, bench players by position
+    (starters listed after), and FAAB left."""
+    lid = LEAGUE["sleeper_league_id"]
+    r = next((x for x in sleeper.get_rosters(lid) if str(x.get("owner_id")) == oid), {}) or {}
+    starters = {str(p) for p in (r.get("starters") or [])}
+    spare = {}
+    for pid in sorted(rosters.get(oid, []), key=lambda p: (p in starters,)):
+        pm = H.player_meta(pid)
+        if pm.position in tradeblock.POSITIONS:
+            spare.setdefault(pm.position, []).append(pm.name)
+    left = (faab.team_budgets(lid).get(oid) or {}).get("remaining", 0)
+    return {"picks": _tb_my_picks(oid), "spare": spare, "faab": int(left or 0), "slot": False}
+
+
+def _tb_keeper_line(pid: str) -> str:
+    row = next((r for r in get_keeper_market() if str(r["_pid"]) == str(pid)), None)
+    if row and row.get("cost"):
+        return f"Keepable in {SEASON + 1} at R{row['cost']} for whoever gets him"
+    return f"No {SEASON + 1} keeper price · a rental"
+
+
+def _tb_offer_text(o: dict) -> str:
+    bits = [H.player_meta(p).name for p in o["players"]] + [p["label"] for p in o["picks"]]
+    if o["faab"]:
+        bits.append(f'${o["faab"]} FAAB')
+    return ", ".join(bits) or "nothing"
+
+
+def _tb_card(x: dict, me, assets) -> str:
+    seller = config.manager_name(x["owner"])
+    kind = "agreed" if x["status"] == "agreed" else x["kind"]
+    kl = {"sell": "Selling", "want": "Buying", "agreed": "Agreed"}[kind]
+    head = (f'<div class="sl">{_mgr_face(x["owner"])}<b>{seller}</b>'
+            f'<span>{_rec_of(x["owner"])}</span><em class="kd {kind}">{kl}</em></div>')
+    if x["kind"] == "sell":
+        pm = H.player_meta(x["player_id"])
+        top = (f'<div class="pt">{_ph_img(x["player_id"], "")}<div><b>{pm.name}</b>'
+               f'<small>{pm.position} &middot; {pm.team}</small><em>{_tb_keeper_line(x["player_id"])}</em></div></div>')
+        checks = tradeblock.check_asks(x, assets) if assets and me != x["owner"] else \
+            [{"text": tradeblock.ask_text(a), "ok": False, "have": ""} for a in x["asks"]]
+        ws = "".join(f'<span class="w{" ok" if c["ok"] else ""}">{"&#10003; " if c["ok"] else ""}{c["text"]}</span>'
+                     for c in checks)
+        body = f'<div class="wl">Would take</div><div class="ws">{ws}</div>'
+        hits = [c for c in checks if c["ok"]]
+        ml = (f'<div class="ml">You have it: <b>{"</b> &middot; <b>".join(c["have"] or c["text"] for c in hits)}</b></div>'
+              if hits else "")
+    else:
+        top = (f'<div class="pt"><div><small>Looking for</small><b>A{"n" if x["want_pos"] == "RB" else ""} '
+               f'{x["want_pos"]}</b></div></div>')
+        ws = "".join(f'<span class="w">{o}</span>' for o in x["offering"]) or '<span class="w">Make an offer</span>'
+        body = f'<div class="wl">Offering</div><div class="ws">{ws}</div>'
+        have = (assets or {}).get("spare", {}).get(x["want_pos"]) if me and me != x["owner"] else None
+        ml = f'<div class="ml">You have {x["want_pos"]}s: <b>{", ".join(have[:2])}</b></div>' if have else ""
+    if me == x["owner"]:
+        n = sum(1 for o in x["offers"] if o["status"] == "pending")
+        ml = f'<div class="ml me">Your listing &middot; <b>{n} offer{"s" if n != 1 else ""} waiting</b></div>'
+    mine = next((o for o in x["offers"] if o["from"] == me and o["status"] in ("pending", "accepted")), None) if me else None
+    if mine:
+        ml += f'<div class="ft">Your offer: {_tb_offer_text(mine)} &middot; {mine["status"]}</div>'
+    note = f'<p class="nt">&ldquo;{x["note"]}&rdquo;</p>' if x.get("note") else ""
+    live = sum(1 for o in x["offers"] if o["status"] in ("pending", "accepted"))
+    until = ("until Sunday kickoff" if x["until"] == "sunday" else
+             "until the trade deadline" if x["until"] == "deadline" else "until taken down")
+    foot = f'<div class="ft">{live} offer{"s" if live != 1 else ""} &middot; up {until}</div>'
+    return f'<div class="tbk">{head}{top}{body}{note}{ml}{foot}</div>'
+
+
+def _tb_offer_form(x: dict, me: str, rosters: dict, assets: dict) -> None:
+    k = x["id"]
+    my_players = {f'{H.player_meta(p).name} ({H.player_meta(p).position})': p for p in rosters.get(me, [])
+                  if H.player_meta(p).position in tradeblock.POSITIONS}
+    picks = {p["label"]: p for p in assets["picks"]}
+    pl = st.multiselect("Players", list(my_players), key=f"tbo_pl_{k}")
+    pk = st.multiselect("Picks", list(picks), key=f"tbo_pk_{k}")
+    fa = st.number_input("FAAB", 0, max(0, assets["faab"]), 0, step=1, key=f"tbo_fa_{k}",
+                         help="Traded FAAB is cash you'd owe them at year end, not pot money.")
+    nt = st.text_input("Note (optional)", key=f"tbo_nt_{k}", max_chars=200)
+    offer = tradeblock.new_offer(me, [my_players[p] for p in pl], [picks[p] for p in pk], fa, nt)
+    if pl or pk or fa:
+        if tradeblock.offer_covers(x, offer, lambda p: H.player_meta(p).position):
+            st.success("Covers what they asked for.")
+        else:
+            st.caption("Doesn't match any of their asks. You can still send it.")
+    if st.button("Send offer", key=f"tbo_go_{k}", type="primary", disabled=not (pl or pk or fa)):
+        _tb_write(lambda d: tradeblock.add_offer(d, k, offer), "Offer sent")
+
+
+def _tb_inbox(x: dict, me: str) -> None:
+    k = x["id"]
+    pend = [o for o in x["offers"] if o["status"] in ("pending", "accepted")]
+    if not pend:
+        st.caption("No offers yet.")
+    for o in pend:
+        st.markdown(f'**{config.manager_name(o["from"])}** offers {_tb_offer_text(o)}'
+                    + (f' &middot; _{o["note"]}_' if o.get("note") else ""), unsafe_allow_html=True)
+        if o["faab"]:
+            st.caption(f'Accepting means {config.manager_name(o["from"]).split()[0]} owes you ${o["faab"]} '
+                       "in cash at year end (shown on the FAAB Pot page once the trade is in Sleeper).")
+        if o["status"] == "accepted":
+            st.success("Agreed. Send it in Sleeper; this listing closes by itself once the trade goes through.")
+            continue
+        c1, c2 = st.columns(2)
+        if c1.button("Accept", key=f"tba_{o['id']}", type="primary"):
+            _tb_write(lambda d: tradeblock.respond(d, k, o["id"], "accept", me), "Accepted. Now send it in Sleeper")
+        if c2.button("Decline", key=f"tbd_{o['id']}"):
+            _tb_write(lambda d: tradeblock.respond(d, k, o["id"], "decline", me), "Declined")
+    if st.button("Take it down", key=f"tbw_{k}"):
+        _tb_write(lambda d: tradeblock.withdraw(d, k, me), "Taken down")
+
+
+def _tb_post_form(me: str, rosters: dict, assets: dict) -> None:
+    kind = st.radio("I'm", ["Selling a player", "Looking for a player"], horizontal=True, key="tbp_kind")
+    asks, offering, pid, want = [], [], None, None
+    if kind == "Selling a player":
+        mine = {f'{H.player_meta(p).name} ({H.player_meta(p).position} · {H.player_meta(p).team})': p
+                for p in rosters.get(me, []) if H.player_meta(p).position in tradeblock.POSITIONS}
+        if not mine:
+            st.caption("No players on your roster.")
+            return
+        pid = mine[st.selectbox("Player", list(mine), key="tbp_pl")]
+        want_kinds = st.multiselect("I'd take", ["A pick", "A QB", "An RB", "A WR", "A TE", "FAAB", "Make me an offer"],
+                                    default=["A pick"], key="tbp_asks")
+        if "A pick" in want_kinds:
+            c1, c2 = st.columns(2)
+            yr = c1.selectbox("Pick year", _tb_pick_years(), key="tbp_yr")
+            rd = c2.selectbox("Round or better", list(range(1, DRAFT_ROUNDS + 1)), index=4, key="tbp_rd")
+            asks.append({"t": "pick", "year": int(yr), "round": int(rd)})
+        for w in want_kinds:
+            if w.split()[-1] in tradeblock.POSITIONS:
+                asks.append({"t": "pos", "pos": w.split()[-1]})
+        if "FAAB" in want_kinds:
+            asks.append({"t": "faab", "min": int(st.number_input("At least this much FAAB", 1, 100, 5, key="tbp_fa"))})
+        if "Make me an offer" in want_kinds or not asks:
+            asks.append({"t": "offer"})
+    else:
+        want = st.selectbox("Position", list(tradeblock.POSITIONS), index=1, key="tbp_pos")
+        mine = [f'{H.player_meta(p).name}' for p in rosters.get(me, []) if H.player_meta(p).position in tradeblock.POSITIONS]
+        offering = st.multiselect("Offering", mine + [p["label"] for p in assets["picks"]], key="tbp_off")
+        fa = st.number_input("FAAB you'd add", 0, max(0, assets["faab"]), 0, key="tbp_offa")
+        if fa:
+            offering.append(f"${fa} FAAB")
+    until = st.radio("Up until", ["Sunday kickoff", "The trade deadline", "I take it down"], index=1,
+                     horizontal=True, key="tbp_until")
+    note = st.text_input("Note (optional)", max_chars=200, key="tbp_note")
+    if st.button("Post to the block", type="primary", key="tbp_go"):
+        x = tradeblock.new_listing(me, "sell" if pid else "want", player_id=pid, want_pos=want, asks=asks,
+                                   offering=offering, note=note,
+                                   until={"Sunday kickoff": "sunday", "The trade deadline": "deadline"}.get(until, "manual"))
+        _tb_write(lambda d: tradeblock.add_listing(d, x), "Posted to the block")
+
+
+def _tb_ticker_html(limit: int = 6) -> str:
+    """The Home strip: what's on the block right now. Empty when nothing is."""
+    try:
+        live = tradeblock.active(get_trade_block())
+    except Exception:  # noqa: BLE001
+        return ""
+    if not live:
+        return ""
+    bits = []
+    for x in live[:limit]:
+        who = config.manager_name(x["owner"]).split()[0]
+        if x["kind"] == "sell":
+            ask = ", ".join(tradeblock.ask_text(a) for a in x["asks"][:1])
+            bits.append(f'<span>{H.player_meta(x["player_id"]).name} <i>&middot; {who} wants {ask.lower()}</i></span>')
+        else:
+            bits.append(f'<span>{who} <i>&middot; looking for a{"n" if x["want_pos"] == "RB" else ""} {x["want_pos"]}</i></span>')
+    me = _me()
+    href = "?p=inseason&g=trades&t=block" + (f"&me={me}" if me else "")
+    return f'{_TB_CSS}<a class="tbt" href="{href}" target="_self"><span class="l">ON THE BLOCK</span>{"".join(bits)}</a>'
+
+
+def render_trade_block() -> None:
+    st.markdown(_TB_CSS + theme.section_head('Trade <span class="g">Block</span>', page=True), unsafe_allow_html=True)
+    st.caption("Put a player up for trade and say what you'd take, or post what you're looking for. "
+               "Green checks mark the asks you could cover right now. Deals still happen in Sleeper; "
+               "a listing closes by itself once its player moves.")
+    me = _me()
+    closed, dl = _tb_league_state()
+    rosters = _tb_rosters()
+    blob = get_trade_block()
+    if tradeblock.refresh(blob, rosters, closed_for_season=closed):
+        try:
+            storage.mutate_block(lambda d: (tradeblock.refresh(d, rosters, closed_for_season=closed), d)[1])
+        except Exception:  # noqa: BLE001
+            pass
+        get_trade_block.clear()
+        blob = get_trade_block()
+    if closed:
+        st.info(f"Trading is closed: the Sleeper trade deadline was week {dl}. The block reopens after the season.")
+        return
+    assets = _tb_assets(me, rosters) if me else None
+    live = tradeblock.active(blob)
+
+    def is_match(x):
+        if not me or x["owner"] == me:
+            return False
+        if x["kind"] == "sell":
+            return any(c["ok"] for c in tradeblock.check_asks(x, assets))
+        return bool(assets["spare"].get(x["want_pos"]))
+
+    n_match = sum(1 for x in live if is_match(x))
+    opts = [f"Everything · {len(live)}", f"You have what they want · {n_match}",
+            f"Buying · {sum(x['kind'] == 'want' for x in live)}", f"Yours · {sum(x['owner'] == me for x in live)}"]
+    f = st.radio("Show", opts, horizontal=True, label_visibility="collapsed", key="tb_filter")
+    view = [x for x in live if f == opts[0] or (f == opts[1] and is_match(x))
+            or (f == opts[2] and x["kind"] == "want") or (f == opts[3] and x["owner"] == me)]
+    if not live:
+        st.info("Nothing on the block yet. Be the first to post below.")
+    elif not view:
+        st.caption("Nothing here.")
+    cols = st.columns(3)
+    for i, x in enumerate(view):
+        with cols[i % 3]:
+            st.markdown(_tb_card(x, me, assets), unsafe_allow_html=True)
+            if not me:
+                continue
+            if x["owner"] == me:
+                with st.popover(f'Offers ({sum(o["status"] in ("pending", "accepted") for o in x["offers"])})',
+                                use_container_width=True):
+                    _tb_inbox(x, me)
+            elif x["status"] == "open":
+                with st.popover("Make an offer" if x["kind"] == "sell" else "Offer a player",
+                                use_container_width=True):
+                    _tb_offer_form(x, me, rosters, assets)
+            mine = next((o for o in x["offers"] if o["from"] == me and o["status"] in ("pending", "accepted")), None)
+            if mine and st.button("Withdraw my offer", key=f"tbx_{mine['id']}", use_container_width=True):
+                _tb_write(lambda d, k=x["id"], oid=mine["id"]: tradeblock.respond(d, k, oid, "withdraw", me),
+                          "Offer withdrawn")
+
+    st.markdown(theme.section_head('Post', 'a player for sale, or what you need'), unsafe_allow_html=True)
+    if not me:
+        st.caption("Pick your team from the masthead to post or make offers.")
+        return
+    with st.expander("Put a player on the block", expanded=not live):
+        _tb_post_form(me, rosters, assets)
 
 
 def render_trade_analyzer() -> None:
@@ -4884,7 +5199,7 @@ PRESEASON_LEAVES = {
 INSEASON_GROUPS = [("week", "This Week"), ("trades", "Trades"), ("league", "League"), ("history", "History")]
 INSEASON_LEAVES = {
     "week": [("live", "Live"), ("matchup", "Matchup"), ("keepers", f"{SEASON + 1} Keepers")],
-    "trades": [("recent", "Trades"), ("analyzer", "Trade Analyzer")],
+    "trades": [("recent", "Trades"), ("block", "Trade Block"), ("analyzer", "Trade Analyzer")],
     "league": [("standings", "Standings"), ("managers", "Managers"), ("playoffs", "Playoffs"),
                ("faab", "FAAB Pot"), ("lottery", "Draft-Order Lottery"),
                ("rules", "Rules & Votes")],
@@ -4948,6 +5263,7 @@ elif page == "inseason":
      ("week", "keepers"): render_keeper_outlook,
      ("trades", "recent"): lambda: _stack(render_recent_trades, render_trade_targets),
      ("trades", "analyzer"): render_trade_analyzer,
+     ("trades", "block"): render_trade_block,
      ("league", "standings"): lambda: _stack(render_standings, render_power, render_odds),
      ("league", "managers"): render_managers,
      ("league", "playoffs"): render_playoffs,
