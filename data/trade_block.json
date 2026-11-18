@@ -1,0 +1,30 @@
+{
+  "listings": [
+    {
+      "id": "0968c4cfcd",
+      "kind": "sell",
+      "owner": "964703051971887104",
+      "player_id": "8137",
+      "want_pos": null,
+      "asks": [
+        {
+          "t": "pick",
+          "year": 2027,
+          "round": 3
+        },
+        {
+          "t": "pos",
+          "pos": "WR"
+        }
+      ],
+      "offering": [],
+      "note": "Looking for a top tier WR or a 3rd",
+      "until": "deadline",
+      "expires": null,
+      "status": "open",
+      "created": 1795017079.5080264,
+      "closed": null,
+      "offers": []
+    }
+  ]
+}
