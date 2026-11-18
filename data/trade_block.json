@@ -1,0 +1,26 @@
+{
+  "listings": [
+    {
+      "id": "b726f2ef70",
+      "kind": "sell",
+      "owner": "964703051971887104",
+      "player_id": "9224",
+      "want_pos": null,
+      "asks": [
+        {
+          "t": "pick",
+          "year": 2027,
+          "round": 5
+        }
+      ],
+      "offering": [],
+      "note": "Bench depth",
+      "until": "deadline",
+      "expires": null,
+      "status": "open",
+      "created": 1795013506.269116,
+      "closed": null,
+      "offers": []
+    }
+  ]
+}
