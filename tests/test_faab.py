@@ -5,11 +5,28 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import pytest  # noqa: E402
+
 from kreeper import faab  # noqa: E402
+
+# The most recent _rosters() call's spend, as week-1 waiver claims: "spent"
+# counts claims (not waiver_budget_used), so a test that only sets up rosters
+# gets matching claims by default. Tests that patch get_transactions
+# themselves override this.
+_CLAIMS: list = []
+
+
+@pytest.fixture(autouse=True)
+def _default_claims():
+    with patch("kreeper.sleeper.get_transactions",
+               side_effect=lambda lid, wk: list(_CLAIMS) if wk == 1 else []):
+        yield
 
 
 def _rosters(entries):
     """entries: {roster_id: (owner_id, waiver_budget_used, [player_ids])}"""
+    _CLAIMS[:] = [_waiver_tx(1, {f"c{rid}": rid}, used)
+                  for rid, (_o, used, _p) in entries.items() if used > 0]
     return [
         {"roster_id": rid, "owner_id": o, "players": players,
          "settings": {"waiver_budget_used": used}}
@@ -37,8 +54,8 @@ def test_team_budgets_from_roster_settings():
     with patch("kreeper.sleeper.get_league", return_value=_league(100)), \
          patch("kreeper.sleeper.get_rosters", return_value=rosters):
         budgets = faab.team_budgets("fake")
-    assert budgets["A"] == {"total": 100, "spent": 37, "remaining": 63}
-    assert budgets["B"] == {"total": 100, "spent": 0, "remaining": 100}
+    assert budgets["A"] == {"total": 100, "spent": 37, "remaining": 63, "traded": 0}
+    assert budgets["B"] == {"total": 100, "spent": 0, "remaining": 100, "traded": 0}
 
 
 def test_team_budgets_remaining_never_negative():
@@ -292,3 +309,40 @@ def test_burndown_total_reconciles_with_team_budgets():
         budgets = faab.team_budgets("fake")
     for t in curve["teams"]:
         assert t["total"] == budgets[t["owner"]]["spent"], t["owner"]
+
+
+def _trade_tx(week, sender, receiver, amount):
+    return {"type": "trade", "status": "complete", "leg": week, "transaction_id": f"t{week}{sender}",
+            "waiver_budget": [{"sender": sender, "receiver": receiver, "amount": amount}]}
+
+
+def test_traded_faab_is_owed_cash_not_pot_money():
+    """Mike sends Tanner $10 in a trade: Sleeper books it on both teams'
+    waiver_budget_used, but the pot only counts claims, and Mike owes
+    Tanner $10."""
+    # Mike (1) claimed $20 and sent $10, Sleeper shows 30 used; Tanner (2)
+    # claimed $5 and got $10, Sleeper shows -5 used.
+    rosters = _rosters({1: ("mike", 30, []), 2: ("tanner", -5, [])})
+    txs = {3: [_waiver_tx(3, {"100": 1}, 20), _waiver_tx(3, {"200": 2}, 5)],
+           6: [_trade_tx(6, 1, 2, 10)]}
+    with patch("kreeper.sleeper.get_league", return_value=_league(100)), \
+         patch("kreeper.sleeper.get_rosters", return_value=rosters), \
+         patch("kreeper.sleeper.get_transactions", side_effect=_transactions_fn(txs)):
+        budgets = faab.team_budgets("fake")
+        pot = faab.projected_pot("fake")
+        owed = faab.faab_owed("fake")
+    assert budgets["mike"]["spent"] == 20 and budgets["mike"]["traded"] == -10
+    assert budgets["mike"]["remaining"] == 70
+    assert budgets["tanner"]["spent"] == 5 and budgets["tanner"]["traded"] == 10
+    assert pot["pot"] == 25
+    assert [(o["owes"], o["to"], o["amount"]) for o in owed] == [("mike", "tanner", 10)]
+
+
+def test_faab_owed_nets_both_directions():
+    rosters = _rosters({1: ("mike", 0, []), 2: ("tanner", 0, [])})
+    txs = {4: [_trade_tx(4, 1, 2, 10)], 8: [_trade_tx(8, 2, 1, 4)]}
+    with patch("kreeper.sleeper.get_rosters", return_value=rosters), \
+         patch("kreeper.sleeper.get_transactions", side_effect=_transactions_fn(txs)):
+        owed = faab.faab_owed("fake")
+    assert [(o["owes"], o["to"], o["amount"]) for o in owed] == [("mike", "tanner", 6)]
+    assert len(owed[0]["trades"]) == 2

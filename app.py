@@ -2981,7 +2981,7 @@ def render_trade_analyzer() -> None:
         f'<div class="xb-m"><span class="xb-k">trade grade</span><b style="font-size:40px">{verdict}</b>'
         f'<em>{"both sides roughly equal" if even else f"by ~{abs(round(diff))} pts"}</em>'
         f'<div class="xb-bar"><i style="width:{share:.0f}%"></i></div></div>'
-        f'<div class="xb-s op{" fight" if gb else ""}"><div class="xb-t"><span>{b} receives</span>'
+        f'<div class="xb-s op"><div class="xb-t"><span>{b} receives</span>'
         f'<b>{round(b_score)}</b><i>players {round(b_pv)} &middot; picks {round(b_pc)}</i></div></div></div>'
         f'<div class="xb-gap"></div>', unsafe_allow_html=True)
     st.caption("Heuristic only — doesn't model roster need.")
@@ -4703,11 +4703,36 @@ def render_faab() -> None:
             f'<div class="sp{" me" if owner_id == me else ""}"><b>{config.manager_name(owner_id)}</b>'
             f'<div class="sp-b"><i class="live" style="width:{100 * live / tot:.0f}%"></i>'
             f'<i class="dead" style="width:{100 * dead / tot:.0f}%"></i></div>'
-            f'<em>${b["spent"]}</em><span>${b["remaining"]} left' + (f' &middot; ${dead} dead' if dead else "") + '</span></div>')
+            f'<em>${b["spent"]}</em><span>${b["remaining"]} left' + (f' &middot; ${dead} dead' if dead else "")
+            + (f' &middot; {"+" if b.get("traded", 0) > 0 else "&minus;"}${abs(b["traded"])} traded' if b.get("traded") else "")
+            + '</span></div>')
     st.markdown(theme.section_head('Spend by team', 'gold live · dark dead'), unsafe_allow_html=True)
     st.markdown('<div class="kx">' + "".join(rows) + "</div>", unsafe_allow_html=True)
     st.caption("Dead money is FAAB spent on adds a team has since dropped — still in the pot, "
                "but buying nothing.")
+    _render_faab_owed(lid)
+
+
+def _render_faab_owed(lid: str) -> None:
+    """FAAB sent in trades: it moves bidding budget in Sleeper, but it's
+    cash between the two managers, never pot money (see faab.py)."""
+    st.markdown(theme.section_head('Traded FAAB', 'owed in cash &middot; not pot money'), unsafe_allow_html=True)
+    owed = faab.faab_owed(lid)
+    if not owed:
+        st.caption("No FAAB has changed hands in a trade yet. When it does (say Mike sends Tanner $10 "
+                   "with a player), Sleeper moves the $10 of bidding budget, and Mike owes Tanner $10 "
+                   "in cash at year end. It never goes into the pot.")
+        return
+    me = _me()
+    rows = []
+    for o in owed:
+        wks = ", ".join(f'week {t["week"]}' for t in o["trades"])
+        rows.append(_payout_row("Owed", f'{config.manager_name(o["owes"])} &rarr; {config.manager_name(o["to"])}',
+                                f'${o["amount"]:,}',
+                                f'FAAB traded ({wks})' + (" &middot; <b>you</b>" if me in (o["owes"], o["to"]) else ""),
+                                theme.AMBER))
+    st.markdown('<div class="payouts">' + "".join(rows) + '</div>', unsafe_allow_html=True)
+    st.caption("Netted per pair of teams and settled in cash at year end, alongside the payouts above.")
 
 
 def render_superlatives() -> None:

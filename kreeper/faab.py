@@ -11,6 +11,13 @@ SPENT league-wide this season, and it's split two ways at year end —
 So spending is no longer purely "debt against the pot": it both grows the
 pot and sets what the 3rd-place-game winner could win back.
 
+FAAB sent in a trade is NOT spending. If Mike sends Tanner $10 of FAAB with a
+player, Sleeper moves $10 of bidding budget from Mike to Tanner, but that $10
+never went into the pot: it's cash Mike owes Tanner at year end. So "spent"
+here counts completed waiver claims only (never Sleeper's waiver_budget_used,
+which a FAAB trade moves too), and trade FAAB is its own ledger
+(`trade_faab`, `faab_owed`).
+
 Pure logic module — no Streamlit here.
 """
 from __future__ import annotations
@@ -30,16 +37,66 @@ def _roster_to_owner(league_id: str) -> Dict[int, str]:
 
 
 def team_budgets(league_id: Optional[str] = None) -> Dict[str, Dict[str, int]]:
-    """owner_id -> {total, spent, remaining} for this season's FAAB, straight
-    from Sleeper's own per-roster running total (no need to sum transactions
-    for this — Sleeper already tracks `waiver_budget_used`)."""
+    """owner_id -> {total, spent, remaining, traded}.
+
+    `spent` is FAAB that went into the pot: completed waiver claims only.
+    `remaining` is what the team can still bid, straight from Sleeper's
+    running `waiver_budget_used`, which a FAAB trade moves as well. `traded`
+    is net FAAB received in trades (negative = sent). That money is owed in
+    cash, not pot money (see faab_owed)."""
     league_id = league_id or config.league()["sleeper_league_id"]
     total = int(sleeper.get_league(league_id).get("settings", {}).get("waiver_budget", 100) or 100)
+    claims = weekly_spend(league_id)
+    traded: Dict[str, int] = {}
+    for t in trade_faab(league_id):
+        traded[t["receiver"]] = traded.get(t["receiver"], 0) + t["amount"]
+        traded[t["sender"]] = traded.get(t["sender"], 0) - t["amount"]
     out: Dict[str, Dict[str, int]] = {}
     for r in sleeper.get_rosters(league_id):
         owner = str(r.get("owner_id"))
-        spent = int((r.get("settings") or {}).get("waiver_budget_used", 0) or 0)
-        out[owner] = {"total": total, "spent": spent, "remaining": max(0, total - spent)}
+        used = int((r.get("settings") or {}).get("waiver_budget_used", 0) or 0)
+        out[owner] = {"total": total, "spent": sum((claims.get(owner) or {}).values()),
+                      "remaining": max(0, total - used), "traded": traded.get(owner, 0)}
+    return out
+
+
+def trade_faab(league_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Every FAAB transfer inside a completed trade, oldest first:
+    [{week, sender, receiver, amount, transaction_id}] (owner ids)."""
+    league_id = league_id or config.league()["sleeper_league_id"]
+    r2o = _roster_to_owner(league_id)
+    out: List[Dict[str, Any]] = []
+    for tx in _all_transactions(league_id):
+        if tx.get("type") != "trade" or tx.get("status") != "complete":
+            continue
+        for w in tx.get("waiver_budget") or []:
+            amt = int(w.get("amount") or 0)
+            s, r = r2o.get(int(w.get("sender") or 0)), r2o.get(int(w.get("receiver") or 0))
+            if amt > 0 and s and r:
+                out.append({"week": tx.get("leg"), "sender": s, "receiver": r, "amount": amt,
+                            "transaction_id": tx.get("transaction_id"),
+                            "created": tx.get("status_updated") or tx.get("created")})
+    out.sort(key=lambda x: (x["week"] or 0, x["created"] or 0))
+    return out
+
+
+def faab_owed(league_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Cash owed for FAAB traded this season, netted per pair of teams:
+    [{"owes": owner, "to": owner, "amount": int, "trades": [...]}], biggest
+    first. Mike sends Tanner $10 and Tanner later sends Mike $4 -> Mike owes
+    Tanner $6."""
+    net: Dict[tuple, int] = {}
+    trades: Dict[tuple, list] = {}
+    for t in trade_faab(league_id):
+        a, b = sorted((t["sender"], t["receiver"]))
+        net[(a, b)] = net.get((a, b), 0) + (t["amount"] if t["sender"] == a else -t["amount"])
+        trades.setdefault((a, b), []).append(t)
+    out = []
+    for (a, b), n in net.items():
+        if n:
+            out.append({"owes": a if n > 0 else b, "to": b if n > 0 else a, "amount": abs(n),
+                        "trades": trades[(a, b)]})
+    out.sort(key=lambda x: -x["amount"])
     return out
 
 
