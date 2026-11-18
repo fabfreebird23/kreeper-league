@@ -40,8 +40,10 @@ def team_budgets(league_id: Optional[str] = None) -> Dict[str, Dict[str, int]]:
     """owner_id -> {total, spent, remaining, traded}.
 
     `spent` is FAAB that went into the pot: completed waiver claims only.
-    `remaining` is what the team can still bid, straight from Sleeper's
-    running `waiver_budget_used`, which a FAAB trade moves as well. `traded`
+    `remaining` is what the team can still bid: the budget, plus FAAB
+    received in trades, minus FAAB sent and claims spent. (Worked out here
+    rather than read off Sleeper's `waiver_budget_used`, so it's right
+    whether or not Sleeper books a FAAB trade there.) `traded`
     is net FAAB received in trades (negative = sent). That money is owed in
     cash, not pot money (see faab_owed)."""
     league_id = league_id or config.league()["sleeper_league_id"]
@@ -54,9 +56,9 @@ def team_budgets(league_id: Optional[str] = None) -> Dict[str, Dict[str, int]]:
     out: Dict[str, Dict[str, int]] = {}
     for r in sleeper.get_rosters(league_id):
         owner = str(r.get("owner_id"))
-        used = int((r.get("settings") or {}).get("waiver_budget_used", 0) or 0)
-        out[owner] = {"total": total, "spent": sum((claims.get(owner) or {}).values()),
-                      "remaining": max(0, total - used), "traded": traded.get(owner, 0)}
+        spent = sum((claims.get(owner) or {}).values())
+        out[owner] = {"total": total, "spent": spent,
+                      "remaining": max(0, total + traded.get(owner, 0) - spent), "traded": traded.get(owner, 0)}
     return out
 
 
